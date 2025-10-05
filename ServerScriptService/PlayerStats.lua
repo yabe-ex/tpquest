@@ -3,13 +3,27 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 
 local PlayerStats = {}
 
--- RemoteEventを取得する関数
-local function getRemoteEvent(name)
-	return ReplicatedStorage:WaitForChild(name, 10)
+-- RemoteEventsを確実に取得・作成するヘルパー関数
+local function getOrCreateRemoteEvent(name)
+    local event = ReplicatedStorage:FindFirstChild(name)
+	if not event then
+		event = Instance.new("RemoteEvent")
+		event.Name = name
+		event.Parent = ReplicatedStorage
+	end
+	return event
 end
+
+-- RemoteEventの定義
+local StatusUpdateEvent = getOrCreateRemoteEvent("StatusUpdate")
+local SaveGameEvent = getOrCreateRemoteEvent("SaveGame") -- セーブイベント
+local StatsDetailEvent = getOrCreateRemoteEvent("StatsDetail")
+local LevelUpEvent = getOrCreateRemoteEvent("LevelUp")
+local SaveSuccessEvent = getOrCreateRemoteEvent("SaveSuccess") -- セーブフィードバックイベント
 
 -- デフォルトステータス
 local DEFAULT_STATS = {
@@ -33,24 +47,34 @@ end
 
 -- 各プレイヤーのステータスを保存
 local PlayerData = {}
+-- ロード機能が無効なため、PlayerSaveDataは簡素化
+local PlayerSaveData = {}
+PlayerStats.PlayerSaveData = PlayerSaveData
 
--- プレイヤーのステータスを初期化
+
+-- プレイヤーのステータスを初期化 (デフォルト値を使用)
 function PlayerStats.initPlayer(player: Player)
 	if PlayerData[player] then
 		warn(("[PlayerStats] %s は既に初期化済みです"):format(player.Name))
-		return
+        -- ロード機能は無効なため、デフォルト位置を返す
+		return {ZoneName = "ContinentTown", X = -50, Y = 50, Z = 50}
 	end
 
+    -- 【ロード機能は無効化】: DataStoreManagerの呼び出しを削除
+
 	-- デフォルト値でステータスを作成
-	PlayerData[player] = {}
+    PlayerData[player] = {}
+
 	for key, value in pairs(DEFAULT_STATS) do
 		PlayerData[player][key] = value
 	end
 
-	print(("[PlayerStats] %s のステータスを初期化しました"):format(player.Name))
+	print(("[PlayerStats] %s のステータスを初期化しました (デフォルトデータ使用)"):format(player.Name))
 
-	-- TODO: DataStoreから読み込み
+    -- デフォルトスポーン位置を返す (TownのNW島の中心付近)
+    return {ZoneName = "ContinentTown", X = -50, Y = 50, Z = 50}
 end
+
 
 -- プレイヤーのステータスを取得
 function PlayerStats.getStats(player: Player)
@@ -110,19 +134,16 @@ function PlayerStats.takeDamage(player: Player, damage: number): boolean
 		))
 
 	-- ステータス更新を送信
-	local StatusUpdateEvent = getRemoteEvent("StatusUpdate")
-	if StatusUpdateEvent then
-		local expToNext = getRequiredExp(stats.Level)
-		StatusUpdateEvent:FireClient(
-			player,
-			stats.CurrentHP,
-			stats.MaxHP,
-			stats.Level,
-			stats.Experience,
-			expToNext,
-			stats.Gold
-		)
-	end
+	local expToNext = getRequiredExp(stats.Level)
+	StatusUpdateEvent:FireClient(
+		player,
+		stats.CurrentHP,
+		stats.MaxHP,
+		stats.Level,
+		stats.Experience,
+		expToNext,
+		stats.Gold
+	)
 
 	-- 死亡判定
 	if stats.CurrentHP <= 0 then
@@ -151,19 +172,16 @@ function PlayerStats.addExperience(player: Player, exp: number)
 	end
 
 	-- ステータス更新を送信
-	local StatusUpdateEvent = getRemoteEvent("StatusUpdate")
-	if StatusUpdateEvent then
-		local expToNext = getRequiredExp(stats.Level)
-		StatusUpdateEvent:FireClient(
-			player,
-			stats.CurrentHP,
-			stats.MaxHP,
-			stats.Level,
-			stats.Experience,
-			expToNext,
-			stats.Gold
-		)
-	end
+	local expToNext = getRequiredExp(stats.Level)
+	StatusUpdateEvent:FireClient(
+		player,
+		stats.CurrentHP,
+		stats.MaxHP,
+		stats.Level,
+		stats.Experience,
+		expToNext,
+		stats.Gold
+	)
 end
 
 -- ゴールドを追加
@@ -177,19 +195,16 @@ function PlayerStats.addGold(player: Player, gold: number)
 		))
 
 	-- ステータス更新を送信
-	local StatusUpdateEvent = getRemoteEvent("StatusUpdate")
-	if StatusUpdateEvent then
-		local expToNext = getRequiredExp(stats.Level)
-		StatusUpdateEvent:FireClient(
-			player,
-			stats.CurrentHP,
-			stats.MaxHP,
-			stats.Level,
-			stats.Experience,
-			expToNext,
-			stats.Gold
-		)
-	end
+	local expToNext = getRequiredExp(stats.Level)
+	StatusUpdateEvent:FireClient(
+		player,
+		stats.CurrentHP,
+		stats.MaxHP,
+		stats.Level,
+		stats.Experience,
+		expToNext,
+		stats.Gold
+	)
 end
 
 -- ゴールドを減らす
@@ -256,53 +271,93 @@ function PlayerStats.levelUp(player: Player)
 		))
 
 	-- クライアントにレベルアップ演出を通知
-	local LevelUpEvent = getRemoteEvent("LevelUp")
-	if LevelUpEvent then
-		LevelUpEvent:FireClient(player, stats.Level, stats.MaxHP, stats.Speed, stats.Attack, stats.Defense)
-	end
+	LevelUpEvent:FireClient(player, stats.Level, stats.MaxHP, stats.Speed, stats.Attack, stats.Defense)
 
 	-- ステータス更新を送信
-	local StatusUpdateEvent = getRemoteEvent("StatusUpdate")
-	if StatusUpdateEvent then
-		local expToNext = stats.Level * 100
-		StatusUpdateEvent:FireClient(
-			player,
-			stats.CurrentHP,
-			stats.MaxHP,
-			stats.Level,
-			stats.Experience,
-			expToNext,
-			stats.Gold
-		)
-	end
+	local expToNext = getRequiredExp(stats.Level)
+	StatusUpdateEvent:FireClient(
+		player,
+		stats.CurrentHP,
+		stats.MaxHP,
+		stats.Level,
+		stats.Experience,
+		expToNext,
+		stats.Gold
+	)
 end
 
 -- プレイヤーが退出したらデータをクリア
 function PlayerStats.removePlayer(player: Player)
 	-- TODO: DataStoreに保存
 	PlayerData[player] = nil
+    PlayerSaveData[player] = nil
 	print(("[PlayerStats] %s のデータを削除しました"):format(player.Name))
 end
+
+
+-- 【新規】手動セーブ処理
+local function handleSaveGame(player)
+    -- DataCollectorsとDataStoreManagerをロード
+    local DataCollectorsModule = ServerScriptService:WaitForChild("DataCollectors", 10)
+    local DataStoreManagerModule = ServerScriptService:WaitForChild("DataStoreManager", 10)
+
+    if not DataCollectorsModule or not DataStoreManagerModule then
+        warn("[PlayerStats] セーブ失敗: 必要なモジュールが見つかりません。")
+        SaveGameEvent:FireClient(player, false)
+        return
+    end
+
+    local DataCollectors = require(DataCollectorsModule)
+    local DataStoreManager = require(DataStoreManagerModule)
+
+    local stats = PlayerData[player]
+    if not stats then
+        warn(("[PlayerStats] %s のステータスが見つからないためセーブできません。"):format(player.Name))
+        SaveGameEvent:FireClient(player, false)
+        return
+    end
+
+    -- データ収集とセーブを実行
+    local saveData = DataCollectors.createSaveData(player, stats)
+    DataStoreManager.SaveData(player, saveData)
+end
+
 
 -- 初期化
 function PlayerStats.init()
 	-- 既存のプレイヤーを初期化
 	for _, player in ipairs(Players:GetPlayers()) do
-		PlayerStats.initPlayer(player)
+		task.spawn(function() -- initPlayerはI/Oブロッキングのため非同期で実行
+            PlayerStats.initPlayer(player)
+        end)
 	end
 
 	-- 新規参加プレイヤーを初期化
 	Players.PlayerAdded:Connect(function(player)
-		PlayerStats.initPlayer(player)
+		task.spawn(function() -- initPlayerはI/Oブロッキングのため非同期で実行
+            PlayerStats.initPlayer(player)
+        end)
 	end)
 
 	-- 退出時にデータをクリア
 	Players.PlayerRemoving:Connect(function(player)
 		PlayerStats.removePlayer(player)
+
+        -- 【新規】自動セーブ (ゲーム終了時のセーブ)
+        local DataCollectorsModule = ServerScriptService:FindFirstChild("DataCollectors")
+        local DataStoreManagerModule = ServerScriptService:FindFirstChild("DataStoreManager")
+        if DataCollectorsModule and DataStoreManagerModule and PlayerData[player] then
+            local saveData = require(DataCollectorsModule).createSaveData(player, PlayerData[player])
+            require(DataStoreManagerModule).SaveData(player, saveData)
+        end
 	end)
 
+	-- 【新規】セーブイベントの接続
+    local SaveGameEvent = getOrCreateRemoteEvent("SaveGame")
+    SaveGameEvent.OnServerEvent:Connect(handleSaveGame)
+
 	-- 詳細ステータスリクエスト用RemoteEvent
-	local RequestStatsDetailEvent = ReplicatedStorage:FindFirstChild("RequestStatsDetail")
+    local RequestStatsDetailEvent = ReplicatedStorage:FindFirstChild("RequestStatsDetail")
 	if not RequestStatsDetailEvent then
 		RequestStatsDetailEvent = Instance.new("RemoteEvent")
 		RequestStatsDetailEvent.Name = "RequestStatsDetail"

@@ -3,14 +3,17 @@
 
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local DataStoreManager = {}
 
--- データのキーを定義
+-- DataStoreの定義 (バージョン管理のためV1)
 local PLAYER_DATA_STORE = DataStoreService:GetDataStore("TypingQuestPlayerSaveData_V1")
-local SAVE_SUCCESS_EVENT = Instance.new("RemoteEvent")
-SAVE_SUCCESS_EVENT.Name = "SaveSuccess"
-SAVE_SUCCESS_EVENT.Parent = game:GetService("ReplicatedStorage")
+
+-- ★修正: WaitForChildを廃止し、非ブロッキングのFindFirstChildを使用
+local SAVE_SUCCESS_EVENT = ReplicatedStorage:FindFirstChild("SaveSuccess")
+local LOAD_GAME_EVENT = ReplicatedStorage:FindFirstChild("LoadGame")
+
 
 -- データの保存 (非同期)
 function DataStoreManager.SaveData(player: Player, data: table)
@@ -23,12 +26,16 @@ function DataStoreManager.SaveData(player: Player, data: table)
         print(("[DataStoreManager] %s のデータを保存しました。キー: %d"):format(player.Name, player.UserId))
 
         -- クライアントに保存成功を通知
-        SAVE_SUCCESS_EVENT:FireClient(player, true)
+        if SAVE_SUCCESS_EVENT then
+            SAVE_SUCCESS_EVENT:FireClient(player, true)
+        end
     else
         warn(("[DataStoreManager] %s のデータ保存に失敗しました: %s"):format(player.Name, err))
 
         -- クライアントに保存失敗を通知
-        SAVE_SUCCESS_EVENT:FireClient(player, false)
+        if SAVE_SUCCESS_EVENT then
+            SAVE_SUCCESS_EVENT:FireClient(player, false)
+        end
     end
     return success
 end
@@ -52,6 +59,14 @@ function DataStoreManager.LoadData(player: Player)
     end
 end
 
--- サーバーモジュールの初期化は不要なため省略
+-- 手動ロード要求イベントリスナー (ロードボタン押下時)
+if LOAD_GAME_EVENT then
+    LOAD_GAME_EVENT.OnServerEvent:Connect(function(player)
+        -- 現状、特別な処理は不要（次の接続時に自動ロードされるため）
+        print(("[DataStoreManager] %s からロード要求を受信しました。"):format(player.Name))
+    end)
+else
+    warn("[DataStoreManager] LOAD_GAME_EVENT が見つかりません。ロード要求リスナーは機能しません。")
+end
 
 return DataStoreManager
