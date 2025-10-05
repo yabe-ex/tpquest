@@ -28,7 +28,11 @@ end
 
 local Continents = {}
 for _, continent in ipairs(ContinentsRegistry) do
-	Continents[continent.name] = continent
+	if continent and continent.name then
+		Continents[continent.name] = continent
+	else
+		warn(("[WarpPortal] 名前が設定されていない大陸定義をスキップしました"):format(continent and continent.name or "nil"))
+	end
 end
 
 local function resolveTemplate(pathArray: {string}): Model?
@@ -116,9 +120,12 @@ end
 
 -- 【修正】ポータルタッチ時、即座にワープ中フラグを設定
 local function createPortal(config, fromZone)
-	local zoneConfig = Islands[fromZone]
+	-- Town大陸の場合、fromZoneはContinentTownだが、ポータル座標はislandNameを参照する必要がある。
+	local islandName = config.islandName or fromZone
+	local zoneConfig = Islands[islandName]
+
 	if not zoneConfig then
-		warn(("[WarpPortal] ゾーン '%s' の設定が見つかりません"):format(fromZone))
+		warn(("[WarpPortal] ゾーン '%s' の島設定が見つかりません"):format(islandName))
 		return nil
 	end
 
@@ -266,7 +273,8 @@ local function createPortal(config, fromZone)
 		destroyPortalsForZone(actualFromZone)
 
 		-- 前のゾーンのモンスターを削除
-		if actualFromZone ~= "StartTown" and _G.DespawnMonstersForZone then
+		local IS_TOWN = actualFromZone == "ContinentTown" -- ★修正: ContinentTownで判定
+		if not IS_TOWN and _G.DespawnMonstersForZone then
 			_G.DespawnMonstersForZone(actualFromZone)
 		end
 
@@ -285,7 +293,8 @@ local function createPortal(config, fromZone)
 			createPortalsForZone(config.toZone)
 
 			-- 新しいゾーンのモンスターをスポーン
-			if config.toZone ~= "StartTown" and _G.SpawnMonstersForZone then
+			local TO_IS_TOWN = config.toZone == "ContinentTown" -- ★修正: ContinentTownで判定
+			if not TO_IS_TOWN and _G.SpawnMonstersForZone then
 				_G.SpawnMonstersForZone(config.toZone)
 			end
 
@@ -307,71 +316,62 @@ local function createPortal(config, fromZone)
 	return portal
 end
 
+-- ServerScriptService/WarpPortal.server.lua
+
 function createPortalsForZone(zoneName)
-	if activePortals[zoneName] then
-		print(("[WarpPortal] %s のポータルは既に存在します"):format(zoneName))
-		return
-	end
+    if activePortals[zoneName] then
+        print(("[WarpPortal] %s のポータルは既に存在します"):format(zoneName))
+        return
+    end
 
-	activePortals[zoneName] = {}
+    activePortals[zoneName] = {}
 
-	if zoneName == "StartTown" then
-		print(("[WarpPortal] %s のポータルを並列生成中..."):format(zoneName))
+    -- Town大陸の判定フラグ（IS_TOWN_CONTINENT）は不要になったため削除
 
-		local townPortalConfigs = {
-			-- {name = "Town_to_ContinentA", toZone = "ContinentA", offsetX = 50, offsetZ = 0, size = Vector3.new(8, 12, 8), color = Color3.fromRGB(100, 255, 100), label = "→ Grassland"},
-			-- {name = "Town_to_ContinentB", toZone = "ContinentB", offsetX = -50, offsetZ = 0, size = Vector3.new(8, 12, 8), color = Color3.fromRGB(150, 150, 255), label = "→ Wilderness"},
-			-- {name = "Town_to_ContinentT", toZone = "ContinentT", offsetX = 0, offsetZ = 50, size = Vector3.new(8, 12, 8), color = Color3.fromRGB(255, 255, 100), label = "→ T-Continent"},
-			{name = "Town_to_Hokkaido", toZone = "ContinentHokkaido", offsetX = 0, offsetZ = -50, size = Vector3.new(8, 12, 8), color = Color3.fromRGB(200, 200, 255), label = "→ Hokkaido"},
-		}
+    local continent = Continents[zoneName]
+    if continent and continent.portals then
+        print(("[WarpPortal] %s のポータルを並列生成中..."):format(zoneName))
 
-		for _, config in ipairs(townPortalConfigs) do
-			task.spawn(function()
-				local portal = createPortal(config, zoneName)
-				if portal then
-					table.insert(activePortals[zoneName], portal)
-					print(("[WarpPortal] ポータル作成: %s"):format(config.name))
-				end
-			end)
-		end
-		return
-	end
+        for _, portalConfig in ipairs(continent.portals) do
+            task.spawn(function()
+                local islandName = portalConfig.islandName
+                if not Islands[islandName] then
+                    warn(("[WarpPortal] 島 '%s' が見つかりません"):format(islandName))
+                else
+                    -- createPortalの第2引数はポータルが属する大陸名（zoneName）
+                    local portal = createPortal(portalConfig, zoneName)
+                    if portal then
+                        portal:SetAttribute("FromZone", zoneName)
+                        table.insert(activePortals[zoneName], portal)
+                        print(("[WarpPortal] ポータル作成: %s (配置: %s)"):format(portalConfig.name, islandName))
+                    end
+                end
+            end)
+        end
+    else
+        print(("[WarpPortal] %s のポータル設定が見つかりません"):format(zoneName))
+    end
 
-	local continent = Continents[zoneName]
-	if continent and continent.portals then
-		print(("[WarpPortal] %s のポータルを並列生成中..."):format(zoneName))
-
-		for _, portalConfig in ipairs(continent.portals) do
-			task.spawn(function()
-				local islandName = portalConfig.islandName
-				if not Islands[islandName] then
-					warn(("[WarpPortal] 島 '%s' が見つかりません"):format(islandName))
-				else
-					local portal = createPortal(portalConfig, islandName)
-					if portal then
-						portal:SetAttribute("FromZone", zoneName)
-						table.insert(activePortals[zoneName], portal)
-						print(("[WarpPortal] ポータル作成: %s (配置: %s)"):format(portalConfig.name, islandName))
-					end
-				end
-			end)
-		end
-	else
-		print(("[WarpPortal] %s のポータル設定が見つかりません"):format(zoneName))
-	end
+    -- ★注意: ここにあった2つ目のポータル生成ブロックは冗長なので削除しました。
 end
 
 function destroyPortalsForZone(zoneName)
 	if not activePortals[zoneName] then return end
 
-	for _, portal in ipairs(activePortals[zoneName]) do
+	-- 万が一島名が渡された場合、大陸名に変換して削除
+    local actualZoneName = zoneName
+    if actualZoneName == "StartTown" then
+        actualZoneName = "ContinentTown"
+    end
+
+	for _, portal in ipairs(activePortals[actualZoneName] or {}) do
 		if portal and portal.Parent then
 			portal:Destroy()
 		end
 	end
 
-	activePortals[zoneName] = nil
-	print(("[WarpPortal] %s のポータルを削除しました"):format(zoneName))
+	activePortals[actualZoneName] = nil
+	print(("[WarpPortal] %s のポータルを削除しました"):format(actualZoneName))
 end
 
 task.spawn(function()
@@ -391,7 +391,7 @@ task.spawn(function()
 end)
 
 task.wait(0.3)
-createPortalsForZone("StartTown")
+createPortalsForZone("ContinentTown") -- ★修正: StartTownからContinentTownに変更
 
 Players.PlayerRemoving:Connect(function(player)
 	warpingPlayers[player.UserId] = nil

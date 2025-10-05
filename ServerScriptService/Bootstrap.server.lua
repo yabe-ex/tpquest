@@ -1,5 +1,5 @@
 -- ServerScriptService/Bootstrap.server.lua
--- ゲーム初期化スクリプト（最終安定版）
+-- ゲーム初期化スクリプト（最終安定版 - BGM初期化無効化）
 
 local ServerScriptService = game:GetService("ServerScriptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -11,15 +11,19 @@ print("[Bootstrap] === ゲーム初期化開始 ===")
 local ZoneManager = require(script.Parent.ZoneManager)
 local PlayerStats = require(ServerScriptService:WaitForChild("PlayerStats"))
 
+-- ZoneChangeイベントの取得や操作は行わない（BGM再生を無効化）
+local START_ZONE_NAME = "ContinentTown"
+
 PlayerStats.init()
 
 print("[Bootstrap] 街を生成中...")
-ZoneManager.LoadZone("StartTown") -- StartTown (Island) をロード
+
+ZoneManager.LoadZone(START_ZONE_NAME)
 
 task.wait(5)
 print("[Bootstrap] 地形生成の待機完了（5秒）")
 
--- 街の設定を取得
+-- 街の設定を取得 (Town大陸の最初の島であるStartTownを参照)
 local IslandsRegistry = require(ReplicatedStorage.Islands.Registry)
 local townConfig = nil
 for _, island in ipairs(IslandsRegistry) do
@@ -34,11 +38,10 @@ if not townConfig then
 	return
 end
 
--- 【修正点 A：ポータル生成の呼び出しをグローバル関数に切り替え】
--- FindFirstChildのエラーを回避し、WarpPortal.server.luaで公開された関数を直接利用します。
-if _G.createPortalsForZone then
-    print("[Bootstrap] StartTownのポータルを生成中...")
-    _G.createPortalsForZone("StartTown")
+-- ポータル生成の呼び出し
+if _G.CreatePortalsForZone then
+    print(("[Bootstrap] %s のポータルを生成中..."):format(START_ZONE_NAME))
+    _G.CreatePortalsForZone(START_ZONE_NAME)
 else
     warn("[Bootstrap] ⚠️ エラー回避: WarpPortal.server.luaがまだ初期化されていないか、グローバル関数をエクスポートしていません。ポータル生成をスキップします。")
 end
@@ -46,40 +49,58 @@ end
 
 -- プレイヤーのスポーン位置を街に設定
 local function setupPlayerSpawn(player)
-	player.CharacterAdded:Connect(function(character)
-		-- 【重要】物理エンジン安定のため待機
-		task.wait(0.5)
 
-		local hrp = character:FindFirstChild("HumanoidRootPart")
-		if not hrp then return end
+    -- キャラクター追加時の処理を定義 (スポーン処理の本体)
+    local function onCharacterAdded(character)
+        task.spawn(function()
 
-		local currentZone = ZoneManager.GetPlayerZone(player)
-		-- ゾーンが設定済み（＝一度移動した）の場合は、二重スポーンを防ぐためスキップ
-		if currentZone then
-			return
-		end
+            -- 【重要】物理エンジン安定のため待機
+            task.wait(0.5)
 
-		local spawnX = townConfig.centerX
-		local spawnZ = townConfig.centerZ
-		local spawnY = townConfig.baseY + 50
+            local hrp = character:FindFirstChild("HumanoidRootPart")
+            if not hrp then
+                -- 確実なHumanoidRootPartの取得（フォールバック）
+                hrp = character:WaitForChild("HumanoidRootPart", 5)
+                if not hrp then
+                    return
+                end
+            end
 
-		print(("[Bootstrap] %s を街にスポーン: (%.0f, %.0f, %.0f)"):format(
-			player.Name, spawnX, spawnY, spawnZ
-			))
+            local currentZone = ZoneManager.GetPlayerZone(player)
 
-		-- CFrame設定は一度だけ
-		hrp.CFrame = CFrame.new(spawnX, spawnY, spawnZ)
+            -- ゾーンが設定済み（＝一度移動した）の場合は、二重スポーンを防ぐためスキップ
+            if currentZone then
+                return
+            end
 
-		ZoneManager.PlayerZones[player] = "StartTown"
-	end)
+            local spawnX = townConfig.centerX
+            local spawnZ = townConfig.centerZ
+            local spawnY = townConfig.baseY + 50
+
+            print(("[Bootstrap] %s を街にスポーン: (%.0f, %.0f, %.0f)"):format(
+                player.Name, spawnX, spawnY, spawnZ
+                ))
+
+            -- CFrame設定は一度だけ (1回目のスポーン処理のみ実行される)
+            hrp.CFrame = CFrame.new(spawnX, spawnY, spawnZ)
+
+            ZoneManager.PlayerZones[player] = START_ZONE_NAME
+
+            -- BGM再生ロジックを完全に削除
+
+        end)
+    end
+
+    -- イベント接続
+    player.CharacterAdded:Connect(onCharacterAdded)
+
+    -- BGM再生のための即時実行ロジックも削除
 end
+
 
 -- 既存プレイヤーと新規プレイヤーに適用
 for _, player in ipairs(Players:GetPlayers()) do
 	setupPlayerSpawn(player)
-
-    -- 【修正点 B：二重落下防止】
-    -- 既存プレイヤーへの即座のCFrame設定を完全に削除します。
 end
 
 Players.PlayerAdded:Connect(setupPlayerSpawn)
@@ -114,4 +135,4 @@ task.spawn(function()
 end)
 
 print("[Bootstrap] === ゲーム初期化完了 ===")
-print("[Bootstrap] プレイヤーは街（StartTown）からスタートします")
+print(("[Bootstrap] プレイヤーは街（%s）からスタートします"):format(START_ZONE_NAME))

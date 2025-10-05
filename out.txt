@@ -1776,14 +1776,14 @@ local function createBattleUI()
 end
 
 local Sounds = ReplicatedStorage:WaitForChild("Sounds", 10)
-local TypingCorrectSound = Sounds and Sounds:FindFirstChild("TypingCorrect")
-local TypingErrorSound = Sounds and Sounds:FindFirstChild("TypingError")
+local TypingCorrectSound = Sounds and Sounds:WaitForChild("TypingCorrect", 5)
+local TypingErrorSound = Sounds and Sounds:WaitForChild("TypingError", 5)
 
 if not TypingCorrectSound then
-	warn("[BattleUI] TypingCorrect効果音が見つかりません")
+	warn("[BattleUI] TypingCorrect効果音が見つかりません (WaitForChild タイムアウト)")
 end
 if not TypingErrorSound then
-	warn("[BattleUI] TypingError効果音が見つかりません")
+	warn("[BattleUI] TypingError効果音が見つかりません (WaitForChild タイムアウト)")
 end
 
 -- バトル開始処理
@@ -2785,11 +2785,176 @@ else
 end
 
 print("[DeathUI] 初期化完了")
+===== ./StartPlayerScripts/BGMManager.client.lua =====
+-- StarterPlayer/StarterPlayerScripts/BGMManager.client.lua
+-- 大陸BGM管理システム (バトル中の音量調整対応版)
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SoundService = game:GetService("SoundService")
+local TweenService = game:GetService("TweenService") -- TweenServiceを追加
+
+local player = Players.LocalPlayer
+
+-- 大陸情報を読み込み
+local ContinentsRegistry = require(ReplicatedStorage.Continents.Registry)
+local Continents = {}
+for _, continent in ipairs(ContinentsRegistry) do
+	Continents[continent.name] = continent
+end
+
+-- BGM状態
+local currentBGM = nil
+local currentZone = nil
+local isBattleActive = false
+local bgmSound = nil
+local originalVolume = 0.3 -- 【追加・修正1】元の音量を保持する変数を追加（デフォルト値 0.3）
+
+-- BGMサウンドを作成
+local function createBGMSound(assetId, volume)
+	if bgmSound then
+		bgmSound:Stop()
+		bgmSound:Destroy()
+	end
+
+	bgmSound = Instance.new("Sound")
+	bgmSound.Name = "BGM"
+	bgmSound.SoundId = assetId
+
+	-- 【修正2】音量を設定し、originalVolumeを更新
+	local finalVolume = volume or 0.3
+	bgmSound.Volume = finalVolume
+	originalVolume = finalVolume -- 取得した音量を保存
+
+	bgmSound.Looped = true
+	bgmSound.Parent = SoundService
+
+	return bgmSound
+end
+
+-- BGMを再生
+local function playBGM(assetId, volume)
+	if currentBGM == assetId and bgmSound and bgmSound.IsPlaying and not isBattleActive then
+		-- 既に同じBGMが再生中で、戦闘中でなければ何もしない
+		return
+	end
+
+	print(("[BGMManager] BGM再生: %s, Volume: %.2f"):format(assetId, volume or 0.3))
+
+	currentBGM = assetId
+	local sound = createBGMSound(assetId, volume)
+	sound:Play()
+
+	-- 新しく再生するBGMが戦闘中に切り替わった場合、音量を下げる
+	if isBattleActive and bgmSound then
+		bgmSound.Volume = originalVolume * 0.3
+	end
+end
+
+-- BGMを停止
+local function stopBGM()
+	if bgmSound then
+		print("[BGMManager] BGM停止")
+
+        -- 【修正3】Tweenを使ってスムーズに停止
+        TweenService:Create(bgmSound, TweenInfo.new(0.5), {
+            Volume = 0
+        }):Play()
+
+        task.delay(0.5, function()
+            -- 0.5秒後、音量が0であることを確認して停止・削除
+            if bgmSound and bgmSound.Volume == 0 then
+                bgmSound:Stop()
+                bgmSound:Destroy()
+                bgmSound = nil -- 参照をクリア
+            end
+        end)
+	end
+	currentBGM = nil
+end
+
+-- ゾーン変更時のBGM処理
+local function onZoneChange(zoneName, isActive)
+	if isActive then
+		-- ゾーンに入った
+		currentZone = zoneName
+
+		-- 大陸のBGM設定を取得
+		local continent = Continents[zoneName]
+		if continent and continent.BGM then
+			-- BGMVolumeをplayBGMに渡して、originalVolumeに保存させる
+			playBGM(continent.BGM, continent.BGMVolume or 0.3)
+		else
+			-- BGM設定がない場合は停止
+			stopBGM()
+		end
+	else
+		-- ゾーンから出た場合もBGMを停止
+		if currentZone == zoneName then
+			stopBGM()
+			currentZone = nil
+		end
+	end
+end
+
+-- バトル開始イベント
+local BattleStartEvent = ReplicatedStorage:WaitForChild("BattleStart", 10)
+if BattleStartEvent then
+	BattleStartEvent.OnClientEvent:Connect(function()
+		print("[BGMManager] バトル開始を検知")
+		isBattleActive = true
+
+		-- 【修正4】BGMを停止せず、音量を50%に下げる
+		if bgmSound and bgmSound.IsPlaying then
+			local targetVolume = originalVolume * 0.3 -- 元の音量の50%
+			print(("[BGMManager] BGM音量を %.2f から %.2f に調整"):format(bgmSound.Volume, targetVolume))
+			TweenService:Create(bgmSound, TweenInfo.new(0.5), {
+				Volume = targetVolume
+			}):Play()
+		end
+
+	end)
+end
+
+-- バトル終了イベント
+local BattleEndEvent = ReplicatedStorage:WaitForChild("BattleEnd", 10)
+if BattleEndEvent then
+	BattleEndEvent.OnClientEvent:Connect(function()
+		print("[BGMManager] バトル終了を検知")
+		isBattleActive = false
+
+		-- 【修正5】BGMを元の音量に戻す
+		if bgmSound and bgmSound.IsPlaying then
+			print(("[BGMManager] BGM音量を %.2f に戻す"):format(originalVolume))
+			TweenService:Create(bgmSound, TweenInfo.new(0.5), {
+				Volume = originalVolume
+			}):Play()
+		end
+	end)
+end
+
+-- ゾーン変更を監視
+task.spawn(function()
+	local ZoneChangeEvent = ReplicatedStorage:FindFirstChild("ZoneChange")
+	if not ZoneChangeEvent then
+		warn("[BGMManager] ZoneChangeイベントが見つかりません")
+		return
+	end
+
+	ZoneChangeEvent.OnClientEvent:Connect(function(zoneName, isActive)
+		print(("[BGMManager] ゾーン変更: %s - %s"):format(zoneName, isActive and "入った" or "出た"))
+		onZoneChange(zoneName, isActive)
+	end)
+
+	print("[BGMManager] ZoneChangeイベント接続完了")
+end)
+
+print("[BGMManager] 初期化完了")
 ===== ./ServerScriptService/ZoneManager.lua =====
--- ServerScriptService/ZoneManager.lua (大陸対応版)
+-- ServerScriptService/ZoneManager.lua (IslandとContinentの両方に対応した安定版)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local FieldGen = require(ReplicatedStorage:WaitForChild("FieldGen"))
-
+local Players = game:GetService("Players")
 local ZoneManager = {}
 
 ZoneManager.ActiveZones = {}
@@ -2802,232 +2967,271 @@ local ContinentsRegistry = require(ReplicatedStorage.Continents.Registry)
 -- 島の設定をマップ化
 local Islands = {}
 for _, island in ipairs(IslandsRegistry) do
-	Islands[island.name] = island
+    Islands[island.name] = island
 end
 
 -- 大陸の設定をマップ化
 local Continents = {}
 for _, continent in ipairs(ContinentsRegistry) do
-	Continents[continent.name] = continent
+    if continent and continent.name then
+        Continents[continent.name] = continent
+    else
+        warn("[ZoneManager] 名前が設定されていない大陸定義をスキップしました")
+    end
 end
 
-print("[ZoneManager] 初期化完了。島:", #IslandsRegistry, "大陸:", #ContinentsRegistry)
+print("[ZoneManager] 初期化完了。島数:", #IslandsRegistry, "大陸数:", #ContinentsRegistry)
+
+-- ZoneChangeイベントを作成（クライアントへの通知用）
+local ZoneChangeEvent = ReplicatedStorage:FindFirstChild("ZoneChange")
+if not ZoneChangeEvent then
+    ZoneChangeEvent = Instance.new("RemoteEvent")
+    ZoneChangeEvent.Name = "ZoneChange"
+    ZoneChangeEvent.Parent = ReplicatedStorage
+    print("[ZoneManager] ZoneChangeイベントを作成しました")
+end
 
 -- ゾーンが大陸かチェック
 local function isContinent(zoneName)
-	return Continents[zoneName] ~= nil
+    return Continents[zoneName] ~= nil
+end
+
+-- ゾーンが島かチェック
+local function isIsland(zoneName)
+    -- StartTown (Island)は大陸ではないが、島としては存在する
+    return Islands[zoneName] ~= nil and not isContinent(zoneName)
+end
+
+-- プレイヤーのゾーンを更新 (ワープポータルで使用)
+local function updatePlayerZone(player, newZone)
+    local oldZone = ZoneManager.PlayerZones[player]
+
+    if oldZone == newZone then
+        return
+    end
+
+    -- 古いゾーンから出た
+    if oldZone then
+        print(("[ZoneManager] %s が %s から出ました"):format(player.Name, oldZone))
+        ZoneChangeEvent:FireClient(player, oldZone, false)
+    end
+
+    -- 新しいゾーンに入った
+    if newZone then
+        print(("[ZoneManager] %s が %s に入りました"):format(player.Name, newZone))
+        ZoneManager.PlayerZones[player] = newZone
+        ZoneChangeEvent:FireClient(player, newZone, true)
+    else
+        ZoneManager.PlayerZones[player] = nil
+    end
 end
 
 -- 大陸をロード（複数の島と橋を生成）
 local function loadContinent(continentName)
-	local continent = Continents[continentName]
-	if not continent then
-		warn(("[ZoneManager] 大陸 '%s' が見つかりません"):format(continentName))
-		return false
-	end
+    local continent = Continents[continentName]
+    if not continent then
+        warn(("[ZoneManager] 大陸 '%s' が見つかりません"):format(continentName))
+        return false
+    end
 
-	print(("[ZoneManager] 大陸生成開始: %s"):format(continentName))
+    print(("[ZoneManager] 大陸生成開始: %s"):format(continentName))
 
-	-- 含まれる全ての島を生成
-	for _, islandName in ipairs(continent.islands) do
-		local islandConfig = Islands[islandName]
-		if islandConfig then
-			print(("[ZoneManager]   - 島を生成: %s"):format(islandName))
-			FieldGen.generateIsland(islandConfig)
-		else
-			warn(("[ZoneManager]   - 島が見つかりません: %s"):format(islandName))
-		end
-	end
+    -- 含まれる全ての島を生成
+    for _, islandName in ipairs(continent.islands) do
+        local islandConfig = Islands[islandName]
+        if islandConfig then
+            print(("[ZoneManager]   - 島を生成: %s"):format(islandName))
+            FieldGen.generateIsland(islandConfig)
+        else
+            warn(("[ZoneManager]   - 島が見つかりません: %s (Island/Registryを確認してください)"):format(islandName))
+        end
+    end
 
-	-- 橋を生成
-	if continent.bridges then
-		for _, bridgeConfig in ipairs(continent.bridges) do
-			local fromIsland = Islands[bridgeConfig.fromIsland]
-			local toIsland = Islands[bridgeConfig.toIsland]
+    -- 橋を生成
+    if continent.bridges then
+        for _, bridgeConfig in ipairs(continent.bridges) do
+            local fromIsland = Islands[bridgeConfig.fromIsland]
+            local toIsland = Islands[bridgeConfig.toIsland]
 
-			if fromIsland and toIsland then
-				print(("[ZoneManager]   - 橋を生成: %s"):format(bridgeConfig.name))
-				FieldGen.generateBridge(fromIsland, toIsland, bridgeConfig)
-			else
-				warn(("[ZoneManager]   - 橋の生成失敗: %s"):format(bridgeConfig.name))
-			end
-		end
-	end
+            if fromIsland and toIsland then
+                print(("[ZoneManager]   - 橋を生成: %s"):format(bridgeConfig.name))
+                FieldGen.generateBridge(fromIsland, toIsland, bridgeConfig)
+            else
+                warn(("[ZoneManager]   - 橋の生成失敗: %s"):format(bridgeConfig.name))
+            end
+        end
+    end
 
-	ZoneManager.ActiveZones[continentName] = {
-		config = continent,
-		loadedAt = os.time(),
-	}
+    ZoneManager.ActiveZones[continentName] = {
+        config = continent,
+        loadedAt = os.time(),
+    }
 
-	print(("[ZoneManager] 大陸生成完了: %s"):format(continentName))
-	return true
+    print(("[ZoneManager] 大陸生成完了: %s"):format(continentName))
+    return true
 end
 
--- 単一の島をロード（Town用）
-local function loadIsland(islandName)
-	local config = Islands[islandName]
-	if not config then
-		warn(("[ZoneManager] 島 '%s' が見つかりません"):format(islandName))
-		return false
-	end
-
-	print(("[ZoneManager] 島生成開始: %s"):format(islandName))
-	FieldGen.generateIsland(config)
-
-	ZoneManager.ActiveZones[islandName] = {
-		config = config,
-		loadedAt = os.time(),
-	}
-
-	print(("[ZoneManager] 島生成完了: %s"):format(islandName))
-	return true
-end
-
--- ゾーンをロード（大陸 or 島を自動判定）
+-- ゾーンをロード（島または大陸をロード）
 function ZoneManager.LoadZone(zoneName)
-	if ZoneManager.ActiveZones[zoneName] then
-		print(("[ZoneManager] %s は既に生成済みです"):format(zoneName))
-		return true
-	end
+    if ZoneManager.ActiveZones[zoneName] then
+        print(("[ZoneManager] %s は既に生成済みです"):format(zoneName))
+        return true
+    end
 
-	if isContinent(zoneName) then
-		return loadContinent(zoneName)
-	else
-		return loadIsland(zoneName)
-	end
+    if isIsland(zoneName) then
+        -- 【復元】島の場合 (StartTown)
+        local islandConfig = Islands[zoneName]
+        if islandConfig then
+            print(("[ZoneManager] 島生成開始: %s"):format(zoneName))
+            FieldGen.generateIsland(islandConfig)
+            ZoneManager.ActiveZones[zoneName] = {
+                config = islandConfig,
+                loadedAt = os.time(),
+            }
+            print(("[ZoneManager] 島生成完了: %s"):format(zoneName))
+            return true
+        else
+            warn(("[ZoneManager] 島 '%s' の設定が見つかりません"):format(zoneName))
+            return false
+        end
+    elseif isContinent(zoneName) then
+        -- 【維持】大陸の場合 (ContinentHokkaido)
+        return loadContinent(zoneName)
+    else
+        warn(("[ZoneManager] ゾーン '%s' は島でも大陸でもありません。"):format(zoneName))
+        return false
+    end
 end
 
--- ゾーンをアンロード
+-- ゾーンをアンロード（省略）
 function ZoneManager.UnloadZone(zoneName)
-	if not ZoneManager.ActiveZones[zoneName] then
-		return
-	end
+    if not ZoneManager.ActiveZones[zoneName] then
+        return
+    end
 
-	print(("[ZoneManager] ゾーン削除開始: %s"):format(zoneName))
+    print(("[ZoneManager] ゾーン削除開始: %s"):format(zoneName))
 
-	local terrain = workspace.Terrain
-	local islandsToUnload = {}
+    local terrain = workspace.Terrain
+    local configsToUnload = {}
 
-	-- 大陸の場合は含まれる全ての島を削除
-	if isContinent(zoneName) then
-		local continent = Continents[zoneName]
-		for _, islandName in ipairs(continent.islands) do
-			table.insert(islandsToUnload, islandName)
-		end
-	else
-		-- 単一の島
-		table.insert(islandsToUnload, zoneName)
-	end
+    if isIsland(zoneName) then
+        -- 島の場合
+        table.insert(configsToUnload, Islands[zoneName])
+    elseif isContinent(zoneName) then
+        -- 大陸の場合は含まれる全ての島を削除
+        local continent = Continents[zoneName]
+        for _, islandName in ipairs(continent.islands) do
+            table.insert(configsToUnload, Islands[islandName])
+        end
+    end
 
-	-- 各島の地形を削除
-	for _, islandName in ipairs(islandsToUnload) do
-		local config = Islands[islandName]
-		if config then
-			local halfSize = config.sizeXZ / 2 + 50
-			local region = Region3.new(
-				Vector3.new(config.centerX - halfSize, config.baseY - 50, config.centerZ - halfSize),
-				Vector3.new(config.centerX + halfSize, config.baseY + 100, config.centerZ + halfSize)
-			)
-			region = region:ExpandToGrid(4)
-			terrain:FillRegion(region, 4, Enum.Material.Air)
+    -- 各島の地形を削除
+    for _, config in ipairs(configsToUnload) do
+        if config then
+            local halfSize = config.sizeXZ / 2 + 50
+            local region = Region3.new(
+                Vector3.new(config.centerX - halfSize, config.baseY - 50, config.centerZ - halfSize),
+                Vector3.new(config.centerX + halfSize, config.baseY + 100, config.centerZ + halfSize)
+            )
+            region = region:ExpandToGrid(4)
+            terrain:FillRegion(region, 4, Enum.Material.Air)
 
-			-- マーカー削除
-			local worldFolder = workspace:FindFirstChild("World")
-			if worldFolder then
-				local marker = worldFolder:FindFirstChild(config.name .. "_Center")
-				if marker then marker:Destroy() end
-			end
-		end
-	end
+            -- マーカ削除は FieldGen.lua で行うためZoneManagerからは削除
+        end
+    end
 
-	-- モンスター削除
-	for _, model in ipairs(workspace:GetChildren()) do
-		if model:IsA("Model") and model:GetAttribute("IsEnemy") then
-			local spawnZone = model:GetAttribute("SpawnZone")
-			if spawnZone == zoneName then
-				model:Destroy()
-			end
-		end
-	end
+    -- モンスター削除
+    for _, model in ipairs(workspace:GetChildren()) do
+        if model:IsA("Model") and model:GetAttribute("IsEnemy") then
+            local spawnZone = model:GetAttribute("SpawnZone")
+            if spawnZone == zoneName then
+                model:Destroy()
+            end
+        end
+    end
 
-	ZoneManager.ActiveZones[zoneName] = nil
-	print(("[ZoneManager] ゾーン削除完了: %s"):format(zoneName))
+    ZoneManager.ActiveZones[zoneName] = nil
+    print(("[ZoneManager] ゾーン削除完了: %s"):format(zoneName))
 end
 
--- プレイヤーをワープ
+
 -- プレイヤーをワープ
 function ZoneManager.WarpPlayerToZone(player, zoneName)
-	print(("[ZoneManager] %s を %s にワープ中..."):format(player.Name, zoneName))
+    print(("[ZoneManager] %s を %s にワープ中..."):format(player.Name, zoneName))
 
-	ZoneManager.LoadZone(zoneName)
+    -- ワープ先に地形がない場合はロード
+    ZoneManager.LoadZone(zoneName)
 
-	local character = player.Character
-	if not character then
-		warn(("[ZoneManager] %s のキャラクターが見つかりません"):format(player.Name))
-		return false
-	end
+    local character = player.Character
+    if not character then
+        warn(("[ZoneManager] %s のキャラクターが見つかりません"):format(player.Name))
+        return false
+    end
 
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return false end
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return false end
 
-	-- ワープ先の座標を決定
-	local targetX, targetZ, baseY, hillAmplitude
+    -- ワープ先の座標を決定
+    local targetX, targetZ, baseY, hillAmplitude
 
-	if isContinent(zoneName) then
-		-- 大陸の場合は最初の島の中心
-		local continent = Continents[zoneName]
-		local firstIslandName = continent.islands[1]
-		local firstIsland = Islands[firstIslandName]
-		targetX = firstIsland.centerX
-		targetZ = firstIsland.centerZ
-		baseY = firstIsland.baseY
-		hillAmplitude = firstIsland.hillAmplitude or 20
-	else
-		-- 単一の島
-		local config = Islands[zoneName]
-		targetX = config.centerX
-		targetZ = config.centerZ
-		baseY = config.baseY
-		hillAmplitude = config.hillAmplitude or 20
-	end
+    if isIsland(zoneName) then
+        -- 【復元】島の場合 (StartTown)
+        local island = Islands[zoneName]
+        targetX = island.centerX
+        targetZ = island.centerZ
+        baseY = island.baseY
+        hillAmplitude = island.hillAmplitude or 20
+    elseif isContinent(zoneName) then
+        -- 【維持】大陸の場合 (ContinentHokkaido)
+        local continent = Continents[zoneName]
+        local firstIslandName = continent.islands[1]
+        local firstIsland = Islands[firstIslandName]
+        targetX = firstIsland.centerX
+        targetZ = firstIsland.centerZ
+        baseY = firstIsland.baseY
+        hillAmplitude = firstIsland.hillAmplitude or 20
+    else
+        warn(("[ZoneManager] ゾーン '%s' は島でも大陸でもないためワープできません。"):format(zoneName))
+        return false
+    end
 
-	-- 十分に高い位置からレイキャスト（地形の最高点より上）
-	local rayStartY = baseY + hillAmplitude + 100
-	local groundY = FieldGen.raycastGroundY(targetX, targetZ, rayStartY)
+    -- 十分に高い位置からレイキャスト
+    local FieldGen = require(ReplicatedStorage:WaitForChild("FieldGen"))
+    local rayStartY = baseY + hillAmplitude + 100
+    local groundY = FieldGen.raycastGroundY(targetX, targetZ, rayStartY)
 
-	-- レイキャストが失敗した場合は予想高度を使用
-	local spawnY
-	if groundY then
-		spawnY = groundY + 5
-		print(("[ZoneManager] 地面検出成功: Y=%.1f"):format(groundY))
-	else
-		-- 安全な高度：baseY + hillAmplitudeの中間地点
-		spawnY = baseY + (hillAmplitude * 0.6) + 10
-		warn(("[ZoneManager] 地面検出失敗、予想高度使用: Y=%.1f"):format(spawnY))
-	end
+    local spawnY
+    if groundY then
+        spawnY = groundY + 5
+        print(("[ZoneManager] 地面検出成功: Y=%.1f"):format(groundY))
+    else
+        -- 安全な高度：baseY + hillAmplitude * 0.6 + 10 に固定
+        spawnY = baseY + (hillAmplitude * 0.6) + 10
+        warn(("[ZoneManager] 地面検出失敗、予想高度使用: Y=%.1f"):format(spawnY))
+    end
 
-	hrp.CFrame = CFrame.new(targetX, spawnY, targetZ)
-	ZoneManager.PlayerZones[player] = zoneName
+    hrp.CFrame = CFrame.new(targetX, spawnY, targetZ)
 
-	print(("[ZoneManager] %s を %s にワープ完了 (%.1f, %.1f, %.1f)"):format(
-		player.Name, zoneName, targetX, spawnY, targetZ
-		))
-	return true
+    updatePlayerZone(player, zoneName)
+
+    print(("[ZoneManager] %s を %s にワープ完了 (%.1f, %.1f, %.1f)"):format(
+        player.Name, zoneName, targetX, spawnY, targetZ
+        ))
+    return true
 end
 
 function ZoneManager.GetPlayerZone(player)
-	return ZoneManager.PlayerZones[player]
+    return ZoneManager.PlayerZones[player]
 end
 
-function ZoneManager.InitializeTown()
-	print("[ZoneManager] 街（Town）を生成中...")
-	ZoneManager.LoadZone("StartTown")
-end
-
--- 大陸の設定を取得
-function ZoneManager.GetContinentConfig(continentName)
-	return Continents[continentName]
-end
+-- プレイヤーが退出した時の処理 (省略)
+Players.PlayerRemoving:Connect(function(player)
+    local oldZone = ZoneManager.PlayerZones[player]
+    if oldZone then
+        print(("[ZoneManager] %s が退出しました。ゾーン: %s"):format(player.Name, oldZone))
+        ZoneManager.PlayerZones[player] = nil
+    end
+end)
 
 return ZoneManager
 ===== ./ServerScriptService/PlayerStats.lua =====
@@ -3365,7 +3569,7 @@ end
 return PlayerStats
 ===== ./ServerScriptService/Bootstrap.server.lua =====
 -- ServerScriptService/Bootstrap.server.lua
--- ゲーム初期化スクリプト（街のみ生成版）
+-- ゲーム初期化スクリプト（最終安定版）
 
 local ServerScriptService = game:GetService("ServerScriptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -3379,9 +3583,11 @@ local PlayerStats = require(ServerScriptService:WaitForChild("PlayerStats"))
 
 PlayerStats.init()
 
--- 街を生成
 print("[Bootstrap] 街を生成中...")
-ZoneManager.InitializeTown()
+ZoneManager.LoadZone("StartTown") -- StartTown (Island) をロード
+
+task.wait(5)
+print("[Bootstrap] 地形生成の待機完了（5秒）")
 
 -- 街の設定を取得
 local IslandsRegistry = require(ReplicatedStorage.Islands.Registry)
@@ -3398,34 +3604,42 @@ if not townConfig then
 	return
 end
 
+-- 【修正点 A：ポータル生成の呼び出しをグローバル関数に切り替え】
+-- FindFirstChildのエラーを回避し、WarpPortal.server.luaで公開された関数を直接利用します。
+if _G.createPortalsForZone then
+    print("[Bootstrap] StartTownのポータルを生成中...")
+    _G.createPortalsForZone("StartTown")
+else
+    warn("[Bootstrap] ⚠️ エラー回避: WarpPortal.server.luaがまだ初期化されていないか、グローバル関数をエクスポートしていません。ポータル生成をスキップします。")
+end
+
+
 -- プレイヤーのスポーン位置を街に設定
 local function setupPlayerSpawn(player)
 	player.CharacterAdded:Connect(function(character)
-		-- 少し待機（キャラクターのロード完了を待つ）
+		-- 【重要】物理エンジン安定のため待機
 		task.wait(0.5)
 
 		local hrp = character:FindFirstChild("HumanoidRootPart")
 		if not hrp then return end
 
-		-- プレイヤーが既にゾーンにいる場合はスキップ
 		local currentZone = ZoneManager.GetPlayerZone(player)
+		-- ゾーンが設定済み（＝一度移動した）の場合は、二重スポーンを防ぐためスキップ
 		if currentZone then
-			print(("[Bootstrap] %s は既に %s にいます"):format(player.Name, currentZone))
 			return
 		end
 
-		-- 街の中心にスポーン
 		local spawnX = townConfig.centerX
 		local spawnZ = townConfig.centerZ
-		local spawnY = townConfig.baseY + 25
+		local spawnY = townConfig.baseY + 50
 
 		print(("[Bootstrap] %s を街にスポーン: (%.0f, %.0f, %.0f)"):format(
 			player.Name, spawnX, spawnY, spawnZ
 			))
 
+		-- CFrame設定は一度だけ
 		hrp.CFrame = CFrame.new(spawnX, spawnY, spawnZ)
 
-		-- プレイヤーのゾーンを記録
 		ZoneManager.PlayerZones[player] = "StartTown"
 	end)
 end
@@ -3434,17 +3648,40 @@ end
 for _, player in ipairs(Players:GetPlayers()) do
 	setupPlayerSpawn(player)
 
-	-- 既にキャラクターがいる場合は即座にスポーン
-	if player.Character then
-		local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-		if hrp then
-			hrp.CFrame = CFrame.new(townConfig.centerX, townConfig.baseY + 25, townConfig.centerZ)
-			ZoneManager.PlayerZones[player] = "StartTown"
-		end
-	end
+    -- 【修正点 B：二重落下防止】
+    -- 既存プレイヤーへの即座のCFrame設定を完全に削除します。
 end
 
 Players.PlayerAdded:Connect(setupPlayerSpawn)
+
+task.spawn(function()
+	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+	local soundsFolder = ReplicatedStorage:FindFirstChild("Sounds")
+	if not soundsFolder then
+		soundsFolder = Instance.new("Folder")
+		soundsFolder.Name = "Sounds"
+		soundsFolder.Parent = ReplicatedStorage
+	end
+
+	if not soundsFolder:FindFirstChild("TypingCorrect") then
+		local typingCorrect = Instance.new("Sound")
+		typingCorrect.Name = "TypingCorrect"
+		typingCorrect.SoundId = "rbxassetid://159534615"
+		typingCorrect.Volume = 0.4
+		typingCorrect.Parent = soundsFolder
+	end
+
+	if not soundsFolder:FindFirstChild("TypingError") then
+		local typingError = Instance.new("Sound")
+		typingError.Name = "TypingError"
+		typingError.SoundId = "rbxassetid://113721818600044"
+		typingError.Volume = 0.5
+		typingError.Parent = soundsFolder
+	end
+
+	print("[Bootstrap] Soundsフォルダを初期化しました")
+end)
 
 print("[Bootstrap] === ゲーム初期化完了 ===")
 print("[Bootstrap] プレイヤーは街（StartTown）からスタートします")
@@ -3541,7 +3778,7 @@ RunService.Heartbeat:Connect(function()
 			local hrp = model:FindFirstChild("HumanoidRootPart")
 
 			if hrp and hrp.Position.Y < WATER_LEVEL then
-				print(("[OceanSafety] %s が海に落ちました。消去中..."):format(model.Name))
+				-- print(("[OceanSafety] %s が海に落ちました。消去中..."):format(model.Name))
 				model:Destroy()
 			end
 		end
@@ -3549,7 +3786,7 @@ RunService.Heartbeat:Connect(function()
 end)
 ===== ./ServerScriptService/WarpPortal.server.lua =====
 -- ServerScriptService/WarpPortal.server.lua
--- 大陸対応ワープポータルシステム（高速化版）
+-- ワープ中のバトル開始を防止する修正版
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -3558,7 +3795,6 @@ local BattleSystem = require(script.Parent.BattleSystem)
 
 print("[WarpPortal] 初期化開始")
 
--- RemoteEvent作成
 local warpEvent = ReplicatedStorage:FindFirstChild("WarpEvent")
 if not warpEvent then
 	warpEvent = Instance.new("RemoteEvent")
@@ -3569,7 +3805,6 @@ end
 local warpingPlayers = {}
 local activePortals = {}
 
--- 島と大陸の設定を読み込み
 local IslandsRegistry = require(ReplicatedStorage.Islands.Registry)
 local ContinentsRegistry = require(ReplicatedStorage.Continents.Registry)
 
@@ -3583,72 +3818,108 @@ for _, continent in ipairs(ContinentsRegistry) do
 	Continents[continent.name] = continent
 end
 
--- Townのポータル設定（各大陸へ）
-local townPortalConfigs = {
-	{
-		name = "Town_to_ContinentA",
-		toZone = "ContinentA",
-		offsetX = 50,
-		offsetZ = 0,
-		size = Vector3.new(8, 12, 8),
-		color = Color3.fromRGB(100, 255, 100),
-		label = "→ Grassland",
-	},
-	{
-		name = "Town_to_ContinentB",
-		toZone = "ContinentB",
-		offsetX = -50,
-		offsetZ = 0,
-		size = Vector3.new(8, 12, 8),
-		color = Color3.fromRGB(150, 150, 255),
-		label = "→ Wilderness",
-	},
-	{
-		name = "Town_to_ContinentT",
-		toZone = "ContinentT",
-		offsetX = 0,
-		offsetZ = 50,
-		size = Vector3.new(8, 12, 8),
-		color = Color3.fromRGB(255, 255, 100),
-		label = "→ T-Continent",
-	},
-	{
-		name = "Town_to_Hokkaido",
-		toZone = "ContinentHokkaido",
-		offsetX = 0,
-		offsetZ = -50,
-		size = Vector3.new(8, 12, 8),
-		color = Color3.fromRGB(200, 200, 255),
-		label = "→ Hokkaido",
-	},
-}
+local function resolveTemplate(pathArray: {string}): Model?
+	local node: Instance = game
+	for _, seg in ipairs(pathArray) do
+		node = node:FindFirstChild(seg)
+		if not node then return nil end
+	end
+	return (node and node:IsA("Model")) and node or nil
+end
 
--- ポータルを作成する関数（高速化版）
+local function ensureHRP(model: Model): BasePart?
+	local hrp = model:FindFirstChild("HumanoidRootPart")
+	if hrp and hrp:IsA("BasePart") then
+		if not model.PrimaryPart then model.PrimaryPart = hrp end
+		return hrp
+	end
+	return nil
+end
+
+local function attachLabel(model: Model, maxDist: number)
+	local hrp = model.PrimaryPart or model:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	local _, bboxSize = model:GetBoundingBox()
+	local labelOffset = math.min(bboxSize.Y * 0.5 + 2, 15)
+
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "DebugInfo"
+	gui.Adornee = hrp
+	gui.AlwaysOnTop = true
+	gui.Size = UDim2.new(0, 150, 0, 50)
+	gui.StudsOffset = Vector3.new(0, labelOffset, 0)
+	gui.MaxDistance = maxDist
+	gui.Parent = hrp
+
+	local lb = Instance.new("TextLabel")
+	lb.Name = "InfoText"
+	lb.BackgroundTransparency = 1
+	lb.TextScaled = true
+	lb.Font = Enum.Font.GothamBold
+	lb.TextColor3 = Color3.new(1, 1, 1)
+	lb.TextStrokeTransparency = 0.5
+	lb.Size = UDim2.fromScale(1, 1)
+	lb.Text = "Ready"
+	lb.Parent = gui
+end
+
+local function placeOnGround(model: Model, x: number, z: number)
+	local hrp = model.PrimaryPart or model:FindFirstChild("HumanoidRootPart")
+	if not hrp then
+		warn("[MonsterSpawner] HumanoidRootPart が見つかりません: " .. model.Name)
+		return
+	end
+
+	local groundY = FieldGen.raycastGroundY(x, z, 100)
+		or FieldGen.raycastGroundY(x, z, 200)
+		or FieldGen.raycastGroundY(x, z, 50)
+		or 10
+
+	local _, yaw = hrp.CFrame:ToOrientation()
+	model:PivotTo(CFrame.new(x, groundY + 20, z) * CFrame.Angles(0, yaw, 0))
+
+	local bboxCFrame, bboxSize = model:GetBoundingBox()
+	local bottomY = bboxCFrame.Position.Y - (bboxSize.Y * 0.5)
+	local offset = hrp.Position.Y - bottomY
+
+	model:PivotTo(CFrame.new(x, groundY + offset, z) * CFrame.Angles(0, yaw, 0))
+end
+
+local function nearestPlayer(position: Vector3)
+	local best, bestDist = nil, math.huge
+	for _, pl in ipairs(Players:GetPlayers()) do
+		local ch = pl.Character
+		local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			local d = (position - hrp.Position).Magnitude
+			if d < bestDist then
+				best, bestDist = pl, d
+			end
+		end
+	end
+	return best, bestDist
+end
+
+-- 【修正】ポータルタッチ時、即座にワープ中フラグを設定
 local function createPortal(config, fromZone)
-	-- ゾーンの中心座標を取得
 	local zoneConfig = Islands[fromZone]
 	if not zoneConfig then
 		warn(("[WarpPortal] ゾーン '%s' の設定が見つかりません"):format(fromZone))
 		return nil
 	end
 
-	-- ポータルの絶対位置を計算
 	local portalX = zoneConfig.centerX + (config.offsetX or 0)
 	local portalZ = zoneConfig.centerZ + (config.offsetZ or 0)
 
-	-- 地面の高さを取得（リトライ回数削減：5→2回、待機時間短縮：0.2→0.05秒）
 	local FieldGen = require(ReplicatedStorage:WaitForChild("FieldGen"))
 	local groundY = nil
-	local maxRetries = 2  -- 5 → 2に削減
+	local maxRetries = 2
 
 	for attempt = 1, maxRetries do
 		groundY = FieldGen.raycastGroundY(portalX, portalZ, zoneConfig.baseY + 100)
-
-		if groundY then
-			break
-		else
-			task.wait(0.05)  -- 0.2 → 0.05秒に短縮
-		end
+		if groundY then break end
+		task.wait(0.05)
 	end
 
 	local portalY
@@ -3657,7 +3928,6 @@ local function createPortal(config, fromZone)
 	else
 		local estimatedHeight = zoneConfig.baseY + ((zoneConfig.hillAmplitude or 20) * 0.5)
 		portalY = estimatedHeight
-		-- warn(("[WarpPortal] レイキャスト失敗、予想高度を使用: Y=%.1f"):format(portalY))
 	end
 
 	local portalPosition = Vector3.new(portalX, portalY, portalZ)
@@ -3675,14 +3945,12 @@ local function createPortal(config, fromZone)
 	portal:SetAttribute("FromZone", fromZone)
 	portal:SetAttribute("ToZone", config.toZone)
 
-	-- 回転アニメーション
 	local bodyAngularVelocity = Instance.new("BodyAngularVelocity")
 	bodyAngularVelocity.AngularVelocity = Vector3.new(0, 2, 0)
 	bodyAngularVelocity.MaxTorque = Vector3.new(0, math.huge, 0)
 	bodyAngularVelocity.P = 1000
 	bodyAngularVelocity.Parent = portal
 
-	-- ラベル
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "PortalLabel"
 	billboard.Size = UDim2.new(0, 200, 0, 50)
@@ -3700,7 +3968,6 @@ local function createPortal(config, fromZone)
 	label.TextStrokeTransparency = 0.5
 	label.Parent = billboard
 
-	-- Worldフォルダに配置
 	local worldFolder = workspace:FindFirstChild("World")
 	if not worldFolder then
 		worldFolder = Instance.new("Folder")
@@ -3710,9 +3977,8 @@ local function createPortal(config, fromZone)
 
 	portal.Parent = worldFolder
 
-	-- 配置後の調整レイキャスト（非同期化して高速化）
 	task.spawn(function()
-		task.wait(0.05)  -- 0.1 → 0.05秒に短縮
+		task.wait(0.05)
 
 		local params = RaycastParams.new()
 		params.FilterType = Enum.RaycastFilterType.Include
@@ -3728,7 +3994,7 @@ local function createPortal(config, fromZone)
 		end
 	end)
 
-	-- タッチイベント
+	-- 【重要】ポータルタッチ処理
 	portal.Touched:Connect(function(hit)
 		local character = hit.Parent
 		if not character then return end
@@ -3736,35 +4002,51 @@ local function createPortal(config, fromZone)
 		local player = Players:GetPlayerFromCharacter(character)
 		if not player then return end
 
+		-- 【修正1】ワープ中チェック
 		if warpingPlayers[player.UserId] then
 			return
 		end
 
-		local actualFromZone = portal:GetAttribute("FromZone")
+		-- 【修正2】バトル中チェック
+		if BattleSystem and BattleSystem.isInBattle and BattleSystem.isInBattle(player) then
+			return
+		end
 
+		local actualFromZone = portal:GetAttribute("FromZone")
 		local currentZone = ZoneManager.GetPlayerZone(player)
+
 		if currentZone ~= actualFromZone then
 			if not currentZone then
 				ZoneManager.PlayerZones[player] = actualFromZone
 			else
-				-- print(("[WarpPortal DEBUG] ゾーン不一致: current=%s, from=%s"):format(
-				-- 	tostring(currentZone), tostring(actualFromZone)
-				-- ))
 				return
 			end
 		end
 
 		print(("[WarpPortal] %s が %s に入りました"):format(player.Name, config.name))
 
+		-- 【修正3】即座にワープ中フラグを設定（最優先）
 		warpingPlayers[player.UserId] = true
+		character:SetAttribute("IsWarping", true)
 
+		-- 【修正4-改3】キャラクターを即座に透明化（上空移動なし）
+		local originalTransparencies = {}
+		for _, part in ipairs(character:GetDescendants()) do
+			if part:IsA("BasePart") then
+				originalTransparencies[part] = part.Transparency
+				part.Transparency = 1
+			elseif part:IsA("Decal") or part:IsA("Texture") then
+				originalTransparencies[part] = part.Transparency
+				part.Transparency = 1
+			end
+		end
+
+		-- 画面を暗転
 		warpEvent:FireClient(player, "StartLoading", config.toZone)
-
-		task.wait(1)
+		task.wait(0.5)
 
 		-- バトルシステムリセット
 		if BattleSystem and BattleSystem.resetAllBattles then
-			-- print("[WarpPortal] バトルシステムをリセット中...")
 			BattleSystem.resetAllBattles()
 		end
 
@@ -3772,7 +4054,6 @@ local function createPortal(config, fromZone)
 
 		-- 前のゾーンのモンスターを削除
 		if actualFromZone ~= "StartTown" and _G.DespawnMonstersForZone then
-			-- print(("[WarpPortal] %s のモンスターを削除中..."):format(actualFromZone))
 			_G.DespawnMonstersForZone(actualFromZone)
 		end
 
@@ -3780,12 +4061,18 @@ local function createPortal(config, fromZone)
 		local success = ZoneManager.WarpPlayerToZone(player, config.toZone)
 
 		if success then
+			-- 透明度を元に戻す
+			for part, transparency in pairs(originalTransparencies) do
+				if part and part.Parent then
+					part.Transparency = transparency
+				end
+			end
+
 			-- 新しいゾーンのポータルを作成
 			createPortalsForZone(config.toZone)
 
 			-- 新しいゾーンのモンスターをスポーン
 			if config.toZone ~= "StartTown" and _G.SpawnMonstersForZone then
-				-- print(("[WarpPortal] %s にモンスターをスポーン中..."):format(config.toZone))
 				_G.SpawnMonstersForZone(config.toZone)
 			end
 
@@ -3796,14 +4083,17 @@ local function createPortal(config, fromZone)
 			warpEvent:FireClient(player, "EndLoading")
 		end
 
-		task.wait(2)
+		-- 【修正5】ワープ中フラグを解除
+		task.wait(1)  -- 追加の安全マージン
 		warpingPlayers[player.UserId] = nil
+		if character and character.Parent then
+			character:SetAttribute("IsWarping", false)
+		end
 	end)
 
 	return portal
 end
 
--- ゾーンのポータルを作成（並列処理で高速化）
 function createPortalsForZone(zoneName)
 	if activePortals[zoneName] then
 		print(("[WarpPortal] %s のポータルは既に存在します"):format(zoneName))
@@ -3812,11 +4102,16 @@ function createPortalsForZone(zoneName)
 
 	activePortals[zoneName] = {}
 
-	-- Townの場合
 	if zoneName == "StartTown" then
 		print(("[WarpPortal] %s のポータルを並列生成中..."):format(zoneName))
 
-		-- 並列でポータルを生成（待機時間を短縮）
+		local townPortalConfigs = {
+			-- {name = "Town_to_ContinentA", toZone = "ContinentA", offsetX = 50, offsetZ = 0, size = Vector3.new(8, 12, 8), color = Color3.fromRGB(100, 255, 100), label = "→ Grassland"},
+			-- {name = "Town_to_ContinentB", toZone = "ContinentB", offsetX = -50, offsetZ = 0, size = Vector3.new(8, 12, 8), color = Color3.fromRGB(150, 150, 255), label = "→ Wilderness"},
+			-- {name = "Town_to_ContinentT", toZone = "ContinentT", offsetX = 0, offsetZ = 50, size = Vector3.new(8, 12, 8), color = Color3.fromRGB(255, 255, 100), label = "→ T-Continent"},
+			{name = "Town_to_Hokkaido", toZone = "ContinentHokkaido", offsetX = 0, offsetZ = -50, size = Vector3.new(8, 12, 8), color = Color3.fromRGB(200, 200, 255), label = "→ Hokkaido"},
+		}
+
 		for _, config in ipairs(townPortalConfigs) do
 			task.spawn(function()
 				local portal = createPortal(config, zoneName)
@@ -3829,7 +4124,6 @@ function createPortalsForZone(zoneName)
 		return
 	end
 
-	-- 大陸の場合
 	local continent = Continents[zoneName]
 	if continent and continent.portals then
 		print(("[WarpPortal] %s のポータルを並列生成中..."):format(zoneName))
@@ -3854,11 +4148,8 @@ function createPortalsForZone(zoneName)
 	end
 end
 
--- ゾーンのポータルを削除
 function destroyPortalsForZone(zoneName)
-	if not activePortals[zoneName] then
-		return
-	end
+	if not activePortals[zoneName] then return end
 
 	for _, portal in ipairs(activePortals[zoneName]) do
 		if portal and portal.Parent then
@@ -3870,7 +4161,6 @@ function destroyPortalsForZone(zoneName)
 	print(("[WarpPortal] %s のポータルを削除しました"):format(zoneName))
 end
 
--- MonsterSpawner関数の待機
 task.spawn(function()
 	local maxWait = 10
 	local waited = 0
@@ -3887,11 +4177,9 @@ task.spawn(function()
 	end
 end)
 
--- 街のポータルを最初に作成（待機時間短縮：1秒→0.3秒）
-task.wait(0.3)  -- 1秒 → 0.3秒に短縮
+task.wait(0.3)
 createPortalsForZone("StartTown")
 
--- プレイヤー退出時にクリーンアップ
 Players.PlayerRemoving:Connect(function(player)
 	warpingPlayers[player.UserId] = nil
 	ZoneManager.PlayerZones[player] = nil
@@ -4748,7 +5036,7 @@ end
 return BattleSystem
 ===== ./ServerScriptService/MonsterSpawner.server.lua =====
 -- ServerScriptService/MonsterSpawner.server.lua
--- ゾーン対応版モンスター配置システム（バトル高速化版）
+-- ゾーン対応版モンスター配置システム（バトル高速化版、徘徊AI修正版）
 
 local ServerStorage = game:GetService("ServerStorage")
 local Workspace = game:GetService("Workspace")
@@ -4789,7 +5077,7 @@ end
 
 -- グローバル変数
 local ActiveMonsters = {}
-local UpdateInterval = 0.05  -- 0.1 → 0.05秒に高速化
+local UpdateInterval = 0.05
 local MonsterCounts = {}
 local TemplateCache = {}
 local RespawnQueue = {}
@@ -4909,6 +5197,11 @@ function AIState.new(monster, def)
 
 	self.originalSpeed = self.humanoid.WalkSpeed
 	self.wasInBattle = false
+
+    -- 【修正点1】徘徊ステート管理を追加
+    self.isWaiting = false  -- 待機状態か (停止状態)
+    self.waitEndTime = 0    -- 待機終了時刻
+    -- 【修正点1 終わり】
 
 	return self
 end
@@ -5032,25 +5325,75 @@ function AIState:update()
 		gui.Enabled = not isInWater
 	end
 
+    -- 【修正点2】徘徊ロジックをローカル関数として定義
+    local function wanderLogic()
+        local w = self.def.Wander or {}
+        -- Defに設定がなければ、デフォルト値を使用
+        local minWait = w.MinWait or 2
+        local maxWait = w.MaxWait or 5
+        local minRadius = w.MinRadius or 20
+        local maxRadius = w.MaxRadius or 60
+
+        -- 目標到達判定：5スタッド以内
+        local isGoalReached = self.wanderGoal and (self.root.Position - self.wanderGoal).Magnitude < 5
+        local isWaitFinished = self.isWaiting and now >= self.waitEndTime
+
+        if self.isWaiting then
+            -- ステート: 待機中（停止）
+            self.humanoid:MoveTo(self.root.Position) -- 停止を維持
+
+            if isWaitFinished then
+                -- print(("[AI DEBUG] %s - 待機終了。次の目標設定。"):format(self.monster.Name))
+                self.isWaiting = false
+                self.wanderGoal = nil -- 目標をリセットし、次のブロックで新しい目標を設定
+                self.nextWanderAt = 0 -- 即座に新しい目標を設定
+            end
+        elseif isGoalReached or now >= self.nextWanderAt or not self.wanderGoal then
+            -- ステート: 移動完了/目標が古い/目標なし
+
+            if isGoalReached then
+                -- 目標に到達したら待機モードに移行
+                -- print(("[AI DEBUG] %s - 目標到達。待機開始。"):format(self.monster.Name))
+                self.isWaiting = true
+                -- 待機時間をランダムに設定（小数点以下を許容するため * 10 してから / 10）
+                self.waitEndTime = now + math.random(minWait * 10, maxWait * 10) / 10
+                self.humanoid:MoveTo(self.root.Position) -- 停止
+                return
+            end
+
+            -- 目標が古い、または無ければ新しい目標を設定
+            local ang = math.random() * math.pi * 2
+            local rad = math.random(minRadius, maxRadius)
+            local gx = self.root.Position.X + math.cos(ang) * rad
+            local gz = self.root.Position.Z + math.sin(ang) * rad
+
+            local gy = FieldGen.raycastGroundY(gx, gz, 100) or self.root.Position.Y
+
+            self.wanderGoal = Vector3.new(gx, gy, gz)
+
+            -- 移動中は目標を約10秒間変更しない（移動中の「ちょこまか」を防ぐ）
+            self.nextWanderAt = now + 10
+
+            -- print(("[AI DEBUG] %s - 新目標設定。移動開始。"):format(self.monster.Name))
+            self.humanoid:MoveTo(self.wanderGoal)
+
+        else
+            -- ステート: 移動中（継続）
+            self.humanoid:MoveTo(self.wanderGoal)
+        end
+    end
+    -- 【修正点2 終わり】
+
 	-- 行動決定
 	if not p then
 		-- プレイヤーがいない：徘徊のみ
-		local w = self.def.Wander or {}
-		if not self.wanderGoal or (self.root.Position - self.wanderGoal).Magnitude < 5 or now >= self.nextWanderAt then
-			local ang = math.random() * math.pi * 2
-			local rad = math.random(w.MinRadius or 20, w.MaxRadius or 60)
-			local gx = self.root.Position.X + math.cos(ang) * rad
-			local gz = self.root.Position.Z + math.sin(ang) * rad
-			local gy = FieldGen.raycastGroundY(gx, gz, 100) or self.root.Position.Y
-			self.wanderGoal = Vector3.new(gx, gy, gz)
-			self.nextWanderAt = now + math.random(w.MinWait or 2, w.MaxWait or 5)
-		end
-		if self.wanderGoal then
-			self.humanoid:MoveTo(self.wanderGoal)
-		end
+		self.wanderGoal = nil -- 追跡目標をリセット
+        self.isWaiting = false -- プレイヤーがいない場合、追跡目標がないため待機を解除して新しい徘徊を開始
+		wanderLogic()
 	elseif dist < chaseRange then
 		-- 追跡 or 逃走
 		self.wanderGoal = nil
+        self.isWaiting = false -- 追跡中は待機を強制解除
 		if self.brave then
 			self.humanoid:MoveTo(p.Character.HumanoidRootPart.Position)
 		else
@@ -5058,20 +5401,8 @@ function AIState:update()
 			self.humanoid:MoveTo(self.root.Position + away * 80)
 		end
 	else
-		-- 徘徊
-		local w = self.def.Wander or {}
-		if not self.wanderGoal or (self.root.Position - self.wanderGoal).Magnitude < 5 or now >= self.nextWanderAt then
-			local ang = math.random() * math.pi * 2
-			local rad = math.random(w.MinRadius or 20, w.MaxRadius or 60)
-			local gx = self.root.Position.X + math.cos(ang) * rad
-			local gz = self.root.Position.Z + math.sin(ang) * rad
-			local gy = FieldGen.raycastGroundY(gx, gz, 100) or self.root.Position.Y
-			self.wanderGoal = Vector3.new(gx, gy, gz)
-			self.nextWanderAt = now + math.random(w.MinWait or 2, w.MaxWait or 5)
-		end
-		if self.wanderGoal then
-			self.humanoid:MoveTo(self.wanderGoal)
-		end
+		-- プレイヤーが遠い：徘徊
+		wanderLogic()
 	end
 
 	self.lastUpdateTime = now
@@ -5160,7 +5491,7 @@ local function spawnMonster(template: Model, index: number, def, islandName)
 	end
 	MonsterCounts[islandName][monsterName] = (MonsterCounts[islandName][monsterName] or 0) + 1
 
-	print(("[MonsterSpawner] %s を %s にスポーン"):format(m.Name, islandName))
+	-- print(("[MonsterSpawner] %s を %s にスポーン"):format(m.Name, islandName))
 end
 
 -- ゾーンにモンスターをスポーンする（大陸対応版）
@@ -5263,7 +5594,7 @@ local function processRespawnQueue()
 						if template and MonsterCounts[data.islandName] then
 							local nextIndex = (MonsterCounts[data.islandName][data.monsterName] or 0) + 1
 							spawnMonster(template, nextIndex, data.def, data.islandName)
-							print(("[MonsterSpawner] %s が %s にリスポーン"):format(data.monsterName, data.islandName))
+							-- print(("[MonsterSpawner] %s が %s にリスポーン"):format(data.monsterName, data.islandName))
 						end
 					end
 					table.remove(RespawnQueue, i)
@@ -5379,15 +5710,167 @@ print("[MonsterSpawner] === 初期化完了（バトル即座開始対応）==="
 
 _G.SpawnMonstersForZone = spawnMonstersForZone
 _G.DespawnMonstersForZone = despawnMonstersForZone
+===== ./ServerScriptService/TowerPlacement.server.lua =====
+-- ServerScriptService/TowerPlacement.server.lua
+-- StartTownにタワーを配置
+
+local ServerStorage = game:GetService("ServerStorage")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+print("[TowerPlacement] タワー配置開始")
+
+-- StartTownの設定を取得
+local IslandsRegistry = require(ReplicatedStorage.Islands.Registry)
+local townConfig = nil
+for _, island in ipairs(IslandsRegistry) do
+	if island.name == "StartTown" then
+		townConfig = island
+		break
+	end
+end
+
+if not townConfig then
+	warn("[TowerPlacement] StartTownの設定が見つかりません")
+	return
+end
+
+-- 配置位置（StartTownの中心から東に50スタッド）
+local TOWER_OFFSET_X = 300
+local TOWER_OFFSET_Z = 0
+
+-- 地形生成を待つ
+task.wait(3)
+
+-- ServerStorage/Buildingsからタワーのテンプレートを取得
+local buildingsFolder = ServerStorage:FindFirstChild("Buildings")
+if not buildingsFolder then
+	warn("[TowerPlacement] ServerStorage に 'Buildings' フォルダが見つかりません")
+	return
+end
+
+local towerTemplate = buildingsFolder:FindFirstChild("Tower")
+if not towerTemplate then
+	warn("[TowerPlacement] ServerStorage/Buildings に 'Tower' が見つかりません")
+	warn("[TowerPlacement] Toolboxから Asset ID 12127172596 を ServerStorage/Buildings に配置してください")
+	return
+end
+
+-- タワーを複製
+local tower = towerTemplate:Clone()
+tower.Parent = workspace
+
+print("[TowerPlacement] タワーを読み込みました:", tower.Name)
+
+-- 配置位置を計算
+local towerX = townConfig.centerX + TOWER_OFFSET_X
+local towerZ = townConfig.centerZ + TOWER_OFFSET_Z
+
+-- 地面の高さを取得
+local FieldGen = require(ReplicatedStorage:WaitForChild("FieldGen"))
+local groundY = FieldGen.raycastGroundY(towerX, towerZ, townConfig.baseY + 100)
+
+if not groundY then
+	-- レイキャストが失敗した場合は推定高度を使用
+	groundY = townConfig.baseY + 5
+	warn("[TowerPlacement] 地面検出失敗、推定高度を使用:", groundY)
+end
+
+-- タワーの底面を地面に合わせる
+if tower:IsA("Model") then
+	-- Modelの場合：最下点を地面に合わせる
+	local primaryPart = tower.PrimaryPart
+	if not primaryPart then
+		for _, part in ipairs(tower:GetDescendants()) do
+			if part:IsA("BasePart") then
+				tower.PrimaryPart = part
+				primaryPart = part
+				print("[TowerPlacement] PrimaryPartを自動設定:", part.Name)
+				break
+			end
+		end
+	end
+
+	if primaryPart then
+		-- まず目標位置に配置
+		tower:SetPrimaryPartCFrame(CFrame.new(towerX, groundY, towerZ))
+
+		-- 最下点を探す
+		local lowestY = math.huge
+		local lowestPartName = ""
+		for _, part in ipairs(tower:GetDescendants()) do
+			if part:IsA("BasePart") then
+				local partBottom = part.Position.Y - (part.Size.Y / 2)
+				if partBottom < lowestY then
+					lowestY = partBottom
+					lowestPartName = part.Name
+				end
+			end
+		end
+
+		print(("[TowerPlacement] デバッグ情報:"):format())
+		print(("  地面の高さ (groundY): %.1f"):format(groundY))
+		print(("  最下点パーツ: %s"):format(lowestPartName))
+		print(("  最下点の高さ (配置前): %.1f"):format(lowestY))
+
+		-- 最下点が地面になるよう調整
+		local adjustment = groundY - lowestY
+		local currentCFrame = tower:GetPrimaryPartCFrame()
+		tower:SetPrimaryPartCFrame(currentCFrame + Vector3.new(0, adjustment, 0))
+
+		-- 調整後の最下点を確認
+		local newLowestY = math.huge
+		for _, part in ipairs(tower:GetDescendants()) do
+			if part:IsA("BasePart") then
+				local partBottom = part.Position.Y - (part.Size.Y / 2)
+				if partBottom < newLowestY then
+					newLowestY = partBottom
+				end
+			end
+		end
+
+		local _, size = tower:GetBoundingBox()
+		print("[TowerPlacement] タワーを配置しました (Model):")
+		print(("  位置: X=%.1f, Y=%.1f, Z=%.1f"):format(towerX, groundY, towerZ))
+		print(("  サイズ: %.1f x %.1f x %.1f"):format(size.X, size.Y, size.Z))
+		print(("  調整: %.1f スタッド上に移動"):format(adjustment))
+		print(("  調整後の最下点: %.1f (目標: %.1f)"):format(newLowestY, groundY))
+	else
+		local cf, size = tower:GetBoundingBox()
+		local lowestY = cf.Position.Y - (size.Y / 2)
+		local adjustment = groundY - lowestY
+		tower:PivotTo(CFrame.new(towerX, groundY + adjustment, towerZ))
+		print("[TowerPlacement] PivotToで配置しました:")
+		print(("  位置: X=%.1f, Y=%.1f, Z=%.1f"):format(towerX, groundY, towerZ))
+	end
+elseif tower:IsA("BasePart") then
+	-- MeshPartなど単一パーツの場合
+	local size = tower.Size
+	local offsetY = size.Y / 2
+	tower.CFrame = CFrame.new(towerX, groundY + offsetY, towerZ)
+	print("[TowerPlacement] タワーを配置しました (BasePart):")
+	print(("  位置: X=%.1f, Y=%.1f, Z=%.1f"):format(towerX, groundY + offsetY, towerZ))
+	print(("  サイズ: %.1f x %.1f x %.1f"):format(size.X, size.Y, size.Z))
+else
+	warn("[TowerPlacement] 未対応の型:", tower.ClassName)
+	return
+end
+
+-- タワーを固定
+for _, part in ipairs(tower:GetDescendants()) do
+	if part:IsA("BasePart") then
+		part.Anchored = true
+	end
+end
+
+print("[TowerPlacement] 配置完了")
 ===== ./ReplicatedStorage/Continents/Registry.lua =====
+-- ReplicatedStorage/Continents/Registry.lua
 local RS = game:GetService("ReplicatedStorage")
 local ContinentsFolder = RS:WaitForChild("Continents")
 
 return {
-	require(ContinentsFolder.ContinentA),
-	require(ContinentsFolder.ContinentB),
-	require(ContinentsFolder.ContinentT),
-	require(ContinentsFolder.ContinentHokkaido),  -- 追加
+    -- require(ContinentsFolder.Town),             -- 【削除】Town大陸の参照
+    require(ContinentsFolder.ContinentHokkaido),
 }
 ===== ./ReplicatedStorage/Continents/ContinentHokkaido.lua =====
 return {
@@ -5395,7 +5878,7 @@ return {
 	displayName = "Hokkaido Continent",
 
 	islands = {
-		"Hokkaido_W1", "Hokkaido_C1", "Hokkaido_C2", "Hokkaido_C3", 
+		"Hokkaido_W1", "Hokkaido_C1", "Hokkaido_C2", "Hokkaido_C3",
 		"Hokkaido_C4", "Hokkaido_C5", "Hokkaido_E1",
 		"Hokkaido_N1", "Hokkaido_N2", "Hokkaido_N3", "Hokkaido_N4",
 		"Hokkaido_NE1", "Hokkaido_NE2",
@@ -5405,137 +5888,41 @@ return {
 
 	bridges = {},
 
-	portals = {
-		{
-			name = "Hokkaido_to_Town",
-			toZone = "StartTown",
-			islandName = "Hokkaido_C3",
-			offsetX = 0,
-			offsetZ = 0,
-			label = "→ Town",
-			color = Color3.fromRGB(255, 200, 100),
-		},
-	},
+ports = {
+        {
+            name = "Hokkaido_to_Town",
+            toZone = "StartTown",
+            islandName = "Hokkaido_C3",
+            offsetX = 0,
+            offsetZ = 0,
+            label = "→ Town",
+            color = Color3.fromRGB(255, 200, 100),
+        },
+    },
+
+	BGM = "rbxassetid://115666507179769",  -- 後でアセットIDに変更
+	BGMVolume = 0.2,  -- 音量（0.0-1.0）
 }
-===== ./ReplicatedStorage/Continents/ContinentA.lua =====
--- ReplicatedStorage/Continents/ContinentA
+===== ./ReplicatedStorage/Continents/ContientTown.lua =====
 return {
-	name = "ContinentA",
-	displayName = "Grassland Continent",
+	name = "ContinentTown",
+	displayName = "Start Town",
 
-	-- この大陸に含まれる島
+	-- StartTownをこの大陸の唯一の島として含める
 	islands = {
-		"StartIsland",
-		"ForestIsland",
+		"StartTown",
 	},
 
-	-- 島を繋ぐ橋
-	bridges = {
-		{
-			name = "Bridge_Start_to_Forest",
-			fromIsland = "StartIsland",
-			toIsland = "ForestIsland",
-			width = 15,
-			height = 5,
-			thickness = 5,
-		},
-	},
-
-	-- ポータルの配置（この大陸から他の場所へ）
-	portals = {
-		{
-			name = "ContinentA_to_Town",
-			toZone = "StartTown",
-			islandName = "StartIsland",  -- この島に配置
-			offsetX = -50,
-			offsetZ = 0,
-			label = "→ Town",
-			color = Color3.fromRGB(255, 200, 100),
-		},
-		{
-			name = "ContinentA_to_ContinentB",
-			toZone = "ContinentB",
-			islandName = "ForestIsland",  -- この島に配置
-			offsetX = 50,
-			offsetZ = 0,
-			label = "→ Mountain Area",
-			color = Color3.fromRGB(150, 150, 255),
-		},
-	},
-}
-===== ./ReplicatedStorage/Continents/ContinentB.lua =====
--- ReplicatedStorage/Continents/ContinentB
-return {
-	name = "ContinentB",
-	displayName = "Wilderness Continent",
-
-	islands = {
-		"MountainIsland",
-		"DesertIsland",
-		"VolcanoIsland",
-	},
-
-	bridges = {
-		{
-			name = "Bridge_Mountain_to_Desert",
-			fromIsland = "MountainIsland",
-			toIsland = "DesertIsland",
-			width = 15,
-			height = 5,
-			thickness = 5,
-		},
-		{
-			name = "Bridge_Desert_to_Volcano",
-			fromIsland = "DesertIsland",
-			toIsland = "VolcanoIsland",
-			width = 15,
-			height = 5,
-			thickness = 5,
-		},
-	},
-
-	portals = {
-		{
-			name = "ContinentB_to_ContinentA",
-			toZone = "ContinentA",
-			islandName = "MountainIsland",
-			offsetX = -50,
-			offsetZ = 0,
-			label = "→ Grassland",
-			color = Color3.fromRGB(100, 255, 100),
-		},
-	},
-}
-===== ./ReplicatedStorage/Continents/ContinentT.lua =====
--- ReplicatedStorage/Continents/ContinentT.lua
-return {
-	name = "ContinentT",
-	displayName = "T-Shaped Continent",
-
-	islands = {
-		"TIsland_Left",
-		"TIsland_LeftCenter",
-		"TIsland_Center",
-		"TIsland_RightCenter",
-		"TIsland_Right",
-		"TIsland_Down1",
-		"TIsland_Down2",
-	},
-
-	-- 橋を削除
 	bridges = {},
 
+	-- 他の大陸へのポータルはStartTown島に配置される
 	portals = {
-		{
-			name = "ContinentT_to_Town",
-			toZone = "StartTown",
-			islandName = "TIsland_Center",
-			offsetX = 0,
-			offsetZ = 0,
-			label = "→ Town",
-			color = Color3.fromRGB(255, 200, 100),
-		},
+		-- Town_to_HokkaidoポータルはWarpPortal.server.luaで直接作成されているため、
+		-- ここには町の外から町に戻るポータルのみを定義します。
 	},
+
+	BGM = "rbxassetid://15666507179769",  -- 適当なBGM ID
+	BGMVolume = 0.4,
 }
 ===== ./ReplicatedStorage/Islands/Bridges.lua =====
 return {
@@ -5547,99 +5934,55 @@ return {
 		height = 5,
 	},
 }
-===== ./ReplicatedStorage/Islands/TIsland_Down1.lua =====
-return {
-	name = "TIsland_Down1",
-	centerX = 2160,
-	centerZ = -80,
-	sizeXZ = 160,
-	baseY = 0,
-	thickness = 10,
-	grid = 10,
-	hillAmplitude = 20,
-	hillScale = 150,
-	seed = 40000,
-	generateOcean = false,
-	oceanRadius = 1500,
-}
 ===== ./ReplicatedStorage/Islands/Town.lua =====
--- ReplicatedStorage/Islands/Town.lua
+-- ReplicatedStorage/Islands/Town.lua (内容を置き換え)
 return {
-	name = "StartTown",
-	centerX = 0,
-	centerZ = 0,
-	sizeXZ = 120,
-	baseY = 0,
-	thickness = 8,
-	grid = 8,
-	hillAmplitude = 3,
-	hillScale = 80,
-	seed = 77777,
-	generateOcean = false,
-	safeZone = true,  -- ← この行を追加（モンスターが出現しない）
-}
-===== ./ReplicatedStorage/Islands/TIsland_Down2.lua =====
-return {
-	name = "TIsland_Down2",
-	centerX = 2160,
-	centerZ = -160,
-	sizeXZ = 160,
-	baseY = 0,
-	thickness = 10,
-	grid = 10,
-	hillAmplitude = 20,
-	hillScale = 150,
-	seed = 40000,
-	generateOcean = false,
-	oceanRadius = 1500,
+    name = "StartTown", -- 島名を「StartTown」に戻す
+    centerX = 0,
+    centerZ = 0,
+    sizeXZ = 400,
+    baseY = 50, -- 安定化のため高さを維持
+    thickness = 8,
+    grid = 10,
+    hillAmplitude = 3,
+    hillScale = 80,
+    seed = 77777,
+    generateOcean = false,
+    safeZone = true,
+    baseMaterial = Enum.Material.Slate,
 }
 ===== ./ReplicatedStorage/Islands/HokkaidoIslands.lua =====
 -- ReplicatedStorage/Islands/HokkaidoIslands
 return {
 	-- 中央部
-	{name = "Hokkaido_W1", centerX = 3000, centerZ = 0, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false},
-	{name = "Hokkaido_C1", centerX = 3080, centerZ = 0, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false},
-	{name = "Hokkaido_C2", centerX = 3160, centerZ = 0, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false},
-	{name = "Hokkaido_C3", centerX = 3240, centerZ = 0, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false},
-	{name = "Hokkaido_C4", centerX = 3320, centerZ = 0, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false},
-	{name = "Hokkaido_C5", centerX = 3400, centerZ = 0, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false},
-	{name = "Hokkaido_E1", centerX = 3480, centerZ = 0, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false},
+	{name = "Hokkaido_W1", centerX = 3000, centerZ = 0, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
+	{name = "Hokkaido_C1", centerX = 3080, centerZ = 0, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
+	{name = "Hokkaido_C2", centerX = 3160, centerZ = 0, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
+	{name = "Hokkaido_C3", centerX = 3240, centerZ = 0, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
+	{name = "Hokkaido_C4", centerX = 3320, centerZ = 0, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
+	{name = "Hokkaido_C5", centerX = 3400, centerZ = 0, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
+	{name = "Hokkaido_E1", centerX = 3480, centerZ = 0, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
 
 	-- 北部
-	{name = "Hokkaido_N1", centerX = 3080, centerZ = 80, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false},
-	{name = "Hokkaido_N2", centerX = 3160, centerZ = 80, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false},
-	{name = "Hokkaido_N3", centerX = 3240, centerZ = 80, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false},
-	{name = "Hokkaido_N4", centerX = 3320, centerZ = 80, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false},
+	{name = "Hokkaido_N1", centerX = 3080, centerZ = 80, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
+	{name = "Hokkaido_N2", centerX = 3160, centerZ = 80, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
+	{name = "Hokkaido_N3", centerX = 3240, centerZ = 80, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
+	{name = "Hokkaido_N4", centerX = 3320, centerZ = 80, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
 
 	-- 北東部（知床）
-	{name = "Hokkaido_NE1", centerX = 3320, centerZ = 160, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 30, hillScale = 160, seed = 50000, generateOcean = false},
-	{name = "Hokkaido_NE2", centerX = 3400, centerZ = 160, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 30, hillScale = 160, seed = 50000, generateOcean = false},
+	{name = "Hokkaido_NE1", centerX = 3320, centerZ = 160, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 30, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
+	{name = "Hokkaido_NE2", centerX = 3400, centerZ = 160, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 30, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
 
 	-- 南部
-	{name = "Hokkaido_S1", centerX = 3160, centerZ = -80, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false},
-	{name = "Hokkaido_S2", centerX = 3240, centerZ = -80, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false},
+	{name = "Hokkaido_S1", centerX = 3160, centerZ = -80, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
+	{name = "Hokkaido_S2", centerX = 3240, centerZ = -80, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
 
 	-- 南西部（渡島）
-	{name = "Hokkaido_SW1", centerX = 3080, centerZ = -160, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 20, hillScale = 160, seed = 50000, generateOcean = false},
-	{name = "Hokkaido_SW2", centerX = 3160, centerZ = -160, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 20, hillScale = 160, seed = 50000, generateOcean = true, oceanRadius = 2000},
-}
-===== ./ReplicatedStorage/Islands/TIsland_LeftCenter.lua =====
-return {
-	name = "TIsland_LeftCenter",
-	centerX = 2080,  -- 80スタッド間隔（大幅に重なる）
-	centerZ = 0,
-	sizeXZ = 160,
-	baseY = 0,
-	thickness = 10,
-	grid = 10,
-	hillAmplitude = 20,
-	hillScale = 150,
-	seed = 40000,
-	generateOcean = false,
-	oceanRadius = 1500,
+	{name = "Hokkaido_SW1", centerX = 3080, centerZ = -160, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 20, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
+	{name = "Hokkaido_SW2", centerX = 3160, centerZ = -160, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 20, hillScale = 160, seed = 50000, generateOcean = true, baseMaterial = Enum.Material.Grass, oceanRadius = 2000},
 }
 ===== ./ReplicatedStorage/Islands/Registry.lua =====
--- ReplicatedStorage/Islands/Registry
+-- ReplicatedStorage/Islands/Registry.lua (全コード)
 local RS = game:GetService("ReplicatedStorage")
 local IslandsFolder = RS:WaitForChild("Islands")
 
@@ -5647,183 +5990,35 @@ local allIslands = {}
 
 -- 島定義のリスト
 local islandModules = {
-	IslandsFolder.Town,
-	IslandsFolder.Island1,
-	IslandsFolder.Island2,
-	IslandsFolder.Island3,
-	IslandsFolder.Island4,
-	IslandsFolder.Island5,
-	IslandsFolder.TIsland_Left,
-	IslandsFolder.TIsland_LeftCenter,
-	IslandsFolder.TIsland_Center,
-	IslandsFolder.TIsland_RightCenter,
-	IslandsFolder.TIsland_Right,
-	IslandsFolder.TIsland_Down1,
-	IslandsFolder.TIsland_Down2,
-	IslandsFolder.HokkaidoIslands,  -- 複数島をまとめたファイル
+    IslandsFolder:WaitForChild("Town"),           -- 【修正】Town.lua を参照
+    IslandsFolder:WaitForChild("HokkaidoIslands"),
 }
 
 -- 各モジュールを読み込み
 for _, module in ipairs(islandModules) do
-	local result = require(module)
+    local result = require(module)
 
-	-- 配列かどうかをチェック（nameフィールドがあるか）
-	if result.name then
-		-- 単一の島定義
-		table.insert(allIslands, result)
-	elseif type(result) == "table" and #result > 0 then
-		-- 複数の島定義（配列）
-		for _, island in ipairs(result) do
-			table.insert(allIslands, island)
-		end
-	else
-		warn("[Islands/Registry] 不正な島定義:", module.Name)
-	end
+    -- Town (単一テーブル) と Hokkaido (配列) の両方を処理
+    if result and result.name then
+        -- 単一の島定義 (Town)
+        table.insert(allIslands, result)
+    elseif type(result) == "table" and #result > 0 then
+        -- 複数の島定義（配列, Hokkaido）
+        for _, island in ipairs(result) do
+            if island and island.name then
+                table.insert(allIslands, island)
+            else
+                warn(("[Islands/Registry] '%s' から取得したリストに無効な要素があります"):format(module.Name))
+            end
+        end
+    else
+        warn(("[Islands/Registry] 不正な島定義: '%s'"):format(module.Name))
+    end
 end
 
 print(("[Islands/Registry] 合計 %d 個の島を読み込みました"):format(#allIslands))
 
 return allIslands
-===== ./ReplicatedStorage/Islands/TIsland_Center.lua =====
-return {
-	name = "TIsland_Center",
-	centerX = 2160,
-	centerZ = 0,
-	sizeXZ = 160,
-	baseY = 0,
-	thickness = 10,
-	grid = 10,
-	hillAmplitude = 20,
-	hillScale = 150,
-	seed = 40000,
-	generateOcean = false,
-	oceanRadius = 1500,
-}
-===== ./ReplicatedStorage/Islands/Island3.lua =====
--- ReplicatedStorage/Islands/Island3
-return {
-	name = "MountainIsland",
-	centerX = 1000,
-	centerZ = 0,
-	sizeXZ = 280,
-	baseY = 0,
-	thickness = 12,
-	grid = 10,
-	hillAmplitude = 35,  -- 山岳なので高低差大きめ
-	hillScale = 200,
-	seed = 11111,
-	generateOcean = true,
-	oceanRadius = 1500,
-}
-===== ./ReplicatedStorage/Islands/Island2.lua =====
-return {
-	name = "ForestIsland",
-	centerX = 250,  -- 1200から500に変更（近く）
-	centerZ = 0,
-	sizeXZ = 250,  -- 500から250に変更（小さく）
-	baseY = 0,
-	thickness = 10,
-	grid = 10,
-	hillAmplitude = 25,
-	hillScale = 180,
-	seed = 99999,
-
-	generateOcean = false,
-}
-===== ./ReplicatedStorage/Islands/TIsland_Left.lua =====
-return {
-	name = "TIsland_Left",
-	centerX = 2000,
-	centerZ = 0,
-	sizeXZ = 160,  -- さらに拡大
-	baseY = 0,
-	thickness = 10,
-	grid = 10,
-	hillAmplitude = 20,
-	hillScale = 150,
-	seed = 40000,
-	generateOcean = false,  -- 海生成をオフ
-	oceanRadius = 1500,
-}
-===== ./ReplicatedStorage/Islands/Island1.lua =====
-return {
-	name = "StartIsland",
-	centerX = 150,
-	centerZ = 0,
-	sizeXZ = 300,  -- 700から300に変更（小さく）
-	baseY = 0,
-	thickness = 10,
-	grid = 10,
-	hillAmplitude = 22,
-	hillScale = 200,
-	seed = 24680,
-
-	generateOcean = true,
-	oceanRadius = 1500,
-}
-===== ./ReplicatedStorage/Islands/Island5.lua =====
--- ReplicatedStorage/Islands/Island5
-
-return {
-	name = "VolcanoIsland",
-	centerX = 1600,
-	centerZ = 0,
-	sizeXZ = 240,
-	baseY = 0,
-	thickness = 10,
-	grid = 10,
-	hillAmplitude = 40,  -- 火山なので高低差最大
-	hillScale = 180,
-	seed = 33333,
-	generateOcean = true,
-	oceanRadius = 1500,
-}
-===== ./ReplicatedStorage/Islands/Island4.lua =====
--- ReplicatedStorage/Islands/Island4
-return {
-	name = "DesertIsland",
-	centerX = 1300,
-	centerZ = 0,
-	sizeXZ = 260,
-	baseY = 0,
-	thickness = 10,
-	grid = 12,
-	hillAmplitude = 15,  -- 砂漠なので平坦
-	hillScale = 150,
-	seed = 22222,
-	generateOcean = true,
-	oceanRadius = 1500,
-}
-===== ./ReplicatedStorage/Islands/TIsland_Right.lua =====
-return {
-	name = "TIsland_Right",
-	centerX = 2320,
-	centerZ = 0,
-	sizeXZ = 160,
-	baseY = 0,
-	thickness = 10,
-	grid = 10,
-	hillAmplitude = 20,
-	hillScale = 150,
-	seed = 40000,
-	generateOcean = true,  -- 最後の島だけ海を生成
-	oceanRadius = 1500,
-}
-===== ./ReplicatedStorage/Islands/TIsland_RightCenter.lua =====
-return {
-	name = "TIsland_RightCenter",
-	centerX = 2240,
-	centerZ = 0,
-	sizeXZ = 160,
-	baseY = 0,
-	thickness = 10,
-	grid = 10,
-	hillAmplitude = 20,
-	hillScale = 150,
-	seed = 40000,
-	generateOcean = false,
-	oceanRadius = 1500,
-}
 ===== ./ReplicatedStorage/TypingWords.lua =====
 -- ReplicatedStorage/TypingWords
 -- タイピング用の単語リスト（多言語対応）
@@ -5938,7 +6133,8 @@ local function fillTerrainBatch(terrain, blocks)
 	end
 end
 
--- 【最適化2】島の生成（バッチ処理版）
+-- ReplicatedStorage/FieldGen.lua
+-- 【修正】generateIsland 関数全体
 function FieldGen.generateIsland(config)
 	local terrain = workspace.Terrain
 
@@ -5954,10 +6150,13 @@ function FieldGen.generateIsland(config)
 		seed = config.seed or 12345,
 		generateOcean = config.generateOcean ~= false,
 		oceanRadius = config.oceanRadius or 1500,
-		grid = config.grid or 12,  -- 8→12に増やして呼び出し回数削減
+		grid = config.grid or 12,
+
+        -- 【修正点 A】新しいプロパティを取得。デフォルトは Grass に設定
+        baseMaterial = config.baseMaterial or Enum.Material.Grass,
 	}
 
-	print(("[FieldGen] 生成開始: %s at (%.0f, %.0f)"):format(cfg.name, cfg.centerX, cfg.centerZ))
+	print(("[FieldGen] 生成開始: %s at (%.0f, %.0f, Material: %s)"):format(cfg.name, cfg.centerX, cfg.centerZ, tostring(cfg.baseMaterial)))
 
 	math.randomseed(cfg.seed)
 
@@ -5987,7 +6186,9 @@ function FieldGen.generateIsland(config)
 				table.insert(terrainBlocks, {
 					cframe = CFrame.new(worldX, targetY - cfg.thickness/2, worldZ),
 					size = Vector3.new(cfg.grid, cfg.thickness, cfg.grid),
-					material = Enum.Material.Grass
+
+                    -- 【修正点 B】ハードコードされた Material を設定値に置き換え
+					material = cfg.baseMaterial
 				})
 			end
 		end
@@ -5998,9 +6199,9 @@ function FieldGen.generateIsland(config)
 
 	-- 海の生成
 	if cfg.generateOcean then
-		local oceanGrid = 20  -- 16→20に増やして更に削減
+		local oceanGrid = 20
 		local oceanHalfSize = cfg.oceanRadius / 2
-		local maxDistWithTerrain = halfSize * 0.8  -- 推定値
+		local maxDistWithTerrain = halfSize * 0.8
 
 		for x = -oceanHalfSize, oceanHalfSize, oceanGrid do
 			for z = -oceanHalfSize, oceanHalfSize, oceanGrid do
@@ -6124,7 +6325,7 @@ return {
 return {
 	Name = "Slime",
 	TemplatePath = {"ServerStorage", "EnemyTemplates", "Slime"},
-	WalkSpeed = 4,
+	WalkSpeed = 10,
 	RespawnTime = 10,
 
 	-- 【新】バトルステータス
@@ -6149,34 +6350,14 @@ return {
 	-- スポーン設定
 	SpawnLocations = {
 		{
-			islandName = "StartIsland",
-			count = 10,
-			radiusPercent = 50,  -- 島のサイズの50%範囲内
-		},
-		{
-			islandName = "MountainIsland",
-			count = 5,
-			radiusPercent = 75,  -- 島のサイズの75%範囲内
-		},
-		{
-			islandName = "DesertIsland",
-			count = 5,
-			radiusPercent = 75,  -- 島のサイズの75%範囲内
-		},
-		{
-			islandName = "TIsland_Center",
-			count = 15,
-			radiusPercent = 95,  -- 島のサイズの75%範囲内
-		},
-		{
 			islandName = "Hokkaido_N1",
 			count = 7,
 			radiusPercent = 95,  -- 島のサイズの75%範囲内
 		},
 		{
 			islandName = "Hokkaido_N4",
-			count = 8,
-			radiusPercent = 95,  -- 島のサイズの75%範囲内
+			count = 15,
+			radiusPercent = 55,  -- 島のサイズの75%範囲内
 		},
 
 	},
@@ -6184,6 +6365,56 @@ return {
 	-- AI設定
 	ChaseDistance = 60,
 	EscapeDistance = 80,
+	WanderRadius = 30,
+	UpdateNearby = 0.2,
+	UpdateFar = 1.0,
+}
+===== ./ReplicatedStorage/Monsters/Slime_pink.lua =====
+-- ReplicatedStorage/Monsters/[モンスター名]
+
+return {
+	Name = "Slime_pink",
+	TemplatePath = {"ServerStorage", "EnemyTemplates", "Slime_pink"},
+	WalkSpeed = 8,
+	RespawnTime = 20,
+
+	-- 【新】バトルステータス
+	HP = 80,           -- ライフ
+	Speed = 10,         -- 素早さ
+	Attack = 30,        -- 攻撃力
+	Defense = 10,       -- 守備力
+
+	-- 【新】報酬
+	Experience = 50,   -- 倒した時に得られる経験値
+	Gold = 25,         -- 倒した時に得られるゴールド
+
+	-- タイピングレベル（重み付き）
+	TypingLevels = {
+		{level = "level_2", weight = 70},  -- 70%の確率でレベル1
+		{level = "level_3", weight = 30},  -- 30%の確率でレベル2
+	},
+
+	-- 旧設定（互換性のため残す）
+	Damage = 1,  -- 後で削除予定
+
+	-- スポーン設定
+	SpawnLocations = {
+		{
+			islandName = "Hokkaido_N1",
+			count = 3,
+			radiusPercent = 80,
+		},
+		{
+			islandName = "Hokkaido_N4",
+			count = 5,
+			radiusPercent = 80,
+		},
+
+	},
+
+	-- AI設定
+	ChaseDistance = 60,
+	EscapeDistance = 30,
 	WanderRadius = 30,
 	UpdateNearby = 0.2,
 	UpdateFar = 1.0,

@@ -13,17 +13,17 @@ return {
 
 	bridges = {},
 
-ports = {
-        {
-            name = "Hokkaido_to_Town",
-            toZone = "StartTown",
-            islandName = "Hokkaido_C3",
-            offsetX = 0,
-            offsetZ = 0,
-            label = "→ Town",
-            color = Color3.fromRGB(255, 200, 100),
-        },
-    },
+	portals = {
+			{
+				name = "Hokkaido_to_Town",
+				toZone = "ContinentTown",
+				islandName = "Hokkaido_C3",
+				offsetX = 0,
+				offsetZ = 0,
+				label = "→ Town",
+				color = Color3.fromRGB(255, 200, 100),
+			},
+		},
 
 	BGM = "rbxassetid://115666507179769",  -- 後でアセットIDに変更
 	BGMVolume = 0.2,  -- 音量（0.0-1.0）

@@ -22,11 +22,11 @@ if not townConfig then
 end
 
 -- 配置位置（StartTownの中心から東に50スタッド）
-local TOWER_OFFSET_X = 300
-local TOWER_OFFSET_Z = 0
+local TOWER_OFFSET_X = 400  -- ★修正: 400に変更 (-100 + 400 = 300)
+local TOWER_OFFSET_Z = -100 -- ★修正: -100に変更 (100 + (-100) = 0)
 
 -- 地形生成を待つ
-task.wait(3)
+task.wait(1)
 
 -- ServerStorage/Buildingsからタワーのテンプレートを取得
 local buildingsFolder = ServerStorage:FindFirstChild("Buildings")

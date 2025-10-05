@@ -43,9 +43,8 @@ local function isContinent(zoneName)
     return Continents[zoneName] ~= nil
 end
 
--- ゾーンが島かチェック
+-- ゾーンが島かチェック (Townが大陸化されたため、この関数は実質未使用に)
 local function isIsland(zoneName)
-    -- StartTown (Island)は大陸ではないが、島としては存在する
     return Islands[zoneName] ~= nil and not isContinent(zoneName)
 end
 
@@ -125,27 +124,11 @@ function ZoneManager.LoadZone(zoneName)
         return true
     end
 
-    if isIsland(zoneName) then
-        -- 【復元】島の場合 (StartTown)
-        local islandConfig = Islands[zoneName]
-        if islandConfig then
-            print(("[ZoneManager] 島生成開始: %s"):format(zoneName))
-            FieldGen.generateIsland(islandConfig)
-            ZoneManager.ActiveZones[zoneName] = {
-                config = islandConfig,
-                loadedAt = os.time(),
-            }
-            print(("[ZoneManager] 島生成完了: %s"):format(zoneName))
-            return true
-        else
-            warn(("[ZoneManager] 島 '%s' の設定が見つかりません"):format(zoneName))
-            return false
-        end
-    elseif isContinent(zoneName) then
-        -- 【維持】大陸の場合 (ContinentHokkaido)
+    if isContinent(zoneName) then
         return loadContinent(zoneName)
     else
-        warn(("[ZoneManager] ゾーン '%s' は島でも大陸でもありません。"):format(zoneName))
+        -- ★修正: 単一の島をロードするロジックを削除。すべて大陸経由でロード。
+        warn(("[ZoneManager] ゾーン '%s' は大陸ではありません。ロードをスキップしました。"):format(zoneName))
         return false
     end
 end
@@ -161,15 +144,17 @@ function ZoneManager.UnloadZone(zoneName)
     local terrain = workspace.Terrain
     local configsToUnload = {}
 
-    if isIsland(zoneName) then
-        -- 島の場合
-        table.insert(configsToUnload, Islands[zoneName])
-    elseif isContinent(zoneName) then
+    -- ★修正: 大陸としてのみ処理
+    if isContinent(zoneName) then
         -- 大陸の場合は含まれる全ての島を削除
         local continent = Continents[zoneName]
         for _, islandName in ipairs(continent.islands) do
             table.insert(configsToUnload, Islands[islandName])
         end
+    else
+         -- ★修正: 大陸でないゾーンはアンロードできない
+         warn(("[ZoneManager] ゾーン '%s' は大陸ではありません。アンロードをスキップしました。"):format(zoneName))
+         return
     end
 
     -- 各島の地形を削除
@@ -218,27 +203,27 @@ function ZoneManager.WarpPlayerToZone(player, zoneName)
     local hrp = character:FindFirstChild("HumanoidRootPart")
     if not hrp then return false end
 
-    -- ワープ先の座標を決定
+    -- ワープ先の座標を決定 (常に大陸の最初の島を参照するように統一)
     local targetX, targetZ, baseY, hillAmplitude
 
-    if isIsland(zoneName) then
-        -- 【復元】島の場合 (StartTown)
-        local island = Islands[zoneName]
-        targetX = island.centerX
-        targetZ = island.centerZ
-        baseY = island.baseY
-        hillAmplitude = island.hillAmplitude or 20
-    elseif isContinent(zoneName) then
-        -- 【維持】大陸の場合 (ContinentHokkaido)
+    if isContinent(zoneName) then
+        -- 大陸の場合（Townも含む）
         local continent = Continents[zoneName]
         local firstIslandName = continent.islands[1]
         local firstIsland = Islands[firstIslandName]
+
+        if not firstIsland then
+             warn(("[ZoneManager] 大陸 '%s' の最初の島 '%s' が見つかりません。"):format(zoneName, firstIslandName))
+             return false
+        end
+
         targetX = firstIsland.centerX
         targetZ = firstIsland.centerZ
         baseY = firstIsland.baseY
         hillAmplitude = firstIsland.hillAmplitude or 20
     else
-        warn(("[ZoneManager] ゾーン '%s' は島でも大陸でもないためワープできません。"):format(zoneName))
+        -- ★修正: 島単独でのワープはエラーとする
+        warn(("[ZoneManager] ゾーン '%s' は大陸ではありません。ワープできません。"):format(zoneName))
         return false
     end
 

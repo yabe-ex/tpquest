@@ -369,14 +369,14 @@ local function createBattleUI()
 end
 
 local Sounds = ReplicatedStorage:WaitForChild("Sounds", 10)
-local TypingCorrectSound = Sounds and Sounds:FindFirstChild("TypingCorrect")
-local TypingErrorSound = Sounds and Sounds:FindFirstChild("TypingError")
+local TypingCorrectSound = Sounds and Sounds:WaitForChild("TypingCorrect", 5)
+local TypingErrorSound = Sounds and Sounds:WaitForChild("TypingError", 5)
 
 if not TypingCorrectSound then
-	warn("[BattleUI] TypingCorrect効果音が見つかりません")
+	warn("[BattleUI] TypingCorrect効果音が見つかりません (WaitForChild タイムアウト)")
 end
 if not TypingErrorSound then
-	warn("[BattleUI] TypingError効果音が見つかりません")
+	warn("[BattleUI] TypingError効果音が見つかりません (WaitForChild タイムアウト)")
 end
 
 -- バトル開始処理
