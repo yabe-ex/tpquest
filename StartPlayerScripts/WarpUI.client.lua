@@ -1,3 +1,4 @@
+-- ===== ./StartPlayerScripts/WarpUI.client.lua =====
 -- StarterPlayer/StarterPlayerScripts/WarpUI.client.lua
 -- ワープ時のロード画面
 
@@ -6,8 +7,13 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- RemoteEventを取得
-local warpEvent = ReplicatedStorage:WaitForChild("WarpEvent")
+-- RemoteEventを取得 - タイムアウトを短く設定
+local warpEvent = ReplicatedStorage:WaitForChild("WarpEvent", 5) -- ★修正: タイムアウトを5秒に設定
+
+if not warpEvent then
+    warn("[WarpUI] WarpEventが見つかりません。ワープUIは機能しません。")
+    return
+end
 
 print("[WarpUI] 初期化完了")
 

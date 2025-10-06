@@ -24,8 +24,8 @@ print("[Bootstrap] 街を生成中...")
 -- 最初にデフォルトゾーンをロード (地形生成を開始)
 ZoneManager.LoadZone(START_ZONE_NAME)
 
-task.wait(5)
-print("[Bootstrap] 地形生成の待機完了（5秒）")
+-- 【修正】地形生成後の強制待機 (5秒) を完全に削除
+print("[Bootstrap] 地形生成の待機完了（5秒待機を削除）")
 
 -- 街の設定を取得
 local IslandsRegistry = require(ReplicatedStorage.Islands.Registry)
@@ -54,7 +54,7 @@ local function setupPlayerSpawn(player)
         -- 【重要】LastLoadedLocationにデータが入るまで待機
         local loadedLocation = LastLoadedLocation[player]
         while not loadedLocation do
-            task.wait(0.05) -- 50msごとにチェック (短縮限界)
+            task.wait(0.05) -- 50msごとにチェック
             loadedLocation = LastLoadedLocation[player]
         end
 
@@ -72,25 +72,31 @@ local function setupPlayerSpawn(player)
 
             local spawnZone = loadedLocation.ZoneName
 
-            -- 【修正】物理エンジン安定化のための待機時間を 0.1秒 → 0.05秒に短縮
-            task.wait(0.05)
+            task.wait(0.05) -- 物理エンジン安定化のための最小待機
 
             local hrp = character:WaitForChild("HumanoidRootPart", 5)
             if not hrp then return end
 
             -- ロードされたゾーンがTown以外の場合、Terrain生成とポータル/モンスター生成をトリガー
             if spawnZone ~= START_ZONE_NAME then
-                -- 【修正ブロック】LoadZoneをここで呼び出し、地形生成の完了を待つ
-                ZoneManager.LoadZone(spawnZone)
+                -- 【修正】地形生成とポータル/モンスター生成を非同期タスクに委譲
+                task.spawn(function()
+                    print(("[Bootstrap] 非同期タスク開始: %s の地形生成とアセットロード"):format(spawnZone))
 
-                if _G.DestroyPortalsForZone and _G.CreatePortalsForZone then
-                    _G.DestroyPortalsForZone(START_ZONE_NAME)
-                    _G.CreatePortalsForZone(spawnZone)
-                end
+                    -- 地形生成 (LoadZoneは完了を待つ)
+                    ZoneManager.LoadZone(spawnZone)
 
-                if _G.SpawnMonstersForZone then
-                    _G.SpawnMonstersForZone(spawnZone)
-                end
+                    -- ポータル/モンスター生成 (地形生成後)
+                    if _G.DestroyPortalsForZone and _G.CreatePortalsForZone then
+                        _G.DestroyPortalsForZone(START_ZONE_NAME)
+                        _G.CreatePortalsForZone(spawnZone)
+                    end
+
+                    if _G.SpawnMonstersForZone then
+                        _G.SpawnMonstersForZone(spawnZone)
+                    end
+                    print(("[Bootstrap] 非同期タスク完了: %s のロード完了"):format(spawnZone))
+                end)
             end
 
             -- 座標の最終決定

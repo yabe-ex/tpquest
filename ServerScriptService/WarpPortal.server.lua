@@ -1,19 +1,23 @@
+-- ===== ./ServerScriptService/WarpPortal.server.lua =====
 -- ServerScriptService/WarpPortal.server.lua
 -- ワープ中のバトル開始を防止する修正版
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
-local ZoneManager = require(script.Parent.ZoneManager)
-local BattleSystem = require(script.Parent.BattleSystem)
 
 print("[WarpPortal] 初期化開始")
 
+-- 【修正】warpEvent の作成を最優先で実行する
 local warpEvent = ReplicatedStorage:FindFirstChild("WarpEvent")
 if not warpEvent then
 	warpEvent = Instance.new("RemoteEvent")
 	warpEvent.Name = "WarpEvent"
 	warpEvent.Parent = ReplicatedStorage
 end
+
+local ZoneManager = require(script.Parent.ZoneManager)
+local BattleSystem = require(script.Parent.BattleSystem)
+
 
 local warpingPlayers = {}
 local activePortals = {}
@@ -129,6 +133,10 @@ local function createPortal(config, fromZone)
 		return nil
 	end
 
+	-- ポータルサイズを確定。設定がnilの場合、Vector3.new(8, 12, 8)を使用する。
+    local portalSize = config.size or Vector3.new(8, 12, 8)
+    local portalHeight = portalSize.Y -- 修正後、portalSizeがnilになることはない
+
 	local portalX = zoneConfig.centerX + (config.offsetX or 0)
 	local portalZ = zoneConfig.centerZ + (config.offsetZ or 0)
 
@@ -137,24 +145,29 @@ local function createPortal(config, fromZone)
 	local maxRetries = 2
 
 	for attempt = 1, maxRetries do
-		groundY = FieldGen.raycastGroundY(portalX, portalZ, zoneConfig.baseY + 100)
+		-- TownのBaseYではなく、推定高度からレイキャスト開始
+		local rayStartY = zoneConfig.baseY + (zoneConfig.hillAmplitude or 20) + 100
+		groundY = FieldGen.raycastGroundY(portalX, portalZ, rayStartY)
 		if groundY then break end
 		task.wait(0.05)
 	end
 
 	local portalY
 	if groundY then
-		portalY = groundY + 1
+		-- ポータルの底面 (Y) が地面 (groundY) になるように設定
+		portalY = groundY + portalHeight / 2
+		print(("[WarpPortal DEBUG] %s: 地面検出成功 (Y=%.1f), ポータルY=%.1f"):format(config.name, groundY, portalY))
 	else
 		local estimatedHeight = zoneConfig.baseY + ((zoneConfig.hillAmplitude or 20) * 0.5)
-		portalY = estimatedHeight
+		portalY = estimatedHeight + portalHeight / 2
+		warn(("[WarpPortal DEBUG] %s: 地面検出失敗、推定高度使用 (Y=%.1f)"):format(config.name, portalY))
 	end
 
 	local portalPosition = Vector3.new(portalX, portalY, portalZ)
 
 	local portal = Instance.new("Part")
 	portal.Name = config.name
-	portal.Size = config.size or Vector3.new(8, 12, 8)
+	portal.Size = portalSize -- 確定したサイズを使用
 	portal.Position = portalPosition
 	portal.Anchored = true
 	portal.CanCollide = false
@@ -196,23 +209,6 @@ local function createPortal(config, fromZone)
 	end
 
 	portal.Parent = worldFolder
-
-	task.spawn(function()
-		task.wait(0.05)
-
-		local params = RaycastParams.new()
-		params.FilterType = Enum.RaycastFilterType.Include
-		params.FilterDescendantsInstances = {workspace.Terrain}
-
-		local rayOrigin = portal.Position
-		local rayDirection = Vector3.new(0, -200, 0)
-		local rayResult = workspace:Raycast(rayOrigin, rayDirection, params)
-
-		if rayResult and portal.Parent then
-			local adjustedY = rayResult.Position.Y + (portal.Size.Y / 2) + 0.5
-			portal.Position = Vector3.new(portal.Position.X, adjustedY, portal.Position.Z)
-		end
-	end)
 
 	-- 【重要】ポータルタッチ処理
 	portal.Touched:Connect(function(hit)
@@ -273,7 +269,7 @@ local function createPortal(config, fromZone)
 		destroyPortalsForZone(actualFromZone)
 
 		-- 前のゾーンのモンスターを削除
-		local IS_TOWN = actualFromZone == "ContinentTown" -- ★修正: ContinentTownで判定
+		local IS_TOWN = actualFromZone == "ContinentTown"
 		if not IS_TOWN and _G.DespawnMonstersForZone then
 			_G.DespawnMonstersForZone(actualFromZone)
 		end
@@ -293,7 +289,7 @@ local function createPortal(config, fromZone)
 			createPortalsForZone(config.toZone)
 
 			-- 新しいゾーンのモンスターをスポーン
-			local TO_IS_TOWN = config.toZone == "ContinentTown" -- ★修正: ContinentTownで判定
+			local TO_IS_TOWN = config.toZone == "ContinentTown"
 			if not TO_IS_TOWN and _G.SpawnMonstersForZone then
 				_G.SpawnMonstersForZone(config.toZone)
 			end
@@ -306,7 +302,7 @@ local function createPortal(config, fromZone)
 		end
 
 		-- 【修正5】ワープ中フラグを解除
-		task.wait(1)  -- 追加の安全マージン
+		task.wait(1) -- 追加の安全マージン
 		warpingPlayers[player.UserId] = nil
 		if character and character.Parent then
 			character:SetAttribute("IsWarping", false)
@@ -316,8 +312,6 @@ local function createPortal(config, fromZone)
 	return portal
 end
 
--- ServerScriptService/WarpPortal.server.lua
-
 function createPortalsForZone(zoneName)
     if activePortals[zoneName] then
         print(("[WarpPortal] %s のポータルは既に存在します"):format(zoneName))
@@ -325,8 +319,6 @@ function createPortalsForZone(zoneName)
     end
 
     activePortals[zoneName] = {}
-
-    -- Town大陸の判定フラグ（IS_TOWN_CONTINENT）は不要になったため削除
 
     local continent = Continents[zoneName]
     if continent and continent.portals then
@@ -351,8 +343,6 @@ function createPortalsForZone(zoneName)
     else
         print(("[WarpPortal] %s のポータル設定が見つかりません"):format(zoneName))
     end
-
-    -- ★注意: ここにあった2つ目のポータル生成ブロックは冗長なので削除しました。
 end
 
 function destroyPortalsForZone(zoneName)

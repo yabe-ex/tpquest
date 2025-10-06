@@ -1,3 +1,4 @@
+-- ===== ./ReplicatedStorage/Islands/Registry.lua =====
 -- ReplicatedStorage/Islands/Registry.lua (全コード)
 local RS = game:GetService("ReplicatedStorage")
 local IslandsFolder = RS:WaitForChild("Islands")
@@ -8,6 +9,8 @@ local allIslands = {}
 local islandModules = {
     IslandsFolder:WaitForChild("Town"),           -- 【修正】Town.lua を参照
     IslandsFolder:WaitForChild("HokkaidoIslands"),
+    IslandsFolder:WaitForChild("ShikokuIslands"),  -- ★新規追加
+    IslandsFolder:WaitForChild("KyushuIslands"),   -- ★新規追加
 }
 
 -- 各モジュールを読み込み

@@ -5,4 +5,6 @@ local ContinentsFolder = RS:WaitForChild("Continents")
 return {
     require(ContinentsFolder.ContientTown),
     require(ContinentsFolder.ContinentHokkaido),
+    require(ContinentsFolder.ContinentShikoku),
+    require(ContinentsFolder.ContinentKyushu),
 }
