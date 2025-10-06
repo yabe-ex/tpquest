@@ -16,10 +16,10 @@ local isInBattle = false
 
 -- RemoteEvent取得
 local RequestStatusEvent = ReplicatedStorage:WaitForChild("RequestStatus", 10)
--- ★新規: SaveGame RemoteEventの取得
 local SaveGameEvent = ReplicatedStorage:WaitForChild("SaveGame", 10)
--- ★新規: SaveSuccess RemoteEventの取得
 local SaveSuccessEvent = ReplicatedStorage:WaitForChild("SaveSuccess", 10)
+local RequestLoadRespawnEvent = ReplicatedStorage:WaitForChild("RequestLoadRespawn", 10)
+
 
 -- UIコンテナ
 local menuGui = nil
@@ -277,7 +277,6 @@ local function createModal(title, contentBuilder)
 	return modal
 end
 
--- ★新規機能: セーブ処理 (修正済み)
 local function showSaveModal()
     if not SaveGameEvent or not SaveSuccessEvent then
         createModal("セーブエラー", function(content)
@@ -301,11 +300,19 @@ local function showSaveModal()
 
     createModal("セーブ中", function(content)
         local label = Instance.new("TextLabel")
+        label.Size = UDim2.fromScale(1, 1)
+        label.BackgroundTransparency = 1
+        label.TextColor3 = Color3.fromRGB(255, 255, 255)
+        label.TextStrokeTransparency = 0.7
+        label.Font = Enum.Font.Gotham
+        label.TextSize = 18
+        label.Text = "💾 セーブ中..."
+        label.Parent = content
         -- ... (label setup)
 
         -- セーブ完了のフィードバックを待機
         connection = SaveSuccessEvent.OnClientEvent:Connect(function(success)
-            if connection then connection:Disconnect() end -- ★FIX 2: Disconnect前にnilチェック
+            if connection and connection.Connected then connection:Disconnect() end -- ★FIX 2: Disconnect前にnil/Connectedチェック
 
             if success then
                 label.Text = "✅ セーブ完了！"
@@ -319,14 +326,28 @@ local function showSaveModal()
         end)
 
         -- モーダルが強制終了された場合、接続を解除
-        content.Parent.CloseButton.MouseButton1Click:Connect(function()
-            if connection and connection.Connected then connection:Disconnect() end -- ★FIX 3: 終了ボタンもnilチェック
-            closeModal()
-        end)
+        -- 閉じるボタン（✕）のイベント接続を再利用
+        local closeButton = content.Parent:FindFirstChild("CloseButton")
+        if closeButton then
+            closeButton.MouseButton1Click:Connect(function()
+                if connection and connection.Connected then connection:Disconnect() end -- ★FIX 3: 終了ボタンもnil/Connectedチェック
+                closeModal()
+            end)
+        end
+
+        -- 背景クリック（強制終了）のイベント接続を再利用
+        local background = content.Parent.Parent:FindFirstChild("Background")
+        if background then
+             background.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    if connection and connection.Connected then connection:Disconnect() end
+                    closeModal()
+                end
+            end)
+        end
     end)
 end
 
--- ★新規機能: ロード処理
 local function showLoadModal()
 
     createModal("ロード", function(content)
@@ -372,7 +393,22 @@ local function showLoadModal()
 
         -- ロード処理はキックを実行
         loadButton.MouseButton1Click:Connect(function()
-            player:Kick("セーブデータをロードするため再起動します")
+            closeModal()
+
+            -- ★修正ブロック開始: Studioと実環境で処理を分ける
+            if game:GetService("RunService"):IsStudio() then
+                if RequestLoadRespawnEvent then
+                    -- Studioの場合、サーバーにリスポーンを要求
+                    RequestLoadRespawnEvent:FireServer()
+                    print("[MenuUI] Studioモード: サーバーにロードリスポーンを要求しました")
+                else
+                    warn("[MenuUI] RequestLoadRespawnEventが見つかりません！")
+                end
+            else
+                -- 実際のゲームの場合、キックして再接続を促す
+                player:Kick("セーブデータをロードするため再起動します")
+            end
+            -- ★修正ブロック終了
         end)
 
         -- キャンセルボタン (showLogoutから流用)
@@ -390,7 +426,8 @@ local function showLoadModal()
 		cancelButton.ZIndex = 53
 		cancelButton.Parent = content
 
-        TweenService:Create(cancelButton, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, false, 0.15), {
+        TweenService:Create(cancelButton, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0,
+        false, 0.15), {
 			BackgroundTransparency = 0.2,
 			TextTransparency = 0
 		}):Play()

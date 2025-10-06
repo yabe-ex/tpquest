@@ -638,6 +638,10 @@ local isInBattle = false
 
 -- RemoteEvent取得
 local RequestStatusEvent = ReplicatedStorage:WaitForChild("RequestStatus", 10)
+-- ★新規: SaveGame RemoteEventの取得
+local SaveGameEvent = ReplicatedStorage:WaitForChild("SaveGame", 10)
+-- ★新規: SaveSuccess RemoteEventの取得
+local SaveSuccessEvent = ReplicatedStorage:WaitForChild("SaveSuccess", 10)
 
 -- UIコンテナ
 local menuGui = nil
@@ -655,7 +659,7 @@ local cachedStats = {
 	MonstersDefeated = 0
 }
 
--- ステータス更新を受信
+-- ステータス更新を受信 (既存ロジック)
 local StatusUpdateEvent = ReplicatedStorage:FindFirstChild("StatusUpdate")
 if StatusUpdateEvent then
 	StatusUpdateEvent.OnClientEvent:Connect(function(hp, maxHP, level, exp, expToNext, gold)
@@ -666,7 +670,7 @@ if StatusUpdateEvent then
 	end)
 end
 
--- 戦歴更新を受信（確実に接続）
+-- 戦歴更新を受信 (既存ロジック)
 task.spawn(function()
 	print("[MenuUI] StatsDetailイベント接続を開始...")
 
@@ -681,18 +685,11 @@ task.spawn(function()
 	StatsDetailEvent.OnClientEvent:Connect(function(stats)
 		print("[MenuUI] ========================================")
 		print("[MenuUI] 🎯 StatsDetail受信イベント発火！")
-		print("[MenuUI] 受信したデータ:")
 		if stats then
-			print("[MenuUI] stats.MonstersDefeated =", stats.MonstersDefeated)
-			print("[MenuUI] stats.Level =", stats.Level)
-			print("[MenuUI] stats.Gold =", stats.Gold)
-
 			for key, value in pairs(stats) do
 				cachedStats[key] = value
 			end
-
 			print("[MenuUI] ✅ キャッシュ更新完了")
-			print("[MenuUI] cachedStats.MonstersDefeated =", cachedStats.MonstersDefeated)
 		else
 			warn("[MenuUI] ❌ statsがnilです！")
 		end
@@ -702,7 +699,7 @@ task.spawn(function()
 	print("[MenuUI] StatsDetailイベント接続完了")
 end)
 
--- バトル状態を監視
+-- バトル状態を監視 (既存ロジック)
 local BattleStartEvent = ReplicatedStorage:FindFirstChild("BattleStart")
 local BattleEndEvent = ReplicatedStorage:FindFirstChild("BattleEnd")
 
@@ -739,10 +736,15 @@ if BattleEndEvent then
 	end)
 end
 
--- モーダルウィンドウを閉じる
+-- モーダルウィンドウを閉じる (既存ロジック)
 function closeModal()
-	if currentModal then
-		local background = currentModal:FindFirstChild("Background")
+    if not currentModal then return end -- 防御的な早期終了
+
+    local modalToDestroy = currentModal
+    currentModal = nil -- ★即座にnilに設定し、他の処理による競合を防止
+
+	if modalToDestroy then
+		local background = modalToDestroy:FindFirstChild("Background")
 		if background then
 			local tween = TweenService:Create(background, TweenInfo.new(0.2), {
 				BackgroundTransparency = 1
@@ -750,7 +752,7 @@ function closeModal()
 			tween:Play()
 		end
 
-		local panel = currentModal:FindFirstChild("Panel")
+		local panel = modalToDestroy:FindFirstChild("Panel")
 		if panel then
 			local tween = TweenService:Create(panel, TweenInfo.new(0.2), {
 				BackgroundTransparency = 1
@@ -767,12 +769,11 @@ function closeModal()
 		end
 
 		task.wait(0.2)
-		currentModal:Destroy()
-		currentModal = nil
+		modalToDestroy:Destroy() -- ★ローカル参照を使用
 	end
 end
 
--- モーダルウィンドウを作成
+-- モーダルウィンドウを作成 (既存ロジック)
 local function createModal(title, contentBuilder)
 	if currentModal then
 		closeModal()
@@ -898,7 +899,216 @@ local function createModal(title, contentBuilder)
 	return modal
 end
 
--- ステータス画面
+-- ★新規機能: セーブ処理 (修正済み)
+local function showSaveModal()
+    if not SaveGameEvent or not SaveSuccessEvent then
+        createModal("セーブエラー", function(content)
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.fromScale(1, 1)
+            label.BackgroundTransparency = 1
+            label.TextColor3 = Color3.fromRGB(255, 100, 100)
+            label.TextStrokeTransparency = 0.7
+            label.Font = Enum.Font.Gotham
+            label.TextSize = 18
+            label.Text = "セーブ機能がサーバーで初期化されていません。"
+            label.Parent = content
+        end)
+        return
+    end
+
+    -- セーブイベントをサーバーに送信
+    SaveGameEvent:FireServer()
+
+    local connection = nil -- ★FIX 1: connectionをローカル宣言
+
+    createModal("セーブ中", function(content)
+        local label = Instance.new("TextLabel")
+        -- ... (label setup)
+
+        -- セーブ完了のフィードバックを待機
+        connection = SaveSuccessEvent.OnClientEvent:Connect(function(success)
+            if connection then connection:Disconnect() end -- ★FIX 2: Disconnect前にnilチェック
+
+            if success then
+                label.Text = "✅ セーブ完了！"
+                label.TextColor3 = Color3.fromRGB(46, 204, 113)
+            else
+                label.Text = "❌ セーブ失敗..."
+                label.TextColor3 = Color3.fromRGB(231, 76, 60)
+            end
+            task.wait(1.5)
+            closeModal()
+        end)
+
+        -- モーダルが強制終了された場合、接続を解除
+        content.Parent.CloseButton.MouseButton1Click:Connect(function()
+            if connection and connection.Connected then connection:Disconnect() end -- ★FIX 3: 終了ボタンもnilチェック
+            closeModal()
+        end)
+    end)
+end
+
+-- ★新規機能: ロード処理
+local function showLoadModal()
+
+    createModal("ロード", function(content)
+        local warningLabel = Instance.new("TextLabel")
+        warningLabel.Size = UDim2.new(1, 0, 0, 60)
+		warningLabel.Position = UDim2.new(0, 0, 0, 20)
+		warningLabel.BackgroundTransparency = 1
+		warningLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
+		warningLabel.TextStrokeTransparency = 0.7
+		warningLabel.Font = Enum.Font.Gotham
+		warningLabel.TextSize = 18
+		warningLabel.Text = "現在、ロードは再接続によって行われます。\nゲームを再起動しますか？"
+		warningLabel.TextWrapped = true
+		warningLabel.TextTransparency = 1
+		warningLabel.ZIndex = 53
+		warningLabel.Parent = content
+
+        TweenService:Create(warningLabel, TweenInfo.new(0.2), {TextTransparency = 0, TextStrokeTransparency = 0.7}):Play()
+
+        -- ロードボタン (サーバーにロード要求を送り、キックする)
+        local loadButton = Instance.new("TextButton")
+		loadButton.Size = UDim2.new(0, 150, 0, 50)
+		loadButton.Position = UDim2.new(0.5, -160, 1, -70)
+		loadButton.BackgroundColor3 = Color3.fromRGB(52, 152, 219)
+		loadButton.BackgroundTransparency = 0.2
+        loadButton.BorderSizePixel = 0
+        loadButton.Font = Enum.Font.GothamBold
+        loadButton.TextSize = 18
+		loadButton.Text = "ゲームを再起動"
+        loadButton.TextColor3 = Color3.new(1, 1, 1)
+        loadButton.TextTransparency = 1
+        loadButton.ZIndex = 53
+        loadButton.Parent = content
+
+        TweenService:Create(loadButton, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, false, 0.1), {
+			BackgroundTransparency = 0.2,
+			TextTransparency = 0
+		}):Play()
+
+        local loadCorner = Instance.new("UICorner")
+		loadCorner.CornerRadius = UDim.new(0, 8)
+		loadCorner.Parent = loadButton
+
+        -- ロード処理はキックを実行
+        loadButton.MouseButton1Click:Connect(function()
+            player:Kick("セーブデータをロードするため再起動します")
+        end)
+
+        -- キャンセルボタン (showLogoutから流用)
+		local cancelButton = Instance.new("TextButton")
+		cancelButton.Size = UDim2.new(0, 150, 0, 50)
+		cancelButton.Position = UDim2.new(0.5, 10, 1, -70)
+		cancelButton.BackgroundColor3 = Color3.fromRGB(149, 165, 166)
+		cancelButton.BackgroundTransparency = 0.2
+		cancelButton.BorderSizePixel = 0
+		cancelButton.Font = Enum.Font.GothamBold
+		cancelButton.TextSize = 18
+		cancelButton.Text = "キャンセル"
+		cancelButton.TextColor3 = Color3.new(1, 1, 1)
+		cancelButton.TextTransparency = 1
+		cancelButton.ZIndex = 53
+		cancelButton.Parent = content
+
+        TweenService:Create(cancelButton, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, false, 0.15), {
+			BackgroundTransparency = 0.2,
+			TextTransparency = 0
+		}):Play()
+
+        local cancelCorner = Instance.new("UICorner")
+		cancelCorner.CornerRadius = UDim.new(0, 8)
+		cancelCorner.Parent = cancelButton
+
+		cancelButton.MouseButton1Click:Connect(function()
+			closeModal()
+		end)
+
+    end)
+end
+
+-- ★新規機能: 初期化処理
+local function showResetModal()
+    createModal("データ初期化", function(content)
+        local warningLabel = Instance.new("TextLabel")
+		warningLabel.Size = UDim2.new(1, 0, 0, 60)
+		warningLabel.Position = UDim2.new(0, 0, 0, 20)
+		warningLabel.BackgroundTransparency = 1
+		warningLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+		warningLabel.TextStrokeTransparency = 0.7
+		warningLabel.Font = Enum.Font.Gotham
+		warningLabel.TextSize = 18
+		warningLabel.Text = "!! 警告 !!\nすべての進行状況を失います。本当に初期化しますか？"
+		warningLabel.TextWrapped = true
+		warningLabel.TextTransparency = 1
+		warningLabel.ZIndex = 53
+		warningLabel.Parent = content
+
+		TweenService:Create(warningLabel, TweenInfo.new(0.2), {
+			TextTransparency = 0,
+			TextStrokeTransparency = 0.7
+		}):Play()
+
+		local resetButton = Instance.new("TextButton")
+		resetButton.Size = UDim2.new(0, 150, 0, 50)
+		resetButton.Position = UDim2.new(0.5, -160, 1, -70)
+		resetButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+		resetButton.BackgroundTransparency = 0.2
+        resetButton.BorderSizePixel = 0
+        resetButton.Font = Enum.Font.GothamBold
+        resetButton.TextSize = 18
+		resetButton.Text = "初期化する"
+		resetButton.TextColor3 = Color3.new(1, 1, 1)
+		resetButton.TextTransparency = 1
+		resetButton.ZIndex = 53
+		resetButton.Parent = content
+
+        local resetCorner = Instance.new("UICorner")
+		resetCorner.CornerRadius = UDim.new(0, 8)
+		resetCorner.Parent = resetButton
+
+		TweenService:Create(resetButton, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, false, 0.1), {
+			BackgroundTransparency = 0.2,
+			TextTransparency = 0
+		}):Play()
+
+		resetButton.MouseButton1Click:Connect(function()
+			-- TODO: FireServer Reset Event
+			player:Kick("データを初期化しました")
+		end)
+
+		local cancelButton = Instance.new("TextButton")
+		cancelButton.Size = UDim2.new(0, 150, 0, 50)
+		cancelButton.Position = UDim2.new(0.5, 10, 1, -70)
+		cancelButton.BackgroundColor3 = Color3.fromRGB(149, 165, 166)
+		cancelButton.BackgroundTransparency = 0.2
+		cancelButton.BorderSizePixel = 0
+		cancelButton.Font = Enum.Font.GothamBold
+		cancelButton.TextSize = 18
+		cancelButton.Text = "キャンセル"
+		cancelButton.TextColor3 = Color3.new(1, 1, 1)
+		cancelButton.TextTransparency = 1
+		cancelButton.ZIndex = 53
+		cancelButton.Parent = content
+
+		TweenService:Create(cancelButton, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, false, 0.15), {
+			BackgroundTransparency = 0.2,
+			TextTransparency = 0
+		}):Play()
+
+		local cancelCorner = Instance.new("UICorner")
+		cancelCorner.CornerRadius = UDim.new(0, 8)
+		cancelCorner.Parent = cancelButton
+
+		cancelButton.MouseButton1Click:Connect(function()
+			closeModal()
+		end)
+    end)
+end
+
+
+-- ステータス画面 (既存ロジック)
 local function showStatus()
 	createModal("ステータス", function(content)
 		local stats = {
@@ -932,7 +1142,7 @@ local function showStatus()
 	end)
 end
 
--- アイテム画面
+-- アイテム画面 (既存ロジック)
 local function showItems()
 	createModal("アイテム", function(content)
 		local emptyLabel = Instance.new("TextLabel")
@@ -954,7 +1164,7 @@ local function showItems()
 	end)
 end
 
--- スキル画面
+-- スキル画面 (既存ロジック)
 local function showSkills()
 	createModal("スキル", function(content)
 		local emptyLabel = Instance.new("TextLabel")
@@ -976,7 +1186,7 @@ local function showSkills()
 	end)
 end
 
--- 戦歴画面
+-- 戦歴画面 (既存ロジック)
 local function showRecords()
 	createModal("戦歴", function(content)
 		print("[MenuUI] ========================================")
@@ -1024,7 +1234,7 @@ local function showRecords()
 	end)
 end
 
--- 設定画面
+-- 設定画面 (既存ロジック)
 local function showSettings()
 	createModal("設定", function(content)
 		local bgmLabel = Instance.new("TextLabel")
@@ -1067,9 +1277,9 @@ local function showSettings()
 	end)
 end
 
--- ログアウト確認
-local function showLogout()
-	createModal("ログアウト", function(content)
+-- ログアウト確認 (showSystemに統合されるため、ここでは非公開の関数として残す)
+local function showLogoutInner()
+    createModal("ログアウト", function(content)
 		local warningLabel = Instance.new("TextLabel")
 		warningLabel.Size = UDim2.new(1, 0, 0, 60)
 		warningLabel.Position = UDim2.new(0, 0, 0, 20)
@@ -1093,7 +1303,7 @@ local function showLogout()
 		logoutButton.Size = UDim2.new(0, 150, 0, 50)
 		logoutButton.Position = UDim2.new(0.5, -160, 1, -70)
 		logoutButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-		logoutButton.BackgroundTransparency = 1
+		logoutButton.BackgroundTransparency = 0.2
 		logoutButton.BorderSizePixel = 0
 		logoutButton.Font = Enum.Font.GothamBold
 		logoutButton.TextSize = 18
@@ -1119,8 +1329,8 @@ local function showLogout()
 		local cancelButton = Instance.new("TextButton")
 		cancelButton.Size = UDim2.new(0, 150, 0, 50)
 		cancelButton.Position = UDim2.new(0.5, 10, 1, -70)
-		cancelButton.BackgroundColor3 = Color3.fromRGB(52, 152, 219)
-		cancelButton.BackgroundTransparency = 1
+		cancelButton.BackgroundColor3 = Color3.fromRGB(149, 165, 166)
+		cancelButton.BackgroundTransparency = 0.2
 		cancelButton.BorderSizePixel = 0
 		cancelButton.Font = Enum.Font.GothamBold
 		cancelButton.TextSize = 18
@@ -1145,6 +1355,81 @@ local function showLogout()
 	end)
 end
 
+
+-- ★新規機能: システムメニュー (2x2グリッド)
+local function showSystem()
+	createModal("システム", function(content)
+        -- コンテンツフレームを基準に、2x2グリッドを中央に配置
+        local systemFrame = Instance.new("Frame")
+        systemFrame.Size = UDim2.new(1, 0, 1, 0)
+        systemFrame.BackgroundTransparency = 1
+        systemFrame.Parent = content
+
+        local systemButtons = {
+            {name = "セーブ", func = showSaveModal, row = 0, col = 0, color = Color3.fromRGB(46, 204, 113)}, -- 緑
+            {name = "ロード", func = showLoadModal, row = 0, col = 1, color = Color3.fromRGB(52, 152, 219)}, -- 青
+            {name = "初期化", func = showResetModal, row = 1, col = 0, color = Color3.fromRGB(231, 76, 60)}, -- 赤
+            {name = "ログアウト", func = showLogoutInner, row = 1, col = 1, color = Color3.fromRGB(149, 165, 166)}, -- 灰色
+        }
+
+        local buttonWidth = 160
+        local buttonHeight = 65
+        local spacing = 15
+
+        local totalWidth = buttonWidth * 2 + spacing
+        local totalHeight = buttonHeight * 2 + spacing
+
+        for _, btnData in ipairs(systemButtons) do
+            local button = Instance.new("TextButton")
+            button.Name = btnData.name .. "Button"
+            button.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
+
+            -- グリッドの中心に配置するためのオフセット計算（手動調整が容易なようにAnchorPointを使用しない）
+            local gridX = btnData.col * (buttonWidth + spacing)
+            local gridY = btnData.row * (buttonHeight + spacing)
+
+            -- AbsoluteSizeは実行時にしか確定しないため、AnchorPoint 0.5で相対位置を計算
+            button.Position = UDim2.new(0.5, gridX - totalWidth / 2, 0.5, gridY - totalHeight / 2)
+
+            button.BackgroundColor3 = btnData.color
+            button.BackgroundTransparency = 0.2
+            button.BorderSizePixel = 0
+            button.Font = Enum.Font.GothamBold
+            button.TextSize = 18
+            button.Text = btnData.name
+            button.TextColor3 = Color3.new(1, 1, 1)
+            button.TextStrokeTransparency = 0.7
+            button.ZIndex = 53
+            button.Parent = systemFrame
+
+            local corner = Instance.new("UICorner")
+            corner.CornerRadius = UDim.new(0, 8)
+            corner.Parent = button
+
+            button.MouseButton1Click:Connect(function()
+                if not isInBattle then
+                    -- Systemモーダルを閉じてから、次のモーダルまたはアクションを実行
+                    -- showLogoutInnerは内部でcloseModalを呼ばないため、ここでcloseModalする
+                    if btnData.name ~= "ログアウト" and btnData.name ~= "初期化" then
+                        closeModal()
+                    end
+                    btnData.func()
+                end
+            end)
+
+            button.MouseEnter:Connect(function()
+                if not isInBattle then
+                    button.BackgroundColor3 = btnData.color:Lerp(Color3.new(1,1,1), 0.3)
+                end
+            end)
+            button.MouseLeave:Connect(function()
+                button.BackgroundColor3 = btnData.color
+            end)
+        end
+	end)
+end
+
+
 -- メニューUI作成
 local function createMenuUI()
 	menuGui = Instance.new("ScreenGui")
@@ -1165,7 +1450,7 @@ local function createMenuUI()
 		{name = "スキル", func = showSkills, row = 0, col = 2},
 		{name = "戦歴", func = showRecords, row = 1, col = 0},
 		{name = "設定", func = showSettings, row = 1, col = 1},
-		{name = "ログアウト", func = showLogout, row = 1, col = 2},
+		{name = "システム", func = showSystem, row = 1, col = 2}, -- ★修正: ログアウトをシステムに置き換え
 	}
 
 	local buttonWidth = 80
@@ -2996,9 +3281,8 @@ local function isContinent(zoneName)
     return Continents[zoneName] ~= nil
 end
 
--- ゾーンが島かチェック
+-- ゾーンが島かチェック (Townが大陸化されたため、この関数は実質未使用に)
 local function isIsland(zoneName)
-    -- StartTown (Island)は大陸ではないが、島としては存在する
     return Islands[zoneName] ~= nil and not isContinent(zoneName)
 end
 
@@ -3078,27 +3362,11 @@ function ZoneManager.LoadZone(zoneName)
         return true
     end
 
-    if isIsland(zoneName) then
-        -- 【復元】島の場合 (StartTown)
-        local islandConfig = Islands[zoneName]
-        if islandConfig then
-            print(("[ZoneManager] 島生成開始: %s"):format(zoneName))
-            FieldGen.generateIsland(islandConfig)
-            ZoneManager.ActiveZones[zoneName] = {
-                config = islandConfig,
-                loadedAt = os.time(),
-            }
-            print(("[ZoneManager] 島生成完了: %s"):format(zoneName))
-            return true
-        else
-            warn(("[ZoneManager] 島 '%s' の設定が見つかりません"):format(zoneName))
-            return false
-        end
-    elseif isContinent(zoneName) then
-        -- 【維持】大陸の場合 (ContinentHokkaido)
+    if isContinent(zoneName) then
         return loadContinent(zoneName)
     else
-        warn(("[ZoneManager] ゾーン '%s' は島でも大陸でもありません。"):format(zoneName))
+        -- ★修正: 単一の島をロードするロジックを削除。すべて大陸経由でロード。
+        warn(("[ZoneManager] ゾーン '%s' は大陸ではありません。ロードをスキップしました。"):format(zoneName))
         return false
     end
 end
@@ -3114,15 +3382,17 @@ function ZoneManager.UnloadZone(zoneName)
     local terrain = workspace.Terrain
     local configsToUnload = {}
 
-    if isIsland(zoneName) then
-        -- 島の場合
-        table.insert(configsToUnload, Islands[zoneName])
-    elseif isContinent(zoneName) then
+    -- ★修正: 大陸としてのみ処理
+    if isContinent(zoneName) then
         -- 大陸の場合は含まれる全ての島を削除
         local continent = Continents[zoneName]
         for _, islandName in ipairs(continent.islands) do
             table.insert(configsToUnload, Islands[islandName])
         end
+    else
+         -- ★修正: 大陸でないゾーンはアンロードできない
+         warn(("[ZoneManager] ゾーン '%s' は大陸ではありません。アンロードをスキップしました。"):format(zoneName))
+         return
     end
 
     -- 各島の地形を削除
@@ -3171,27 +3441,27 @@ function ZoneManager.WarpPlayerToZone(player, zoneName)
     local hrp = character:FindFirstChild("HumanoidRootPart")
     if not hrp then return false end
 
-    -- ワープ先の座標を決定
+    -- ワープ先の座標を決定 (常に大陸の最初の島を参照するように統一)
     local targetX, targetZ, baseY, hillAmplitude
 
-    if isIsland(zoneName) then
-        -- 【復元】島の場合 (StartTown)
-        local island = Islands[zoneName]
-        targetX = island.centerX
-        targetZ = island.centerZ
-        baseY = island.baseY
-        hillAmplitude = island.hillAmplitude or 20
-    elseif isContinent(zoneName) then
-        -- 【維持】大陸の場合 (ContinentHokkaido)
+    if isContinent(zoneName) then
+        -- 大陸の場合（Townも含む）
         local continent = Continents[zoneName]
         local firstIslandName = continent.islands[1]
         local firstIsland = Islands[firstIslandName]
+
+        if not firstIsland then
+             warn(("[ZoneManager] 大陸 '%s' の最初の島 '%s' が見つかりません。"):format(zoneName, firstIslandName))
+             return false
+        end
+
         targetX = firstIsland.centerX
         targetZ = firstIsland.centerZ
         baseY = firstIsland.baseY
         hillAmplitude = firstIsland.hillAmplitude or 20
     else
-        warn(("[ZoneManager] ゾーン '%s' は島でも大陸でもないためワープできません。"):format(zoneName))
+        -- ★修正: 島単独でのワープはエラーとする
+        warn(("[ZoneManager] ゾーン '%s' は大陸ではありません。ワープできません。"):format(zoneName))
         return false
     end
 
@@ -3240,13 +3510,27 @@ return ZoneManager
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 
 local PlayerStats = {}
 
--- RemoteEventを取得する関数
-local function getRemoteEvent(name)
-	return ReplicatedStorage:WaitForChild(name, 10)
+-- RemoteEventsを確実に取得・作成するヘルパー関数
+local function getOrCreateRemoteEvent(name)
+    local event = ReplicatedStorage:FindFirstChild(name)
+	if not event then
+		event = Instance.new("RemoteEvent")
+		event.Name = name
+		event.Parent = ReplicatedStorage
+	end
+	return event
 end
+
+-- RemoteEventの定義
+local StatusUpdateEvent = getOrCreateRemoteEvent("StatusUpdate")
+local SaveGameEvent = getOrCreateRemoteEvent("SaveGame") -- セーブイベント
+local StatsDetailEvent = getOrCreateRemoteEvent("StatsDetail")
+local LevelUpEvent = getOrCreateRemoteEvent("LevelUp")
+local SaveSuccessEvent = getOrCreateRemoteEvent("SaveSuccess") -- セーブフィードバックイベント
 
 -- デフォルトステータス
 local DEFAULT_STATS = {
@@ -3270,24 +3554,34 @@ end
 
 -- 各プレイヤーのステータスを保存
 local PlayerData = {}
+-- ロード機能が無効なため、PlayerSaveDataは簡素化
+local PlayerSaveData = {}
+PlayerStats.PlayerSaveData = PlayerSaveData
 
--- プレイヤーのステータスを初期化
+
+-- プレイヤーのステータスを初期化 (デフォルト値を使用)
 function PlayerStats.initPlayer(player: Player)
 	if PlayerData[player] then
 		warn(("[PlayerStats] %s は既に初期化済みです"):format(player.Name))
-		return
+        -- ロード機能は無効なため、デフォルト位置を返す
+		return {ZoneName = "ContinentTown", X = -50, Y = 50, Z = 50}
 	end
 
+    -- 【ロード機能は無効化】: DataStoreManagerの呼び出しを削除
+
 	-- デフォルト値でステータスを作成
-	PlayerData[player] = {}
+    PlayerData[player] = {}
+
 	for key, value in pairs(DEFAULT_STATS) do
 		PlayerData[player][key] = value
 	end
 
-	print(("[PlayerStats] %s のステータスを初期化しました"):format(player.Name))
+	print(("[PlayerStats] %s のステータスを初期化しました (デフォルトデータ使用)"):format(player.Name))
 
-	-- TODO: DataStoreから読み込み
+    -- デフォルトスポーン位置を返す (TownのNW島の中心付近)
+    return {ZoneName = "ContinentTown", X = -50, Y = 50, Z = 50}
 end
+
 
 -- プレイヤーのステータスを取得
 function PlayerStats.getStats(player: Player)
@@ -3347,19 +3641,16 @@ function PlayerStats.takeDamage(player: Player, damage: number): boolean
 		))
 
 	-- ステータス更新を送信
-	local StatusUpdateEvent = getRemoteEvent("StatusUpdate")
-	if StatusUpdateEvent then
-		local expToNext = getRequiredExp(stats.Level)
-		StatusUpdateEvent:FireClient(
-			player,
-			stats.CurrentHP,
-			stats.MaxHP,
-			stats.Level,
-			stats.Experience,
-			expToNext,
-			stats.Gold
-		)
-	end
+	local expToNext = getRequiredExp(stats.Level)
+	StatusUpdateEvent:FireClient(
+		player,
+		stats.CurrentHP,
+		stats.MaxHP,
+		stats.Level,
+		stats.Experience,
+		expToNext,
+		stats.Gold
+	)
 
 	-- 死亡判定
 	if stats.CurrentHP <= 0 then
@@ -3388,19 +3679,16 @@ function PlayerStats.addExperience(player: Player, exp: number)
 	end
 
 	-- ステータス更新を送信
-	local StatusUpdateEvent = getRemoteEvent("StatusUpdate")
-	if StatusUpdateEvent then
-		local expToNext = getRequiredExp(stats.Level)
-		StatusUpdateEvent:FireClient(
-			player,
-			stats.CurrentHP,
-			stats.MaxHP,
-			stats.Level,
-			stats.Experience,
-			expToNext,
-			stats.Gold
-		)
-	end
+	local expToNext = getRequiredExp(stats.Level)
+	StatusUpdateEvent:FireClient(
+		player,
+		stats.CurrentHP,
+		stats.MaxHP,
+		stats.Level,
+		stats.Experience,
+		expToNext,
+		stats.Gold
+	)
 end
 
 -- ゴールドを追加
@@ -3414,19 +3702,16 @@ function PlayerStats.addGold(player: Player, gold: number)
 		))
 
 	-- ステータス更新を送信
-	local StatusUpdateEvent = getRemoteEvent("StatusUpdate")
-	if StatusUpdateEvent then
-		local expToNext = getRequiredExp(stats.Level)
-		StatusUpdateEvent:FireClient(
-			player,
-			stats.CurrentHP,
-			stats.MaxHP,
-			stats.Level,
-			stats.Experience,
-			expToNext,
-			stats.Gold
-		)
-	end
+	local expToNext = getRequiredExp(stats.Level)
+	StatusUpdateEvent:FireClient(
+		player,
+		stats.CurrentHP,
+		stats.MaxHP,
+		stats.Level,
+		stats.Experience,
+		expToNext,
+		stats.Gold
+	)
 end
 
 -- ゴールドを減らす
@@ -3493,53 +3778,93 @@ function PlayerStats.levelUp(player: Player)
 		))
 
 	-- クライアントにレベルアップ演出を通知
-	local LevelUpEvent = getRemoteEvent("LevelUp")
-	if LevelUpEvent then
-		LevelUpEvent:FireClient(player, stats.Level, stats.MaxHP, stats.Speed, stats.Attack, stats.Defense)
-	end
+	LevelUpEvent:FireClient(player, stats.Level, stats.MaxHP, stats.Speed, stats.Attack, stats.Defense)
 
 	-- ステータス更新を送信
-	local StatusUpdateEvent = getRemoteEvent("StatusUpdate")
-	if StatusUpdateEvent then
-		local expToNext = stats.Level * 100
-		StatusUpdateEvent:FireClient(
-			player,
-			stats.CurrentHP,
-			stats.MaxHP,
-			stats.Level,
-			stats.Experience,
-			expToNext,
-			stats.Gold
-		)
-	end
+	local expToNext = getRequiredExp(stats.Level)
+	StatusUpdateEvent:FireClient(
+		player,
+		stats.CurrentHP,
+		stats.MaxHP,
+		stats.Level,
+		stats.Experience,
+		expToNext,
+		stats.Gold
+	)
 end
 
 -- プレイヤーが退出したらデータをクリア
 function PlayerStats.removePlayer(player: Player)
 	-- TODO: DataStoreに保存
 	PlayerData[player] = nil
+    PlayerSaveData[player] = nil
 	print(("[PlayerStats] %s のデータを削除しました"):format(player.Name))
 end
+
+
+-- 【新規】手動セーブ処理
+local function handleSaveGame(player)
+    -- DataCollectorsとDataStoreManagerをロード
+    local DataCollectorsModule = ServerScriptService:WaitForChild("DataCollectors", 10)
+    local DataStoreManagerModule = ServerScriptService:WaitForChild("DataStoreManager", 10)
+
+    if not DataCollectorsModule or not DataStoreManagerModule then
+        warn("[PlayerStats] セーブ失敗: 必要なモジュールが見つかりません。")
+        SaveGameEvent:FireClient(player, false)
+        return
+    end
+
+    local DataCollectors = require(DataCollectorsModule)
+    local DataStoreManager = require(DataStoreManagerModule)
+
+    local stats = PlayerData[player]
+    if not stats then
+        warn(("[PlayerStats] %s のステータスが見つからないためセーブできません。"):format(player.Name))
+        SaveGameEvent:FireClient(player, false)
+        return
+    end
+
+    -- データ収集とセーブを実行
+    local saveData = DataCollectors.createSaveData(player, stats)
+    DataStoreManager.SaveData(player, saveData)
+end
+
 
 -- 初期化
 function PlayerStats.init()
 	-- 既存のプレイヤーを初期化
 	for _, player in ipairs(Players:GetPlayers()) do
-		PlayerStats.initPlayer(player)
+		task.spawn(function() -- initPlayerはI/Oブロッキングのため非同期で実行
+            PlayerStats.initPlayer(player)
+        end)
 	end
 
 	-- 新規参加プレイヤーを初期化
 	Players.PlayerAdded:Connect(function(player)
-		PlayerStats.initPlayer(player)
+		task.spawn(function() -- initPlayerはI/Oブロッキングのため非同期で実行
+            PlayerStats.initPlayer(player)
+        end)
 	end)
 
 	-- 退出時にデータをクリア
 	Players.PlayerRemoving:Connect(function(player)
 		PlayerStats.removePlayer(player)
+
+        -- 【新規】自動セーブ (ゲーム終了時のセーブ)
+        local DataCollectorsModule = ServerScriptService:FindFirstChild("DataCollectors")
+        local DataStoreManagerModule = ServerScriptService:FindFirstChild("DataStoreManager")
+        if DataCollectorsModule and DataStoreManagerModule and PlayerData[player] then
+            local saveData = require(DataCollectorsModule).createSaveData(player, PlayerData[player])
+            require(DataStoreManagerModule).SaveData(player, saveData)
+        end
 	end)
 
+	-- 【新規】セーブイベントの接続
+    local SaveGameEvent = getOrCreateRemoteEvent("SaveGame")
+    SaveGameEvent.OnServerEvent:Connect(handleSaveGame)
+
 	-- 詳細ステータスリクエスト用RemoteEvent
-	local RequestStatsDetailEvent = ReplicatedStorage:FindFirstChild("RequestStatsDetail")
+    local RequestStatsDetailEvent = ReplicatedStorage:FindFirstChild("RequestStatsDetail")
 	if not RequestStatsDetailEvent then
 		RequestStatsDetailEvent = Instance.new("RemoteEvent")
 		RequestStatsDetailEvent.Name = "RequestStatsDetail"
@@ -3569,7 +3894,7 @@ end
 return PlayerStats
 ===== ./ServerScriptService/Bootstrap.server.lua =====
 -- ServerScriptService/Bootstrap.server.lua
--- ゲーム初期化スクリプト（最終安定版）
+-- ゲーム初期化スクリプト（最終安定版 - セーブ機能有効）
 
 local ServerScriptService = game:GetService("ServerScriptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -3579,12 +3904,17 @@ print("[Bootstrap] === ゲーム初期化開始 ===")
 
 -- ZoneManagerを読み込み
 local ZoneManager = require(script.Parent.ZoneManager)
-local PlayerStats = require(ServerScriptService:WaitForChild("PlayerStats"))
+-- PlayerStatsのロードはsetupPlayerSpawnに任せ、ここではWaitForChildで参照を用意
+local PlayerStats = ServerScriptService:WaitForChild("PlayerStats")
 
-PlayerStats.init()
+local START_ZONE_NAME = "ContinentTown"
+
+-- PlayerStatsの初期化（ロード処理はPlayerStats内でtask.spawnに任せる）
+require(PlayerStats).init()
 
 print("[Bootstrap] 街を生成中...")
-ZoneManager.LoadZone("StartTown") -- StartTown (Island) をロード
+-- 最初にデフォルトゾーンをロード (地形生成を開始)
+ZoneManager.LoadZone(START_ZONE_NAME)
 
 task.wait(5)
 print("[Bootstrap] 地形生成の待機完了（5秒）")
@@ -3604,11 +3934,10 @@ if not townConfig then
 	return
 end
 
--- 【修正点 A：ポータル生成の呼び出しをグローバル関数に切り替え】
--- FindFirstChildのエラーを回避し、WarpPortal.server.luaで公開された関数を直接利用します。
-if _G.createPortalsForZone then
-    print("[Bootstrap] StartTownのポータルを生成中...")
-    _G.createPortalsForZone("StartTown")
+-- ポータル生成の呼び出し
+if _G.CreatePortalsForZone then
+    print(("[Bootstrap] %s のポータルを生成中..."):format(START_ZONE_NAME))
+    _G.CreatePortalsForZone(START_ZONE_NAME)
 else
     warn("[Bootstrap] ⚠️ エラー回避: WarpPortal.server.luaがまだ初期化されていないか、グローバル関数をエクスポートしていません。ポータル生成をスキップします。")
 end
@@ -3616,40 +3945,61 @@ end
 
 -- プレイヤーのスポーン位置を街に設定
 local function setupPlayerSpawn(player)
-	player.CharacterAdded:Connect(function(character)
-		-- 【重要】物理エンジン安定のため待機
-		task.wait(0.5)
 
-		local hrp = character:FindFirstChild("HumanoidRootPart")
-		if not hrp then return end
+    player.CharacterAdded:Connect(function(character)
+        task.spawn(function()
 
-		local currentZone = ZoneManager.GetPlayerZone(player)
-		-- ゾーンが設定済み（＝一度移動した）の場合は、二重スポーンを防ぐためスキップ
-		if currentZone then
-			return
-		end
+            -- 【重要】物理エンジン安定のため待機
+            task.wait(0.5)
 
-		local spawnX = townConfig.centerX
-		local spawnZ = townConfig.centerZ
-		local spawnY = townConfig.baseY + 50
+            local hrp = character:WaitForChild("HumanoidRootPart", 5)
+            if not hrp then return end
 
-		print(("[Bootstrap] %s を街にスポーン: (%.0f, %.0f, %.0f)"):format(
-			player.Name, spawnX, spawnY, spawnZ
-			))
+            -- PlayerStats.initPlayer(データロード)をここ（非同期タスク内）で実行し、スポーン位置を取得
+            local loadedLocation = require(PlayerStats).initPlayer(player)
 
-		-- CFrame設定は一度だけ
-		hrp.CFrame = CFrame.new(spawnX, spawnY, spawnZ)
+            local spawnZone = loadedLocation.ZoneName
+            local currentZone = ZoneManager.GetPlayerZone(player)
 
-		ZoneManager.PlayerZones[player] = "StartTown"
-	end)
+            -- ゾーンが設定済み（＝一度移動した）の場合は、二重スポーンを防ぐためスキップ
+            if currentZone then
+                return
+            end
+
+            -- ロードされたゾーンがTown以外の場合、再度ロードをトリガー
+            if spawnZone ~= START_ZONE_NAME then
+                ZoneManager.LoadZone(spawnZone)
+            end
+
+            local spawnX = loadedLocation.X
+            local spawnZ = loadedLocation.Z
+            local spawnY = loadedLocation.Y
+
+            -- ロード座標を使用するが、Townの場合は安全なY座標に固定
+            if spawnZone == START_ZONE_NAME then
+                spawnY = townConfig.baseY + 50
+                spawnX = townConfig.centerX
+                spawnZ = townConfig.centerZ
+            end
+
+            print(("[Bootstrap] %s を %s にテレポート: (%.0f, %.0f, %.0f)"):format(
+                player.Name, spawnZone, spawnX, spawnY, spawnZ
+                ))
+
+            -- CFrame設定 (テレポート)
+            hrp.CFrame = CFrame.new(spawnX, spawnY, spawnZ)
+
+            -- プレイヤーのゾーン情報を設定
+            ZoneManager.PlayerZones[player] = spawnZone
+
+        end)
+    end)
 end
+
 
 -- 既存プレイヤーと新規プレイヤーに適用
 for _, player in ipairs(Players:GetPlayers()) do
 	setupPlayerSpawn(player)
-
-    -- 【修正点 B：二重落下防止】
-    -- 既存プレイヤーへの即座のCFrame設定を完全に削除します。
 end
 
 Players.PlayerAdded:Connect(setupPlayerSpawn)
@@ -3684,7 +4034,7 @@ task.spawn(function()
 end)
 
 print("[Bootstrap] === ゲーム初期化完了 ===")
-print("[Bootstrap] プレイヤーは街（StartTown）からスタートします")
+print(("[Bootstrap] プレイヤーは街（%s）からスタートします"):format(START_ZONE_NAME))
 ===== ./ServerScriptService/LoadTest.server.lua =====
 -- ServerScriptService/LoadTest (Script)
 local startTime = os.clock()
@@ -3815,7 +4165,11 @@ end
 
 local Continents = {}
 for _, continent in ipairs(ContinentsRegistry) do
-	Continents[continent.name] = continent
+	if continent and continent.name then
+		Continents[continent.name] = continent
+	else
+		warn(("[WarpPortal] 名前が設定されていない大陸定義をスキップしました"):format(continent and continent.name or "nil"))
+	end
 end
 
 local function resolveTemplate(pathArray: {string}): Model?
@@ -3903,9 +4257,12 @@ end
 
 -- 【修正】ポータルタッチ時、即座にワープ中フラグを設定
 local function createPortal(config, fromZone)
-	local zoneConfig = Islands[fromZone]
+	-- Town大陸の場合、fromZoneはContinentTownだが、ポータル座標はislandNameを参照する必要がある。
+	local islandName = config.islandName or fromZone
+	local zoneConfig = Islands[islandName]
+
 	if not zoneConfig then
-		warn(("[WarpPortal] ゾーン '%s' の設定が見つかりません"):format(fromZone))
+		warn(("[WarpPortal] ゾーン '%s' の島設定が見つかりません"):format(islandName))
 		return nil
 	end
 
@@ -4053,7 +4410,8 @@ local function createPortal(config, fromZone)
 		destroyPortalsForZone(actualFromZone)
 
 		-- 前のゾーンのモンスターを削除
-		if actualFromZone ~= "StartTown" and _G.DespawnMonstersForZone then
+		local IS_TOWN = actualFromZone == "ContinentTown" -- ★修正: ContinentTownで判定
+		if not IS_TOWN and _G.DespawnMonstersForZone then
 			_G.DespawnMonstersForZone(actualFromZone)
 		end
 
@@ -4072,7 +4430,8 @@ local function createPortal(config, fromZone)
 			createPortalsForZone(config.toZone)
 
 			-- 新しいゾーンのモンスターをスポーン
-			if config.toZone ~= "StartTown" and _G.SpawnMonstersForZone then
+			local TO_IS_TOWN = config.toZone == "ContinentTown" -- ★修正: ContinentTownで判定
+			if not TO_IS_TOWN and _G.SpawnMonstersForZone then
 				_G.SpawnMonstersForZone(config.toZone)
 			end
 
@@ -4094,71 +4453,62 @@ local function createPortal(config, fromZone)
 	return portal
 end
 
+-- ServerScriptService/WarpPortal.server.lua
+
 function createPortalsForZone(zoneName)
-	if activePortals[zoneName] then
-		print(("[WarpPortal] %s のポータルは既に存在します"):format(zoneName))
-		return
-	end
+    if activePortals[zoneName] then
+        print(("[WarpPortal] %s のポータルは既に存在します"):format(zoneName))
+        return
+    end
 
-	activePortals[zoneName] = {}
+    activePortals[zoneName] = {}
 
-	if zoneName == "StartTown" then
-		print(("[WarpPortal] %s のポータルを並列生成中..."):format(zoneName))
+    -- Town大陸の判定フラグ（IS_TOWN_CONTINENT）は不要になったため削除
 
-		local townPortalConfigs = {
-			-- {name = "Town_to_ContinentA", toZone = "ContinentA", offsetX = 50, offsetZ = 0, size = Vector3.new(8, 12, 8), color = Color3.fromRGB(100, 255, 100), label = "→ Grassland"},
-			-- {name = "Town_to_ContinentB", toZone = "ContinentB", offsetX = -50, offsetZ = 0, size = Vector3.new(8, 12, 8), color = Color3.fromRGB(150, 150, 255), label = "→ Wilderness"},
-			-- {name = "Town_to_ContinentT", toZone = "ContinentT", offsetX = 0, offsetZ = 50, size = Vector3.new(8, 12, 8), color = Color3.fromRGB(255, 255, 100), label = "→ T-Continent"},
-			{name = "Town_to_Hokkaido", toZone = "ContinentHokkaido", offsetX = 0, offsetZ = -50, size = Vector3.new(8, 12, 8), color = Color3.fromRGB(200, 200, 255), label = "→ Hokkaido"},
-		}
+    local continent = Continents[zoneName]
+    if continent and continent.portals then
+        print(("[WarpPortal] %s のポータルを並列生成中..."):format(zoneName))
 
-		for _, config in ipairs(townPortalConfigs) do
-			task.spawn(function()
-				local portal = createPortal(config, zoneName)
-				if portal then
-					table.insert(activePortals[zoneName], portal)
-					print(("[WarpPortal] ポータル作成: %s"):format(config.name))
-				end
-			end)
-		end
-		return
-	end
+        for _, portalConfig in ipairs(continent.portals) do
+            task.spawn(function()
+                local islandName = portalConfig.islandName
+                if not Islands[islandName] then
+                    warn(("[WarpPortal] 島 '%s' が見つかりません"):format(islandName))
+                else
+                    -- createPortalの第2引数はポータルが属する大陸名（zoneName）
+                    local portal = createPortal(portalConfig, zoneName)
+                    if portal then
+                        portal:SetAttribute("FromZone", zoneName)
+                        table.insert(activePortals[zoneName], portal)
+                        print(("[WarpPortal] ポータル作成: %s (配置: %s)"):format(portalConfig.name, islandName))
+                    end
+                end
+            end)
+        end
+    else
+        print(("[WarpPortal] %s のポータル設定が見つかりません"):format(zoneName))
+    end
 
-	local continent = Continents[zoneName]
-	if continent and continent.portals then
-		print(("[WarpPortal] %s のポータルを並列生成中..."):format(zoneName))
-
-		for _, portalConfig in ipairs(continent.portals) do
-			task.spawn(function()
-				local islandName = portalConfig.islandName
-				if not Islands[islandName] then
-					warn(("[WarpPortal] 島 '%s' が見つかりません"):format(islandName))
-				else
-					local portal = createPortal(portalConfig, islandName)
-					if portal then
-						portal:SetAttribute("FromZone", zoneName)
-						table.insert(activePortals[zoneName], portal)
-						print(("[WarpPortal] ポータル作成: %s (配置: %s)"):format(portalConfig.name, islandName))
-					end
-				end
-			end)
-		end
-	else
-		print(("[WarpPortal] %s のポータル設定が見つかりません"):format(zoneName))
-	end
+    -- ★注意: ここにあった2つ目のポータル生成ブロックは冗長なので削除しました。
 end
 
 function destroyPortalsForZone(zoneName)
 	if not activePortals[zoneName] then return end
 
-	for _, portal in ipairs(activePortals[zoneName]) do
+	-- 万が一島名が渡された場合、大陸名に変換して削除
+    local actualZoneName = zoneName
+    if actualZoneName == "StartTown" then
+        actualZoneName = "ContinentTown"
+    end
+
+	for _, portal in ipairs(activePortals[actualZoneName] or {}) do
 		if portal and portal.Parent then
 			portal:Destroy()
 		end
 	end
 
-	activePortals[zoneName] = nil
-	print(("[WarpPortal] %s のポータルを削除しました"):format(zoneName))
+	activePortals[actualZoneName] = nil
+	print(("[WarpPortal] %s のポータルを削除しました"):format(actualZoneName))
 end
 
 task.spawn(function()
@@ -4178,7 +4528,7 @@ task.spawn(function()
 end)
 
 task.wait(0.3)
-createPortalsForZone("StartTown")
+createPortalsForZone("ContinentTown") -- ★修正: StartTownからContinentTownに変更
 
 Players.PlayerRemoving:Connect(function(player)
 	warpingPlayers[player.UserId] = nil
@@ -4189,6 +4539,79 @@ _G.CreatePortalsForZone = createPortalsForZone
 _G.DestroyPortalsForZone = destroyPortalsForZone
 
 print("[WarpPortal] 初期化完了")
+===== ./ServerScriptService/DataStoreManager.lua =====
+-- ServerScriptService/DataStoreManager.lua
+-- DataStoreの基本操作を管理するモジュール
+
+local DataStoreService = game:GetService("DataStoreService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local DataStoreManager = {}
+
+-- DataStoreの定義 (バージョン管理のためV1)
+local PLAYER_DATA_STORE = DataStoreService:GetDataStore("TypingQuestPlayerSaveData_V1")
+
+-- ★修正: WaitForChildを廃止し、非ブロッキングのFindFirstChildを使用
+local SAVE_SUCCESS_EVENT = ReplicatedStorage:FindFirstChild("SaveSuccess")
+local LOAD_GAME_EVENT = ReplicatedStorage:FindFirstChild("LoadGame")
+
+
+-- データの保存 (非同期)
+function DataStoreManager.SaveData(player: Player, data: table)
+    local success, err = pcall(function()
+        -- プレイヤーのUserIdをキーとして使用
+        PLAYER_DATA_STORE:SetAsync(player.UserId, data)
+    end)
+
+    if success then
+        print(("[DataStoreManager] %s のデータを保存しました。キー: %d"):format(player.Name, player.UserId))
+
+        -- クライアントに保存成功を通知
+        if SAVE_SUCCESS_EVENT then
+            SAVE_SUCCESS_EVENT:FireClient(player, true)
+        end
+    else
+        warn(("[DataStoreManager] %s のデータ保存に失敗しました: %s"):format(player.Name, err))
+
+        -- クライアントに保存失敗を通知
+        if SAVE_SUCCESS_EVENT then
+            SAVE_SUCCESS_EVENT:FireClient(player, false)
+        end
+    end
+    return success
+end
+
+-- データの読み込み (非同期)
+function DataStoreManager.LoadData(player: Player)
+    local data = nil
+    local success, err = pcall(function()
+        -- データの取得
+        data = PLAYER_DATA_STORE:GetAsync(player.UserId)
+    end)
+
+    if success then
+        print(("[DataStoreManager] %s のデータを読み込みました。"):format(player.Name))
+
+        -- データがnilの場合、新規プレイヤーとして空のテーブルを返す
+        return data or {}
+    else
+        warn(("[DataStoreManager] %s のデータ読み込みに失敗しました: %s"):format(player.Name, err))
+        return {} -- 失敗した場合は空のデータを返し、ゲームを継続させる
+    end
+end
+
+-- 手動ロード要求イベントリスナー (ロードボタン押下時)
+if LOAD_GAME_EVENT then
+    LOAD_GAME_EVENT.OnServerEvent:Connect(function(player)
+        -- 現状、特別な処理は不要（次の接続時に自動ロードされるため）
+        print(("[DataStoreManager] %s からロード要求を受信しました。"):format(player.Name))
+    end)
+else
+    warn("[DataStoreManager] LOAD_GAME_EVENT が見つかりません。ロード要求リスナーは機能しません。")
+end
+
+return DataStoreManager
 ===== ./ServerScriptService/BattleSystem.lua =====
 -- ServerScriptService/BattleSystem.lua
 -- バトルシステムの管理（敵の定期攻撃対応版）
@@ -5710,166 +6133,258 @@ print("[MonsterSpawner] === 初期化完了（バトル即座開始対応）==="
 
 _G.SpawnMonstersForZone = spawnMonstersForZone
 _G.DespawnMonstersForZone = despawnMonstersForZone
+===== ./ServerScriptService/DataCollectors.lua =====
+-- ServerScriptService/DataCollectors.lua
+-- セーブ/ロードに必要なデータを収集・適用するモジュール
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+
+local DataCollectors = {}
+
+-- プレイヤーの状態を収集
+function DataCollectors.collectPlayerState(player: Player, playerStats)
+    local character = player.Character or player.CharacterAdded:Wait()
+    local hrp = character:WaitForChild("HumanoidRootPart", 5)
+
+    local zoneManager = require(script.Parent.ZoneManager)
+    local currentZone = zoneManager.GetPlayerZone(player)
+
+    local playerState = {
+        -- ステータス (PlayerStatsから取得)
+        Stats = {
+            Level = playerStats.Level,
+            Experience = playerStats.Experience,
+            Gold = playerStats.Gold,
+            CurrentHP = playerStats.CurrentHP,
+        },
+        -- 位置情報
+        Location = {
+            ZoneName = currentZone or "ContinentTown", -- デフォルトはタウン
+            X = hrp and hrp.Position.X or 0,
+            Y = hrp and hrp.Position.Y or 50, -- Yは地形から少し上の位置
+            Z = hrp and hrp.Position.Z or 0,
+        },
+    }
+
+    return playerState
+end
+
+-- ワールドの状態（モンスターなど）を収集
+function DataCollectors.collectFieldState(zoneName)
+    local fieldState = {
+        Monsters = {}
+    }
+
+    -- 現在のアクティブなモンスターを検索し、状態を保存
+    local monstersInZone = {}
+
+    -- MonsterSpawnerの内部構造に依存しない汎用的な方法でモンスターを検索
+    for _, model in ipairs(Workspace:GetChildren()) do
+        if model:IsA("Model") and model:GetAttribute("IsEnemy") and model:GetAttribute("SpawnZone") == zoneName then
+            local monsterHrp = model:FindFirstChild("HumanoidRootPart")
+            local monsterHumanoid = model:FindFirstChildOfClass("Humanoid")
+
+            if monsterHrp and monsterHumanoid and monsterHumanoid.Health > 0 then
+                local monsterKind = model:GetAttribute("MonsterKind")
+                local monsterHP = monsterHumanoid.Health
+
+                table.insert(fieldState.Monsters, {
+                    Kind = monsterKind,
+                    HP = monsterHP,
+                    X = monsterHrp.Position.X,
+                    Y = monsterHrp.Position.Y,
+                    Z = monsterHrp.Position.Z,
+                })
+            end
+        end
+    end
+
+    return fieldState
+end
+
+-- ワールドの状態を復元 (ロード時に使用)
+function DataCollectors.restoreFieldState(player: Player, fieldState: table)
+    -- この機能は、MonsterSpawnerモジュールに依存するため、後でMonsterSpawner.server.luaを修正して実装します。
+    warn("[DataCollectors] restoreFieldState はまだ実装されていません。")
+end
+
+-- 総合セーブデータを作成
+function DataCollectors.createSaveData(player: Player, playerStats)
+    local currentZone = (require(script.Parent.ZoneManager)).GetPlayerZone(player)
+
+    local saveData = {
+        PlayerState = DataCollectors.collectPlayerState(player, playerStats),
+        -- Townはセーブ対象外 (モンスターがいないため)
+        FieldState = currentZone ~= "ContinentTown" and DataCollectors.collectFieldState(currentZone) or nil,
+        SaveTime = os.time(),
+    }
+
+    return saveData
+end
+
+return DataCollectors
 ===== ./ServerScriptService/TowerPlacement.server.lua =====
 -- ServerScriptService/TowerPlacement.server.lua
 -- StartTownにタワーを配置
 
 local ServerStorage = game:GetService("ServerStorage")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+print("[TowerPlacement] タワー配置をスキップ")
+-- print("[TowerPlacement] タワー配置開始")
 
-print("[TowerPlacement] タワー配置開始")
+-- -- StartTownの設定を取得
+-- local IslandsRegistry = require(ReplicatedStorage.Islands.Registry)
+-- local townConfig = nil
+-- for _, island in ipairs(IslandsRegistry) do
+-- 	if island.name == "StartTown" then
+-- 		townConfig = island
+-- 		break
+-- 	end
+-- end
 
--- StartTownの設定を取得
-local IslandsRegistry = require(ReplicatedStorage.Islands.Registry)
-local townConfig = nil
-for _, island in ipairs(IslandsRegistry) do
-	if island.name == "StartTown" then
-		townConfig = island
-		break
-	end
-end
+-- if not townConfig then
+-- 	warn("[TowerPlacement] StartTownの設定が見つかりません")
+-- 	return
+-- end
 
-if not townConfig then
-	warn("[TowerPlacement] StartTownの設定が見つかりません")
-	return
-end
+-- -- 配置位置（StartTownの中心から東に50スタッド）
+-- local TOWER_OFFSET_X = 400  -- ★修正: 400に変更 (-100 + 400 = 300)
+-- local TOWER_OFFSET_Z = -100 -- ★修正: -100に変更 (100 + (-100) = 0)
 
--- 配置位置（StartTownの中心から東に50スタッド）
-local TOWER_OFFSET_X = 300
-local TOWER_OFFSET_Z = 0
+-- -- 地形生成を待つ
+-- task.wait(1)
 
--- 地形生成を待つ
-task.wait(3)
+-- -- ServerStorage/Buildingsからタワーのテンプレートを取得
+-- local buildingsFolder = ServerStorage:FindFirstChild("Buildings")
+-- if not buildingsFolder then
+-- 	warn("[TowerPlacement] ServerStorage に 'Buildings' フォルダが見つかりません")
+-- 	return
+-- end
 
--- ServerStorage/Buildingsからタワーのテンプレートを取得
-local buildingsFolder = ServerStorage:FindFirstChild("Buildings")
-if not buildingsFolder then
-	warn("[TowerPlacement] ServerStorage に 'Buildings' フォルダが見つかりません")
-	return
-end
+-- local towerTemplate = buildingsFolder:FindFirstChild("Tower")
+-- if not towerTemplate then
+-- 	warn("[TowerPlacement] ServerStorage/Buildings に 'Tower' が見つかりません")
+-- 	warn("[TowerPlacement] Toolboxから Asset ID 12127172596 を ServerStorage/Buildings に配置してください")
+-- 	return
+-- end
 
-local towerTemplate = buildingsFolder:FindFirstChild("Tower")
-if not towerTemplate then
-	warn("[TowerPlacement] ServerStorage/Buildings に 'Tower' が見つかりません")
-	warn("[TowerPlacement] Toolboxから Asset ID 12127172596 を ServerStorage/Buildings に配置してください")
-	return
-end
+-- -- タワーを複製
+-- local tower = towerTemplate:Clone()
+-- tower.Parent = workspace
 
--- タワーを複製
-local tower = towerTemplate:Clone()
-tower.Parent = workspace
+-- print("[TowerPlacement] タワーを読み込みました:", tower.Name)
 
-print("[TowerPlacement] タワーを読み込みました:", tower.Name)
+-- -- 配置位置を計算
+-- local towerX = townConfig.centerX + TOWER_OFFSET_X
+-- local towerZ = townConfig.centerZ + TOWER_OFFSET_Z
 
--- 配置位置を計算
-local towerX = townConfig.centerX + TOWER_OFFSET_X
-local towerZ = townConfig.centerZ + TOWER_OFFSET_Z
+-- -- 地面の高さを取得
+-- local FieldGen = require(ReplicatedStorage:WaitForChild("FieldGen"))
+-- local groundY = FieldGen.raycastGroundY(towerX, towerZ, townConfig.baseY + 100)
 
--- 地面の高さを取得
-local FieldGen = require(ReplicatedStorage:WaitForChild("FieldGen"))
-local groundY = FieldGen.raycastGroundY(towerX, towerZ, townConfig.baseY + 100)
+-- if not groundY then
+-- 	-- レイキャストが失敗した場合は推定高度を使用
+-- 	groundY = townConfig.baseY + 5
+-- 	warn("[TowerPlacement] 地面検出失敗、推定高度を使用:", groundY)
+-- end
 
-if not groundY then
-	-- レイキャストが失敗した場合は推定高度を使用
-	groundY = townConfig.baseY + 5
-	warn("[TowerPlacement] 地面検出失敗、推定高度を使用:", groundY)
-end
+-- -- タワーの底面を地面に合わせる
+-- if tower:IsA("Model") then
+-- 	-- Modelの場合：最下点を地面に合わせる
+-- 	local primaryPart = tower.PrimaryPart
+-- 	if not primaryPart then
+-- 		for _, part in ipairs(tower:GetDescendants()) do
+-- 			if part:IsA("BasePart") then
+-- 				tower.PrimaryPart = part
+-- 				primaryPart = part
+-- 				print("[TowerPlacement] PrimaryPartを自動設定:", part.Name)
+-- 				break
+-- 			end
+-- 		end
+-- 	end
 
--- タワーの底面を地面に合わせる
-if tower:IsA("Model") then
-	-- Modelの場合：最下点を地面に合わせる
-	local primaryPart = tower.PrimaryPart
-	if not primaryPart then
-		for _, part in ipairs(tower:GetDescendants()) do
-			if part:IsA("BasePart") then
-				tower.PrimaryPart = part
-				primaryPart = part
-				print("[TowerPlacement] PrimaryPartを自動設定:", part.Name)
-				break
-			end
-		end
-	end
+-- 	if primaryPart then
+-- 		-- まず目標位置に配置
+-- 		tower:SetPrimaryPartCFrame(CFrame.new(towerX, groundY, towerZ))
 
-	if primaryPart then
-		-- まず目標位置に配置
-		tower:SetPrimaryPartCFrame(CFrame.new(towerX, groundY, towerZ))
+-- 		-- 最下点を探す
+-- 		local lowestY = math.huge
+-- 		local lowestPartName = ""
+-- 		for _, part in ipairs(tower:GetDescendants()) do
+-- 			if part:IsA("BasePart") then
+-- 				local partBottom = part.Position.Y - (part.Size.Y / 2)
+-- 				if partBottom < lowestY then
+-- 					lowestY = partBottom
+-- 					lowestPartName = part.Name
+-- 				end
+-- 			end
+-- 		end
 
-		-- 最下点を探す
-		local lowestY = math.huge
-		local lowestPartName = ""
-		for _, part in ipairs(tower:GetDescendants()) do
-			if part:IsA("BasePart") then
-				local partBottom = part.Position.Y - (part.Size.Y / 2)
-				if partBottom < lowestY then
-					lowestY = partBottom
-					lowestPartName = part.Name
-				end
-			end
-		end
+-- 		print(("[TowerPlacement] デバッグ情報:"):format())
+-- 		print(("  地面の高さ (groundY): %.1f"):format(groundY))
+-- 		print(("  最下点パーツ: %s"):format(lowestPartName))
+-- 		print(("  最下点の高さ (配置前): %.1f"):format(lowestY))
 
-		print(("[TowerPlacement] デバッグ情報:"):format())
-		print(("  地面の高さ (groundY): %.1f"):format(groundY))
-		print(("  最下点パーツ: %s"):format(lowestPartName))
-		print(("  最下点の高さ (配置前): %.1f"):format(lowestY))
+-- 		-- 最下点が地面になるよう調整
+-- 		local adjustment = groundY - lowestY
+-- 		local currentCFrame = tower:GetPrimaryPartCFrame()
+-- 		tower:SetPrimaryPartCFrame(currentCFrame + Vector3.new(0, adjustment, 0))
 
-		-- 最下点が地面になるよう調整
-		local adjustment = groundY - lowestY
-		local currentCFrame = tower:GetPrimaryPartCFrame()
-		tower:SetPrimaryPartCFrame(currentCFrame + Vector3.new(0, adjustment, 0))
+-- 		-- 調整後の最下点を確認
+-- 		local newLowestY = math.huge
+-- 		for _, part in ipairs(tower:GetDescendants()) do
+-- 			if part:IsA("BasePart") then
+-- 				local partBottom = part.Position.Y - (part.Size.Y / 2)
+-- 				if partBottom < newLowestY then
+-- 					newLowestY = partBottom
+-- 				end
+-- 			end
+-- 		end
 
-		-- 調整後の最下点を確認
-		local newLowestY = math.huge
-		for _, part in ipairs(tower:GetDescendants()) do
-			if part:IsA("BasePart") then
-				local partBottom = part.Position.Y - (part.Size.Y / 2)
-				if partBottom < newLowestY then
-					newLowestY = partBottom
-				end
-			end
-		end
+-- 		local _, size = tower:GetBoundingBox()
+-- 		print("[TowerPlacement] タワーを配置しました (Model):")
+-- 		print(("  位置: X=%.1f, Y=%.1f, Z=%.1f"):format(towerX, groundY, towerZ))
+-- 		print(("  サイズ: %.1f x %.1f x %.1f"):format(size.X, size.Y, size.Z))
+-- 		print(("  調整: %.1f スタッド上に移動"):format(adjustment))
+-- 		print(("  調整後の最下点: %.1f (目標: %.1f)"):format(newLowestY, groundY))
+-- 	else
+-- 		local cf, size = tower:GetBoundingBox()
+-- 		local lowestY = cf.Position.Y - (size.Y / 2)
+-- 		local adjustment = groundY - lowestY
+-- 		tower:PivotTo(CFrame.new(towerX, groundY + adjustment, towerZ))
+-- 		print("[TowerPlacement] PivotToで配置しました:")
+-- 		print(("  位置: X=%.1f, Y=%.1f, Z=%.1f"):format(towerX, groundY, towerZ))
+-- 	end
+-- elseif tower:IsA("BasePart") then
+-- 	-- MeshPartなど単一パーツの場合
+-- 	local size = tower.Size
+-- 	local offsetY = size.Y / 2
+-- 	tower.CFrame = CFrame.new(towerX, groundY + offsetY, towerZ)
+-- 	print("[TowerPlacement] タワーを配置しました (BasePart):")
+-- 	print(("  位置: X=%.1f, Y=%.1f, Z=%.1f"):format(towerX, groundY + offsetY, towerZ))
+-- 	print(("  サイズ: %.1f x %.1f x %.1f"):format(size.X, size.Y, size.Z))
+-- else
+-- 	warn("[TowerPlacement] 未対応の型:", tower.ClassName)
+-- 	return
+-- end
 
-		local _, size = tower:GetBoundingBox()
-		print("[TowerPlacement] タワーを配置しました (Model):")
-		print(("  位置: X=%.1f, Y=%.1f, Z=%.1f"):format(towerX, groundY, towerZ))
-		print(("  サイズ: %.1f x %.1f x %.1f"):format(size.X, size.Y, size.Z))
-		print(("  調整: %.1f スタッド上に移動"):format(adjustment))
-		print(("  調整後の最下点: %.1f (目標: %.1f)"):format(newLowestY, groundY))
-	else
-		local cf, size = tower:GetBoundingBox()
-		local lowestY = cf.Position.Y - (size.Y / 2)
-		local adjustment = groundY - lowestY
-		tower:PivotTo(CFrame.new(towerX, groundY + adjustment, towerZ))
-		print("[TowerPlacement] PivotToで配置しました:")
-		print(("  位置: X=%.1f, Y=%.1f, Z=%.1f"):format(towerX, groundY, towerZ))
-	end
-elseif tower:IsA("BasePart") then
-	-- MeshPartなど単一パーツの場合
-	local size = tower.Size
-	local offsetY = size.Y / 2
-	tower.CFrame = CFrame.new(towerX, groundY + offsetY, towerZ)
-	print("[TowerPlacement] タワーを配置しました (BasePart):")
-	print(("  位置: X=%.1f, Y=%.1f, Z=%.1f"):format(towerX, groundY + offsetY, towerZ))
-	print(("  サイズ: %.1f x %.1f x %.1f"):format(size.X, size.Y, size.Z))
-else
-	warn("[TowerPlacement] 未対応の型:", tower.ClassName)
-	return
-end
+-- -- タワーを固定
+-- for _, part in ipairs(tower:GetDescendants()) do
+-- 	if part:IsA("BasePart") then
+-- 		part.Anchored = true
+-- 	end
+-- end
 
--- タワーを固定
-for _, part in ipairs(tower:GetDescendants()) do
-	if part:IsA("BasePart") then
-		part.Anchored = true
-	end
-end
-
-print("[TowerPlacement] 配置完了")
+-- print("[TowerPlacement] 配置完了")
 ===== ./ReplicatedStorage/Continents/Registry.lua =====
 -- ReplicatedStorage/Continents/Registry.lua
 local RS = game:GetService("ReplicatedStorage")
 local ContinentsFolder = RS:WaitForChild("Continents")
 
 return {
-    -- require(ContinentsFolder.Town),             -- 【削除】Town大陸の参照
+    require(ContinentsFolder.ContientTown),
     require(ContinentsFolder.ContinentHokkaido),
 }
 ===== ./ReplicatedStorage/Continents/ContinentHokkaido.lua =====
@@ -5888,17 +6403,17 @@ return {
 
 	bridges = {},
 
-ports = {
-        {
-            name = "Hokkaido_to_Town",
-            toZone = "StartTown",
-            islandName = "Hokkaido_C3",
-            offsetX = 0,
-            offsetZ = 0,
-            label = "→ Town",
-            color = Color3.fromRGB(255, 200, 100),
-        },
-    },
+	portals = {
+			{
+				name = "Hokkaido_to_Town",
+				toZone = "ContinentTown",
+				islandName = "Hokkaido_C3",
+				offsetX = 0,
+				offsetZ = 0,
+				label = "→ Town",
+				color = Color3.fromRGB(255, 200, 100),
+			},
+		},
 
 	BGM = "rbxassetid://115666507179769",  -- 後でアセットIDに変更
 	BGMVolume = 0.2,  -- 音量（0.0-1.0）
@@ -5908,21 +6423,31 @@ return {
 	name = "ContinentTown",
 	displayName = "Start Town",
 
-	-- StartTownをこの大陸の唯一の島として含める
 	islands = {
 		"StartTown",
+        "Town_NE",
+        "Town_SW",
+        "Town_SE",
 	},
 
 	bridges = {},
 
-	-- 他の大陸へのポータルはStartTown島に配置される
+	-- ★修正: Hokkaidoへのポータルのみを残す
 	portals = {
-		-- Town_to_HokkaidoポータルはWarpPortal.server.luaで直接作成されているため、
-		-- ここには町の外から町に戻るポータルのみを定義します。
+		{
+            name = "Town_to_Hokkaido",
+            toZone = "ContinentHokkaido",
+            islandName = "StartTown",
+            offsetX = 0, -- Townの中心X座標からのオフセット
+            offsetZ = -50, -- Townの中心Z座標からのオフセット
+            size = Vector3.new(8, 12, 8),
+            color = Color3.fromRGB(200, 200, 255),
+            label = "→ Hokkaido"
+        },
 	},
 
-	BGM = "rbxassetid://15666507179769",  -- 適当なBGM ID
-	BGMVolume = 0.4,
+	BGM = "rbxassetid://115666507179769",  -- 後でアセットIDに変更
+	BGMVolume = 0.2,  -- 音量（0.0-1.0）
 }
 ===== ./ReplicatedStorage/Islands/Bridges.lua =====
 return {
@@ -5935,21 +6460,76 @@ return {
 	},
 }
 ===== ./ReplicatedStorage/Islands/Town.lua =====
--- ReplicatedStorage/Islands/Town.lua (内容を置き換え)
+-- ReplicatedStorage/Islands/Town.lua (4つの島で構成されるTownエリア - 重複版)
+
 return {
-    name = "StartTown", -- 島名を「StartTown」に戻す
-    centerX = 0,
-    centerZ = 0,
-    sizeXZ = 400,
-    baseY = 50, -- 安定化のため高さを維持
-    thickness = 8,
-    grid = 10,
-    hillAmplitude = 3,
-    hillScale = 80,
-    seed = 77777,
-    generateOcean = false,
-    safeZone = true,
-    baseMaterial = Enum.Material.Slate,
+    -- 1. StartTown (North-West, メインスポーン地点)
+    {
+        name = "StartTown",
+        centerX = -50, -- ★修正: -100から-50へ (X:-150〜150)
+        centerZ = 50,  -- ★修正: 100から50へ (Z:-150〜150)
+        sizeXZ = 200,
+        baseY = 50,
+        thickness = 8,
+        grid = 10,
+        hillAmplitude = 3,
+        hillScale = 80,
+        seed = 77777,
+        generateOcean = false,
+        safeZone = true,
+        baseMaterial = Enum.Material.Slate,
+    },
+
+    -- 2. Town_NE (North-East)
+    {
+        name = "Town_NE",
+        centerX = 50, -- ★修正: 100から50へ
+        centerZ = 50, -- ★修正: 100から50へ
+        sizeXZ = 200,
+        baseY = 50,
+        thickness = 8,
+        grid = 10,
+        hillAmplitude = 3,
+        hillScale = 80,
+        seed = 77778,
+        generateOcean = false,
+        safeZone = true,
+        baseMaterial = Enum.Material.Slate,
+    },
+
+    -- 3. Town_SW (South-West)
+    {
+        name = "Town_SW",
+        centerX = -50, -- ★修正: -100から-50へ
+        centerZ = -50, -- ★修正: -100から-50へ
+        sizeXZ = 200,
+        baseY = 50,
+        thickness = 8,
+        grid = 10,
+        hillAmplitude = 3,
+        hillScale = 80,
+        seed = 77779,
+        generateOcean = false,
+        safeZone = true,
+        baseMaterial = Enum.Material.Slate,
+    },
+
+    -- 4. Town_SE (South-East)
+    {
+        name = "Town_SE",
+        centerX = 50, -- ★修正: 100から50へ
+        centerZ = -50, -- ★修正: -100から-50へ
+        sizeXZ = 200,
+        baseY = 50,
+        thickness = 8,
+        grid = 10,
+        hillAmplitude = 3,
+        hillScale = 80,
+        seed = 77780,
+        generateOcean = false,
+        safeZone = true,
+        baseMaterial = Enum.Material.Slate,
+    },
 }
 ===== ./ReplicatedStorage/Islands/HokkaidoIslands.lua =====
 -- ReplicatedStorage/Islands/HokkaidoIslands

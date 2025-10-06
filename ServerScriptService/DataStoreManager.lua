@@ -44,12 +44,12 @@ end
 function DataStoreManager.LoadData(player: Player)
     local data = nil
     local success, err = pcall(function()
-        -- データの取得
+        -- データの取得 (確実にUserIdを使用)
         data = PLAYER_DATA_STORE:GetAsync(player.UserId)
     end)
 
     if success then
-        print(("[DataStoreManager] %s のデータを読み込みました。"):format(player.Name))
+        print(("[DataStoreManager] %s のデータを読み込みました。キー: %d"):format(player.Name, player.UserId))
 
         -- データがnilの場合、新規プレイヤーとして空のテーブルを返す
         return data or {}

@@ -68,7 +68,7 @@ function FieldGen.generateIsland(config)
         baseMaterial = config.baseMaterial or Enum.Material.Grass,
 	}
 
-	print(("[FieldGen] 生成開始: %s at (%.0f, %.0f, Material: %s)"):format(cfg.name, cfg.centerX, cfg.centerZ, tostring(cfg.baseMaterial)))
+	-- print(("[FieldGen] 生成開始: %s at (%.0f, %.0f, Material: %s)"):format(cfg.name, cfg.centerX, cfg.centerZ, tostring(cfg.baseMaterial)))
 
 	math.randomseed(cfg.seed)
 
@@ -106,7 +106,7 @@ function FieldGen.generateIsland(config)
 		end
 	end
 
-	print(("[FieldGen] 地形ブロック数: %d"):format(#terrainBlocks))
+	-- print(("[FieldGen] 地形ブロック数: %d"):format(#terrainBlocks))
 	fillTerrainBatch(terrain, terrainBlocks)
 
 	-- 海の生成
@@ -150,7 +150,7 @@ function FieldGen.generateIsland(config)
 	marker.BrickColor = BrickColor.new("Bright blue")
 	marker.Parent = worldFolder
 
-	print(("[FieldGen] 完了: %s"):format(cfg.name))
+	-- print(("[FieldGen] 完了: %s"):format(cfg.name))
 end
 
 -- レイキャスト（変更なし）

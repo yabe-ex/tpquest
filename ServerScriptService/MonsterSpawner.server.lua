@@ -155,15 +155,16 @@ function AIState.new(monster, def)
 	self.lastUpdateTime = 0
 	self.lastDistanceLog = 0
 	self.updateRate = def.AiTickRate or 0.3
-	self.nearUpdateRate = 0.05  -- 0.2 → 0.05秒に高速化（バトル判定が速くなる）
-	self.farUpdateRate = 0.5    -- 1.0 → 0.5秒に高速化
+	self.nearUpdateRate = 0.05 -- 0.05秒に高速化（バトル判定が速くなる）
+	self.farUpdateRate = 0.5 -- 0.5秒に高速化
 
 	self.originalSpeed = self.humanoid.WalkSpeed
 	self.wasInBattle = false
 
-    -- 【修正点1】徘徊ステート管理を追加
-    self.isWaiting = false  -- 待機状態か (停止状態)
-    self.waitEndTime = 0    -- 待機終了時刻
+    -- 【修正点1】徘徊ステート管理を整理
+    self.isMoving = false     -- 移動状態か
+    self.isWaiting = false    -- 待機状態か (停止状態)
+    self.waitEndTime = 0      -- 待機終了時刻
     -- 【修正点1 終わり】
 
 	return self
@@ -215,7 +216,7 @@ function AIState:update()
 	local now = os.clock()
 
 	-- バトル判定（高速化・距離拡大）
-	if BattleSystem and p and dist <= 7 then  -- 5 → 7スタッドに拡大
+	if BattleSystem and p and dist <= 7 then -- 7スタッドに拡大
 		-- print(("[AI DEBUG] %s - 接触検出！距離=%.1f"):format(self.monster.Name, dist))
 
 		if BattleSystem.isInBattle(p) then
@@ -248,8 +249,6 @@ function AIState:update()
 			self.monster:SetAttribute("InBattle", true)
 			self.humanoid.WalkSpeed = 0
 			self.humanoid:MoveTo(self.root.Position)
-
-			-- task.wait(0.1) を削除して即座にバトル開始
 
 			local battleStarted = BattleSystem.startBattle(p, self.monster)
 			-- print(("[AI DEBUG] バトル開始結果: %s"):format(tostring(battleStarted)))
@@ -288,60 +287,55 @@ function AIState:update()
 		gui.Enabled = not isInWater
 	end
 
-    -- 【修正点2】徘徊ロジックをローカル関数として定義
+    -- 【修正点2】徘徊ロジックを再構築
     local function wanderLogic()
         local w = self.def.Wander or {}
-        -- Defに設定がなければ、デフォルト値を使用
         local minWait = w.MinWait or 2
         local maxWait = w.MaxWait or 5
         local minRadius = w.MinRadius or 20
         local maxRadius = w.MaxRadius or 60
+        local stopDistance = 5 -- 目標到達と見なす距離
 
-        -- 目標到達判定：5スタッド以内
-        local isGoalReached = self.wanderGoal and (self.root.Position - self.wanderGoal).Magnitude < 5
+        local isGoalReached = self.wanderGoal and (self.root.Position - self.wanderGoal).Magnitude < stopDistance
         local isWaitFinished = self.isWaiting and now >= self.waitEndTime
 
         if self.isWaiting then
             -- ステート: 待機中（停止）
             self.humanoid:MoveTo(self.root.Position) -- 停止を維持
+            self.isMoving = false
 
             if isWaitFinished then
-                -- print(("[AI DEBUG] %s - 待機終了。次の目標設定。"):format(self.monster.Name))
+                -- 待機終了。次の目標設定へ
                 self.isWaiting = false
-                self.wanderGoal = nil -- 目標をリセットし、次のブロックで新しい目標を設定
-                self.nextWanderAt = 0 -- 即座に新しい目標を設定
+                self.wanderGoal = nil
             end
-        elseif isGoalReached or now >= self.nextWanderAt or not self.wanderGoal then
-            -- ステート: 移動完了/目標が古い/目標なし
+        elseif isGoalReached or not self.wanderGoal then
+            -- ステート: 目標到達 or 目標なし -> 新目標設定 & 移動開始
 
+            -- 目標に到達したら待機モードに移行
             if isGoalReached then
-                -- 目標に到達したら待機モードに移行
-                -- print(("[AI DEBUG] %s - 目標到達。待機開始。"):format(self.monster.Name))
                 self.isWaiting = true
-                -- 待機時間をランダムに設定（小数点以下を許容するため * 10 してから / 10）
                 self.waitEndTime = now + math.random(minWait * 10, maxWait * 10) / 10
                 self.humanoid:MoveTo(self.root.Position) -- 停止
                 return
             end
 
-            -- 目標が古い、または無ければ新しい目標を設定
+            -- 新しい目標を設定
             local ang = math.random() * math.pi * 2
             local rad = math.random(minRadius, maxRadius)
             local gx = self.root.Position.X + math.cos(ang) * rad
             local gz = self.root.Position.Z + math.sin(ang) * rad
 
-            local gy = FieldGen.raycastGroundY(gx, gz, 100) or self.root.Position.Y
+            local gy = FieldGen.raycastGroundY(gx, gz, 100) or self.root.Position.Y + 5 -- 見つからなければ現在のY+5
 
             self.wanderGoal = Vector3.new(gx, gy, gz)
+            self.isMoving = true
 
-            -- 移動中は目標を約10秒間変更しない（移動中の「ちょこまか」を防ぐ）
-            self.nextWanderAt = now + 10
-
-            -- print(("[AI DEBUG] %s - 新目標設定。移動開始。"):format(self.monster.Name))
             self.humanoid:MoveTo(self.wanderGoal)
 
         else
             -- ステート: 移動中（継続）
+            self.isMoving = true
             self.humanoid:MoveTo(self.wanderGoal)
         end
     end
@@ -350,13 +344,12 @@ function AIState:update()
 	-- 行動決定
 	if not p then
 		-- プレイヤーがいない：徘徊のみ
-		self.wanderGoal = nil -- 追跡目標をリセット
-        self.isWaiting = false -- プレイヤーがいない場合、追跡目標がないため待機を解除して新しい徘徊を開始
 		wanderLogic()
 	elseif dist < chaseRange then
 		-- 追跡 or 逃走
 		self.wanderGoal = nil
-        self.isWaiting = false -- 追跡中は待機を強制解除
+        self.isMoving = false
+        self.isWaiting = false -- 追跡中は徘徊ステートを強制解除
 		if self.brave then
 			self.humanoid:MoveTo(p.Character.HumanoidRootPart.Position)
 		else

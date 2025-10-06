@@ -10,12 +10,12 @@ local PlayerStats = {}
 -- RemoteEventsを確実に取得・作成するヘルパー関数
 local function getOrCreateRemoteEvent(name)
     local event = ReplicatedStorage:FindFirstChild(name)
-	if not event then
-		event = Instance.new("RemoteEvent")
-		event.Name = name
-		event.Parent = ReplicatedStorage
-	end
-	return event
+    if not event then
+        event = Instance.new("RemoteEvent")
+        event.Name = name
+        event.Parent = ReplicatedStorage
+    end
+    return event
 end
 
 -- RemoteEventの定義
@@ -27,22 +27,22 @@ local SaveSuccessEvent = getOrCreateRemoteEvent("SaveSuccess") -- セーブフ�
 
 -- デフォルトステータス
 local DEFAULT_STATS = {
-	Level = 1,
-	Experience = 0,
-	Gold = 100,  -- 初期ゴールド100G
+    Level = 1,
+    Experience = 0,
+    Gold = 100,  -- 初期ゴールド100G
 
-	MaxHP = 100,
-	CurrentHP = 100,
+    MaxHP = 100,
+    CurrentHP = 100,
 
-	Speed = 10,      -- 素早さ
-	Attack = 10,     -- 攻撃力
-	Defense = 10,    -- 守備力
-	MonstersDefeated = 0,
+    Speed = 10,      -- 素早さ
+    Attack = 10,     -- 攻撃力
+    Defense = 10,    -- 守備力
+    MonstersDefeated = 0,
 }
 
 -- レベルアップに必要な経験値（レベル * 100）
 local function getRequiredExp(level)
-	return level * 100
+    return level * 100
 end
 
 -- 各プレイヤーのステータスを保存
@@ -52,246 +52,304 @@ local PlayerSaveData = {}
 PlayerStats.PlayerSaveData = PlayerSaveData
 
 
+local DataStoreManagerModule = ServerScriptService:WaitForChild("DataStoreManager", 10)
+if not DataStoreManagerModule then
+    warn("[PlayerStats] DataStoreManagerが見つかりません。")
+end
+local DataStoreManager = DataStoreManagerModule and require(DataStoreManagerModule)
+
+-- 【新規】ZoneManagerの参照を確保 (位置情報をセーブするために必要)
+local ZoneManagerModule = ServerScriptService:WaitForChild("ZoneManager", 10)
+if not ZoneManagerModule then
+    warn("[PlayerStats] ZoneManagerが見つかりません。")
+end
+local ZoneManager = ZoneManagerModule and require(ZoneManagerModule)
+
+
 -- プレイヤーのステータスを初期化 (デフォルト値を使用)
 function PlayerStats.initPlayer(player: Player)
-	if PlayerData[player] then
-		warn(("[PlayerStats] %s は既に初期化済みです"):format(player.Name))
-        -- ロード機能は無効なため、デフォルト位置を返す
-		return {ZoneName = "ContinentTown", X = -50, Y = 50, Z = 50}
-	end
+    -- 【最終修正】initPlayerはPlayerAdded時のみDataStoreロードを行うべきだが、
+    -- LoadCharacter時の再実行を防ぐためにメモリチェックを残していた。
+    -- しかし、このチェックがセーブ位置を上書きする原因となるため、
+    -- メモリチェックを外し、DataStoreからのロードを常に試みる（2回目以降はPlayerDataへの書き込みを上書きする）。
 
-    -- 【ロード機能は無効化】: DataStoreManagerの呼び出しを削除
+    local isReinitialization = PlayerData[player] ~= nil
 
-	-- デフォルト値でステータスを作成
-    PlayerData[player] = {}
+    -- DataStoreからのデータ読み込みをここで同期的に実行
+    local saveData = {}
+    if DataStoreManager then
+        saveData = DataStoreManager.LoadData(player)
+    end
 
-	for key, value in pairs(DEFAULT_STATS) do
-		PlayerData[player][key] = value
-	end
+    local statsToLoad = saveData.PlayerState and saveData.PlayerState.Stats
+    local locationToLoad = saveData.PlayerState and saveData.PlayerState.Location
 
-	print(("[PlayerStats] %s のステータスを初期化しました (デフォルトデータ使用)"):format(player.Name))
+    -- デフォルト値でステータスを作成
+    local stats = {}
 
-    -- デフォルトスポーン位置を返す (TownのNW島の中心付近)
-    return {ZoneName = "ContinentTown", X = -50, Y = 50, Z = 50}
+    -- ロードデータが存在すればそれを優先、なければデフォルト値を使用
+    if statsToLoad then
+        -- ロードされたステータスで初期化
+        if not isReinitialization then
+             print(("[PlayerStats] %s のステータスをロードしました"):format(player.Name))
+        end
+
+        for key, value in pairs(DEFAULT_STATS) do
+            stats[key] = statsToLoad[key] or value
+        end
+        for key, value in pairs(statsToLoad) do
+            if stats[key] == nil then
+                 stats[key] = value
+            end
+        end
+    else
+        -- データをロードできなかったため、デフォルト値で初期化
+        if not isReinitialization then
+            print(("[PlayerStats] %s のステータスを初期化しました (デフォルトデータ使用)"):format(player.Name))
+        end
+        for key, value in pairs(DEFAULT_STATS) do
+            stats[key] = value
+        end
+    end
+    stats.CurrentHP = math.min(stats.CurrentHP, stats.MaxHP)
+
+    -- PlayerDataに書き込み、位置情報を返す
+    PlayerData[player] = stats
+
+    if locationToLoad then
+        if not isReinitialization then
+            print(("[PlayerStats] ✅ ロード位置が見つかりました: %s (%.0f, %.0f, %.0f)"):format(
+                locationToLoad.ZoneName, locationToLoad.X, locationToLoad.Y, locationToLoad.Z
+            ))
+        end
+        return locationToLoad
+    else
+        local defaultLoc = {ZoneName = "ContinentTown", X = -50, Y = 50, Z = 50}
+        if not isReinitialization then
+            print(("[PlayerStats] ❌ ロード位置が見つかりません。デフォルト位置を返します: (%.0f, %.0f, %.0f)"):format(
+                defaultLoc.X, defaultLoc.Y, defaultLoc.Z
+            ))
+        end
+        return defaultLoc
+    end
 end
 
 
 -- プレイヤーのステータスを取得
 function PlayerStats.getStats(player: Player)
-	return PlayerData[player]
+    return PlayerData[player]
 end
 
 -- 特定のステータスを取得
 function PlayerStats.getStat(player: Player, statName: string)
-	local stats = PlayerData[player]
-	if not stats then
-		warn(("[PlayerStats] %s のステータスが見つかりません"):format(player.Name))
-		return nil
-	end
-	return stats[statName]
+    local stats = PlayerData[player]
+    if not stats then
+        warn(("[PlayerStats] %s のステータスが見つかりません"):format(player.Name))
+        return nil
+    end
+    return stats[statName]
 end
 
 -- 特定のステータスを設定
 function PlayerStats.setStat(player: Player, statName: string, value)
-	local stats = PlayerData[player]
-	if not stats then
-		warn(("[PlayerStats] %s のステータスが見つかりません"):format(player.Name))
-		return
-	end
+    local stats = PlayerData[player]
+    if not stats then
+        warn(("[PlayerStats] %s のステータスが見つかりません"):format(player.Name))
+        return
+    end
 
-	stats[statName] = value
-	print(("[PlayerStats] %s の %s を %s に設定"):format(player.Name, statName, tostring(value)))
+    stats[statName] = value
+    print(("[PlayerStats] %s の %s を %s に設定"):format(player.Name, statName, tostring(value)))
 end
 
 -- HPを回復
 function PlayerStats.healHP(player: Player, amount: number)
-	local stats = PlayerData[player]
-	if not stats then return end
+    local stats = PlayerData[player]
+    if not stats then return end
 
-	stats.CurrentHP = math.min(stats.CurrentHP + amount, stats.MaxHP)
-	print(("[PlayerStats] %s のHPを %d 回復（現在: %d/%d）"):format(
-		player.Name, amount, stats.CurrentHP, stats.MaxHP
-		))
+    stats.CurrentHP = math.min(stats.CurrentHP + amount, stats.MaxHP)
+    print(("[PlayerStats] %s のHPを %d 回復（現在: %d/%d）"):format(
+        player.Name, amount, stats.CurrentHP, stats.MaxHP
+        ))
 end
 
 -- HPを全回復
 function PlayerStats.fullHeal(player: Player)
-	local stats = PlayerData[player]
-	if not stats then return end
+    local stats = PlayerData[player]
+    if not stats then return end
 
-	stats.CurrentHP = stats.MaxHP
-	print(("[PlayerStats] %s のHPを全回復"):format(player.Name))
+    stats.CurrentHP = stats.MaxHP
+    print(("[PlayerStats] %s のHPを全回復"):format(player.Name))
 end
 
 -- ダメージを受ける
 function PlayerStats.takeDamage(player: Player, damage: number): boolean
-	local stats = PlayerData[player]
-	if not stats then return false end
+    local stats = PlayerData[player]
+    if not stats then return false end
 
-	stats.CurrentHP = math.max(0, stats.CurrentHP - damage)
-	print(("[PlayerStats] %s が %d ダメージを受けた（残りHP: %d/%d）"):format(
-		player.Name, damage, stats.CurrentHP, stats.MaxHP
-		))
+    stats.CurrentHP = math.max(0, stats.CurrentHP - damage)
+    print(("[PlayerStats] %s が %d ダメージを受けた（残りHP: %d/%d）"):format(
+        player.Name, damage, stats.CurrentHP, stats.MaxHP
+        ))
 
-	-- ステータス更新を送信
-	local expToNext = getRequiredExp(stats.Level)
-	StatusUpdateEvent:FireClient(
-		player,
-		stats.CurrentHP,
-		stats.MaxHP,
-		stats.Level,
-		stats.Experience,
-		expToNext,
-		stats.Gold
-	)
+    -- ステータス更新を送信
+    local expToNext = getRequiredExp(stats.Level)
+    StatusUpdateEvent:FireClient(
+        player,
+        stats.CurrentHP,
+        stats.MaxHP,
+        stats.Level,
+        stats.Experience,
+        expToNext,
+        stats.Gold
+    )
 
-	-- 死亡判定
-	if stats.CurrentHP <= 0 then
-		print(("[PlayerStats] %s は倒れた！"):format(player.Name))
-		return true  -- 死亡
-	end
+    -- 死亡判定
+    if stats.CurrentHP <= 0 then
+        print(("[PlayerStats] %s は倒れた！"):format(player.Name))
+        return true  -- 死亡
+    end
 
-	return false  -- 生存
+    return false  -- 生存
 end
 
 -- 経験値を追加
 function PlayerStats.addExperience(player: Player, exp: number)
-	local stats = PlayerData[player]
-	if not stats then return end
+    local stats = PlayerData[player]
+    if not stats then return end
 
-	stats.Experience = stats.Experience + exp
-	print(("[PlayerStats] %s が経験値 %d を獲得（合計: %d）"):format(
-		player.Name, exp, stats.Experience
-		))
+    stats.Experience = stats.Experience + exp
+    print(("[PlayerStats] %s が経験値 %d を獲得（合計: %d）"):format(
+        player.Name, exp, stats.Experience
+        ))
 
-	-- レベルアップチェック
-	local requiredExp = getRequiredExp(stats.Level)
-	while stats.Experience >= requiredExp do
-		PlayerStats.levelUp(player)
-		requiredExp = getRequiredExp(stats.Level)
-	end
+    -- レベルアップチェック
+    local requiredExp = getRequiredExp(stats.Level)
+    while stats.Experience >= requiredExp do
+        PlayerStats.levelUp(player)
+        requiredExp = getRequiredExp(stats.Level)
+    end
 
-	-- ステータス更新を送信
-	local expToNext = getRequiredExp(stats.Level)
-	StatusUpdateEvent:FireClient(
-		player,
-		stats.CurrentHP,
-		stats.MaxHP,
-		stats.Level,
-		stats.Experience,
-		expToNext,
-		stats.Gold
-	)
+    -- ステータス更新を送信
+    local expToNext = getRequiredExp(stats.Level)
+    StatusUpdateEvent:FireClient(
+        player,
+        stats.CurrentHP,
+        stats.MaxHP,
+        stats.Level,
+        stats.Experience,
+        expToNext,
+        stats.Gold
+    )
 end
 
 -- ゴールドを追加
 function PlayerStats.addGold(player: Player, gold: number)
-	local stats = PlayerData[player]
-	if not stats then return end
+    local stats = PlayerData[player]
+    if not stats then return end
 
-	stats.Gold = stats.Gold + gold
-	print(("[PlayerStats] %s がゴールド %d を獲得（合計: %d）"):format(
-		player.Name, gold, stats.Gold
-		))
+    stats.Gold = stats.Gold + gold
+    print(("[PlayerStats] %s がゴールド %d を獲得（合計: %d）"):format(
+        player.Name, gold, stats.Gold
+        ))
 
-	-- ステータス更新を送信
-	local expToNext = getRequiredExp(stats.Level)
-	StatusUpdateEvent:FireClient(
-		player,
-		stats.CurrentHP,
-		stats.MaxHP,
-		stats.Level,
-		stats.Experience,
-		expToNext,
-		stats.Gold
-	)
+    -- ステータス更新を送信
+    local expToNext = getRequiredExp(stats.Level)
+    StatusUpdateEvent:FireClient(
+        player,
+        stats.CurrentHP,
+        stats.MaxHP,
+        stats.Level,
+        stats.Experience,
+        expToNext,
+        stats.Gold
+    )
 end
 
 -- ゴールドを減らす
 function PlayerStats.removeGold(player: Player, gold: number): boolean
-	local stats = PlayerData[player]
-	if not stats then return false end
+    local stats = PlayerData[player]
+    if not stats then return false end
 
-	if stats.Gold < gold then
-		print(("[PlayerStats] %s のゴールドが不足しています"):format(player.Name))
-		return false
-	end
+    if stats.Gold < gold then
+        print(("[PlayerStats] %s のゴールドが不足しています"):format(player.Name))
+        return false
+    end
 
-	stats.Gold = stats.Gold - gold
-	print(("[PlayerStats] %s がゴールド %d を失った（残り: %d）"):format(
-		player.Name, gold, stats.Gold
-		))
-	return true
+    stats.Gold = stats.Gold - gold
+    print(("[PlayerStats] %s がゴールド %d を失った（残り: %d）"):format(
+        player.Name, gold, stats.Gold
+        ))
+    return true
 end
 
 -- 倒したモンスター数を追加
 function PlayerStats.addMonstersDefeated(player: Player, count: number)
-	print(("[PlayerStats] ========================================"):format())
-	print(("[PlayerStats] addMonstersDefeated 呼び出し"):format())
-	print(("  プレイヤー: %s"):format(player.Name))
-	print(("  追加数: %d"):format(count or 1))
+    print(("[PlayerStats] ========================================"):format())
+    print(("[PlayerStats] addMonstersDefeated 呼び出し"):format())
+    print(("  プレイヤー: %s"):format(player.Name))
+    print(("  追加数: %d"):format(count or 1))
 
-	local stats = PlayerData[player]
-	if not stats then
-		warn(("[PlayerStats] ❌ %s のステータスが見つかりません（モンスターカウント失敗）"):format(player.Name))
-		print(("[PlayerStats] ========================================"):format())
-		return
-	end
+    local stats = PlayerData[player]
+    if not stats then
+        warn(("[PlayerStats] ❌ %s のステータスが見つかりません（モンスターカウント失敗）"):format(player.Name))
+        print(("[PlayerStats] ========================================"):format())
+        return
+    end
 
-	local oldCount = stats.MonstersDefeated
-	count = count or 1
-	stats.MonstersDefeated = stats.MonstersDefeated + count
+    local oldCount = stats.MonstersDefeated
+    count = count or 1
+    stats.MonstersDefeated = stats.MonstersDefeated + count
 
-	print(("  変更前: %d"):format(oldCount))
-	print(("  変更後: %d"):format(stats.MonstersDefeated))
-	print(("[PlayerStats] ✅ モンスター撃破数更新成功"):format())
-	print(("[PlayerStats] ========================================"):format())
+    print(("  変更前: %d"):format(oldCount))
+    print(("  変更後: %d"):format(stats.MonstersDefeated))
+    print(("[PlayerStats] ✅ モンスター撃破数更新成功"):format())
+    print(("[PlayerStats] ========================================"):format())
 end
 
 -- レベルアップ
 function PlayerStats.levelUp(player: Player)
-	local stats = PlayerData[player]
-	if not stats then return end
+    local stats = PlayerData[player]
+    if not stats then return end
 
-	local oldLevel = stats.Level
-	stats.Level = stats.Level + 1
+    local oldLevel = stats.Level
+    stats.Level = stats.Level + 1
 
-	-- ステータスアップ
-	stats.MaxHP = stats.MaxHP + 10
-	stats.CurrentHP = stats.MaxHP  -- 全回復
-	stats.Speed = stats.Speed + 2
-	stats.Attack = stats.Attack + 2
-	stats.Defense = stats.Defense + 2
+    -- ステータスアップ
+    stats.MaxHP = stats.MaxHP + 10
+    stats.CurrentHP = stats.MaxHP  -- 全回復
+    stats.Speed = stats.Speed + 2
+    stats.Attack = stats.Attack + 2
+    stats.Defense = stats.Defense + 2
 
-	print(("[PlayerStats] 🎉 %s がレベルアップ！ %d → %d"):format(
-		player.Name, oldLevel, stats.Level
-		))
-	print(("  HP: %d, 素早さ: %d, 攻撃: %d, 守備: %d"):format(
-		stats.MaxHP, stats.Speed, stats.Attack, stats.Defense
-		))
+    print(("[PlayerStats] 🎉 %s がレベルアップ！ %d → %d"):format(
+        player.Name, oldLevel, stats.Level
+        ))
+    print(("  HP: %d, 素早さ: %d, 攻撃: %d, 守備: %d"):format(
+        stats.MaxHP, stats.Speed, stats.Attack, stats.Defense
+        ))
 
-	-- クライアントにレベルアップ演出を通知
-	LevelUpEvent:FireClient(player, stats.Level, stats.MaxHP, stats.Speed, stats.Attack, stats.Defense)
+    -- クライアントにレベルアップ演出を通知
+    LevelUpEvent:FireClient(player, stats.Level, stats.MaxHP, stats.Speed, stats.Attack, stats.Defense)
 
-	-- ステータス更新を送信
-	local expToNext = getRequiredExp(stats.Level)
-	StatusUpdateEvent:FireClient(
-		player,
-		stats.CurrentHP,
-		stats.MaxHP,
-		stats.Level,
-		stats.Experience,
-		expToNext,
-		stats.Gold
-	)
+    -- ステータス更新を送信
+    local expToNext = getRequiredExp(stats.Level)
+    StatusUpdateEvent:FireClient(
+        player,
+        stats.CurrentHP,
+        stats.MaxHP,
+        stats.Level,
+        stats.Experience,
+        expToNext,
+        stats.Gold
+    )
 end
 
 -- プレイヤーが退出したらデータをクリア
 function PlayerStats.removePlayer(player: Player)
-	-- TODO: DataStoreに保存
-	PlayerData[player] = nil
+    PlayerData[player] = nil
     PlayerSaveData[player] = nil
-	print(("[PlayerStats] %s のデータを削除しました"):format(player.Name))
+    print(("[PlayerStats] %s のメモリ上のデータを削除しました"):format(player.Name))
 end
 
 
@@ -325,63 +383,72 @@ end
 
 -- 初期化
 function PlayerStats.init()
-	-- 既存のプレイヤーを初期化
-	for _, player in ipairs(Players:GetPlayers()) do
-		task.spawn(function() -- initPlayerはI/Oブロッキングのため非同期で実行
+    -- 既存のプレイヤーを初期化
+    for _, player in ipairs(Players:GetPlayers()) do
+        task.spawn(function() -- initPlayerはI/Oブロッキングのため非同期で実行
             PlayerStats.initPlayer(player)
         end)
-	end
+    end
 
-	-- 新規参加プレイヤーを初期化
-	Players.PlayerAdded:Connect(function(player)
-		task.spawn(function() -- initPlayerはI/Oブロッキングのため非同期で実行
+    -- 新規参加プレイヤーを初期化
+    Players.PlayerAdded:Connect(function(player)
+        task.spawn(function() -- initPlayerはI/Oブロッキングのため非同期で実行
             PlayerStats.initPlayer(player)
         end)
-	end)
+    end)
 
-	-- 退出時にデータをクリア
-	Players.PlayerRemoving:Connect(function(player)
-		PlayerStats.removePlayer(player)
+    -- 退出時にデータをクリア
+    Players.PlayerRemoving:Connect(function(player)
 
-        -- 【新規】自動セーブ (ゲーム終了時のセーブ)
         local DataCollectorsModule = ServerScriptService:FindFirstChild("DataCollectors")
         local DataStoreManagerModule = ServerScriptService:FindFirstChild("DataStoreManager")
-        if DataCollectorsModule and DataStoreManagerModule and PlayerData[player] then
-            local saveData = require(DataCollectorsModule).createSaveData(player, PlayerData[player])
-            require(DataStoreManagerModule).SaveData(player, saveData)
-        end
-	end)
 
-	-- 【新規】セーブイベントの接続
+        if DataCollectorsModule and DataStoreManagerModule and PlayerData[player] then
+            local DataCollectors = require(DataCollectorsModule)
+            local DataStoreManager = require(DataStoreManagerModule)
+
+            -- セーブデータ作成とセーブを実行
+            local saveData = DataCollectors.createSaveData(player, PlayerData[player])
+            DataStoreManager.SaveData(player, saveData)
+
+        else
+            warn("[PlayerStats] DataCollectorsまたはDataStoreManagerが見つからないため、自動セーブをスキップしました。")
+        end
+
+        -- メモリからデータを削除
+        PlayerStats.removePlayer(player)
+    end)
+
+    -- 【新規】セーブイベントの接続
     local SaveGameEvent = getOrCreateRemoteEvent("SaveGame")
     SaveGameEvent.OnServerEvent:Connect(handleSaveGame)
 
-	-- 詳細ステータスリクエスト用RemoteEvent
+    -- 詳細ステータスリクエスト用RemoteEvent
     local RequestStatsDetailEvent = ReplicatedStorage:FindFirstChild("RequestStatsDetail")
-	if not RequestStatsDetailEvent then
-		RequestStatsDetailEvent = Instance.new("RemoteEvent")
-		RequestStatsDetailEvent.Name = "RequestStatsDetail"
-		RequestStatsDetailEvent.Parent = ReplicatedStorage
-	end
+    if not RequestStatsDetailEvent then
+        RequestStatsDetailEvent = Instance.new("RemoteEvent")
+        RequestStatsDetailEvent.Name = "RequestStatsDetail"
+        RequestStatsDetailEvent.Parent = ReplicatedStorage
+    end
 
-	RequestStatsDetailEvent.OnServerEvent:Connect(function(player)
-		local stats = PlayerStats.getStats(player)
-		if stats then
-			-- StatsDetailEventを取得または作成
-			local StatsDetailEvent = ReplicatedStorage:FindFirstChild("StatsDetail")
-			if not StatsDetailEvent then
-				StatsDetailEvent = Instance.new("RemoteEvent")
-				StatsDetailEvent.Name = "StatsDetail"
-				StatsDetailEvent.Parent = ReplicatedStorage
-				print("[PlayerStats] StatsDetailイベントを作成しました")
-			end
+    RequestStatsDetailEvent.OnServerEvent:Connect(function(player)
+        local stats = PlayerStats.getStats(player)
+        if stats then
+            -- StatsDetailEventを取得または作成
+            local StatsDetailEvent = ReplicatedStorage:FindFirstChild("StatsDetail")
+            if not StatsDetailEvent then
+                StatsDetailEvent = Instance.new("RemoteEvent")
+                StatsDetailEvent.Name = "StatsDetail"
+                StatsDetailEvent.Parent = ReplicatedStorage
+                print("[PlayerStats] StatsDetailイベントを作成しました")
+            end
 
-			print(("[PlayerStats] 詳細ステータスを送信: MonstersDefeated=%d"):format(stats.MonstersDefeated or 0))
-			StatsDetailEvent:FireClient(player, stats)
-		end
-	end)
+            print(("[PlayerStats] 詳細ステータスを送信: MonstersDefeated=%d"):format(stats.MonstersDefeated or 0))
+            StatsDetailEvent:FireClient(player, stats)
+        end
+    end)
 
-	print("[PlayerStats] 初期化完了")
+    print("[PlayerStats] 初期化完了")
 end
 
 return PlayerStats

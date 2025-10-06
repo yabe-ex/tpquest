@@ -14,6 +14,9 @@ local PlayerStats = ServerScriptService:WaitForChild("PlayerStats")
 
 local START_ZONE_NAME = "ContinentTown"
 
+-- 【修正】プレイヤーごとにロードした最終位置を保存するテーブル (このバージョンでは未使用だが、ロジック維持のため残す)
+local LastLoadedLocation = {}
+
 -- PlayerStatsの初期化（ロード処理はPlayerStats内でtask.spawnに任せる）
 require(PlayerStats).init()
 
@@ -39,66 +42,128 @@ if not townConfig then
 	return
 end
 
--- ポータル生成の呼び出し
-if _G.CreatePortalsForZone then
-    print(("[Bootstrap] %s のポータルを生成中..."):format(START_ZONE_NAME))
-    _G.CreatePortalsForZone(START_ZONE_NAME)
-else
-    warn("[Bootstrap] ⚠️ エラー回避: WarpPortal.server.luaがまだ初期化されていないか、グローバル関数をエクスポートしていません。ポータル生成をスキップします。")
-end
-
 
 -- プレイヤーのスポーン位置を街に設定
 local function setupPlayerSpawn(player)
 
-    player.CharacterAdded:Connect(function(character)
+    local characterAddedConnection = nil
+
+    -- ロード後のテレポート、ゾーン初期化処理 (CharacterAdded接続時に実行される)
+    local function performTeleportAndZoneSetup(player, character)
+
+        -- 【重要】LastLoadedLocationにデータが入るまで待機
+        local loadedLocation = LastLoadedLocation[player]
+        while not loadedLocation do
+            task.wait(0.05) -- 50msごとにチェック (短縮限界)
+            loadedLocation = LastLoadedLocation[player]
+        end
+
+        -- ★テレポート処理が一度完了したら、イベント接続を切断する
+        if characterAddedConnection then
+            characterAddedConnection:Disconnect()
+        end
+
         task.spawn(function()
 
-            -- 【重要】物理エンジン安定のため待機
-            task.wait(0.5)
+            -- 【重要】既にテレポート処理が完了しているか、データがない場合はスキップ
+            if ZoneManager.GetPlayerZone(player) then
+                return
+            end
+
+            local spawnZone = loadedLocation.ZoneName
+
+            -- 【修正】物理エンジン安定化のための待機時間を 0.1秒 → 0.05秒に短縮
+            task.wait(0.05)
 
             local hrp = character:WaitForChild("HumanoidRootPart", 5)
             if not hrp then return end
 
-            -- PlayerStats.initPlayer(データロード)をここ（非同期タスク内）で実行し、スポーン位置を取得
-            local loadedLocation = require(PlayerStats).initPlayer(player)
-
-            local spawnZone = loadedLocation.ZoneName
-            local currentZone = ZoneManager.GetPlayerZone(player)
-
-            -- ゾーンが設定済み（＝一度移動した）の場合は、二重スポーンを防ぐためスキップ
-            if currentZone then
-                return
-            end
-
-            -- ロードされたゾーンがTown以外の場合、再度ロードをトリガー
+            -- ロードされたゾーンがTown以外の場合、Terrain生成とポータル/モンスター生成をトリガー
             if spawnZone ~= START_ZONE_NAME then
+                -- 【修正ブロック】LoadZoneをここで呼び出し、地形生成の完了を待つ
                 ZoneManager.LoadZone(spawnZone)
+
+                if _G.DestroyPortalsForZone and _G.CreatePortalsForZone then
+                    _G.DestroyPortalsForZone(START_ZONE_NAME)
+                    _G.CreatePortalsForZone(spawnZone)
+                end
+
+                if _G.SpawnMonstersForZone then
+                    _G.SpawnMonstersForZone(spawnZone)
+                end
             end
 
+            -- 座標の最終決定
             local spawnX = loadedLocation.X
             local spawnZ = loadedLocation.Z
             local spawnY = loadedLocation.Y
 
-            -- ロード座標を使用するが、Townの場合は安全なY座標に固定
+            -- Townゾーンであっても、ロードデータがあればそれを優先する
+            local DEFAULT_X = -50
+            local DEFAULT_Y = 50
+            local DEFAULT_Z = 50
+
+            local isDefaultLocation = (spawnX == DEFAULT_X and spawnY == DEFAULT_Y and spawnZ == DEFAULT_Z)
+
             if spawnZone == START_ZONE_NAME then
-                spawnY = townConfig.baseY + 50
-                spawnX = townConfig.centerX
-                spawnZ = townConfig.centerZ
+                if isDefaultLocation then
+                    print(("[Bootstrap] 判定: ロード座標がデフォルトのため、Town中心に上書き: (%.0f, %.0f, %.0f)"):format(townConfig.centerX, townConfig.baseY + 50, townConfig.centerZ))
+                    spawnY = townConfig.baseY + 50
+                    spawnX = townConfig.centerX
+                    spawnZ = townConfig.centerZ
+                else
+                    print(("[Bootstrap] 判定: Town内のロード位置を使用: (%.0f, %.0f, %.0f)"):format(spawnX, spawnY, spawnZ))
+                end
+            elseif spawnZone ~= START_ZONE_NAME then
+                print(("[Bootstrap] 判定: Town外(%s)のロード位置を使用: (%.0f, %.0f, %.0f)"):format(spawnZone, spawnX, spawnY, spawnZ))
             end
 
-            print(("[Bootstrap] %s を %s にテレポート: (%.0f, %.0f, %.0f)"):format(
-                player.Name, spawnZone, spawnX, spawnY, spawnZ
+
+            print(("[Bootstrap] 最終テレポート座標 (決定): %s (%.0f, %.0f, %.0f)"):format(
+                spawnZone, spawnX,
+                spawnY, spawnZ
                 ))
+
+            local hrp = character:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
 
             -- CFrame設定 (テレポート)
             hrp.CFrame = CFrame.new(spawnX, spawnY, spawnZ)
 
-            -- プレイヤーのゾーン情報を設定
+            -- ゾーン情報を設定
             ZoneManager.PlayerZones[player] = spawnZone
 
+            -- ロード後のポータル生成（Townの場合）
+            if spawnZone == START_ZONE_NAME and _G.CreatePortalsForZone then
+                _G.CreatePortalsForZone(START_ZONE_NAME)
+            end
         end)
+    end
+
+    -- 【新規】PlayerAdded時にDataStoreロードを開始
+    local function startDataStoreLoad()
+        task.spawn(function()
+            -- ★1. DataStoreからロードし、結果を待つ
+            local loadedLocation = require(PlayerStats).initPlayer(player)
+
+            -- ★2. ロードが完了したら、結果を保存
+            LastLoadedLocation[player] = loadedLocation
+            print(("[Bootstrap] DataStoreロード完了。座標保存済み: %s"):format(loadedLocation.ZoneName))
+        end)
+    end
+
+    -- CharacterAddedイベントを接続
+    characterAddedConnection = player.CharacterAdded:Connect(function(character)
+         performTeleportAndZoneSetup(player, character)
     end)
+
+    -- ロードプロセスを開始
+    startDataStoreLoad()
+
+    -- プレイヤーが既にスポーンしている場合
+    if player.Character then
+         performTeleportAndZoneSetup(player, player.Character)
+    end
 end
 
 
@@ -108,6 +173,12 @@ for _, player in ipairs(Players:GetPlayers()) do
 end
 
 Players.PlayerAdded:Connect(setupPlayerSpawn)
+
+Players.PlayerRemoving:Connect(function(player)
+    -- 退出時に保存した位置情報をクリア
+    LastLoadedLocation[player] = nil
+end)
+
 
 task.spawn(function()
 	local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -132,7 +203,6 @@ task.spawn(function()
 		typingError.Name = "TypingError"
 		typingError.SoundId = "rbxassetid://113721818600044"
 		typingError.Volume = 0.5
-		typingError.Parent = soundsFolder
 	end
 
 	print("[Bootstrap] Soundsフォルダを初期化しました")
