@@ -266,7 +266,7 @@ local function createPortal(config, fromZone)
 			BattleSystem.resetAllBattles()
 		end
 
-		destroyPortalsForZone(actualFromZone)
+		-- destroyPortalsForZone(actualFromZone)
 
 		-- 前のゾーンのモンスターを削除
 		local IS_TOWN = actualFromZone == "ContinentTown"
@@ -361,7 +361,7 @@ function destroyPortalsForZone(zoneName)
 	end
 
 	activePortals[actualZoneName] = nil
-	print(("[WarpPortal] %s のポータルを削除しました"):format(actualZoneName))
+	print(("[WarpPortal] %s のポータルを削除しました-"):format(actualZoneName))
 end
 
 task.spawn(function()
@@ -381,7 +381,7 @@ task.spawn(function()
 end)
 
 task.wait(0.3)
-createPortalsForZone("ContinentTown") -- ★修正: StartTownからContinentTownに変更
+-- createPortalsForZone("ContinentTown") -- ★修正: StartTownからContinentTownに変更
 
 Players.PlayerRemoving:Connect(function(player)
 	warpingPlayers[player.UserId] = nil

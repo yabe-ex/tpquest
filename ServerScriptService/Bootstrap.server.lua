@@ -152,6 +152,17 @@ local function setupPlayerSpawn(player)
             -- ★1. DataStoreからロードし、結果を待つ
             local loadedLocation = require(PlayerStats).initPlayer(player)
 
+            -- ★1.5. nil チェック追加（暫定）
+            if not loadedLocation then
+                print(("[Bootstrap] DataStoreロード結果がnil。デフォルト設定を使用"):format())
+                loadedLocation = {
+                    ZoneName = "ContinentTown",
+                    X = townConfig.centerX,
+                    Y = townConfig.baseY + 25,
+                    Z = townConfig.centerZ
+                }
+            end
+
             -- ★2. ロードが完了したら、結果を保存
             LastLoadedLocation[player] = loadedLocation
             print(("[Bootstrap] DataStoreロード完了。座標保存済み: %s"):format(loadedLocation.ZoneName))

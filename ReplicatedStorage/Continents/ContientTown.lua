@@ -4,7 +4,7 @@ return {
 	displayName = "Start Town",
 
 	islands = {
-		"StartTown",
+        "StartTown",
         "Town_NE",
         "Town_SW",
         "Town_SE",

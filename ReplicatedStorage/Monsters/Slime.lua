@@ -39,6 +39,11 @@ return {
 			count = 15,
 			radiusPercent = 55,  -- 島のサイズの75%範囲内
 		},
+				{
+			islandName = "Kyushu_NE1",
+			count = 5,
+			radiusPercent = 55,  -- 島のサイズの75%範囲内
+		},
 
 	},
 

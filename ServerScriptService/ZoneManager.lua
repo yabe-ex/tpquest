@@ -123,7 +123,7 @@ function ZoneManager.LoadZone(zoneName)
         print(("[ZoneManager] %s は既に生成済みです"):format(zoneName))
         return true
     end
-
+print(("[ZoneManager] cska: %s"):format(zoneName))
     if isContinent(zoneName) then
         return loadContinent(zoneName)
     else
