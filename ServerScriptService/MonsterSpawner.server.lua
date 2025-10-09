@@ -10,6 +10,9 @@ local RunService = game:GetService("RunService")
 local FieldGen = require(ReplicatedStorage:WaitForChild("FieldGen"))
 local ZoneManager = require(script.Parent.ZoneManager)
 
+local SharedState = require(ReplicatedStorage:WaitForChild("SharedState"))
+local GameEvents = require(ReplicatedStorage:WaitForChild("GameEvents"))
+
 -- BattleSystem読込（オプショナル）
 local BattleSystem = nil
 local battleSystemScript = script.Parent:FindFirstChild("BattleSystem")
@@ -450,6 +453,141 @@ local function spawnMonster(template: Model, index: number, def, islandName)
 	-- print(("[MonsterSpawner] %s を %s にスポーン"):format(m.Name, islandName))
 end
 
+-- ゾーン内のモンスター数をカウント
+local function getZoneMonsterCounts(zoneName)
+	local counts = {}
+
+	for _, aiState in ipairs(ActiveMonsters) do
+		if aiState.monster and aiState.monster.Parent then
+			local monsterZone = aiState.monster:GetAttribute("SpawnZone")
+			if monsterZone == zoneName then
+				local monsterKind = aiState.def.Name or "Unknown"
+				counts[monsterKind] = (counts[monsterKind] or 0) + 1
+			end
+		end
+	end
+
+	print(("[MonsterSpawner] ゾーン %s のモンスターカウント: %s"):format(
+		zoneName,
+		game:GetService("HttpService"):JSONEncode(counts)
+	))
+
+	return counts
+end
+
+-- 全ゾーンのモンスター数をSharedStateに保存
+local function updateAllMonsterCounts()
+	print("[MonsterSpawner] 全ゾーンのモンスターカウントを更新中...")
+
+	-- 一旦クリア
+	SharedState.MonsterCounts = {}
+
+	-- アクティブなゾーンごとにカウント
+	local ZoneManager = require(script.Parent.ZoneManager)
+	for zoneName, _ in pairs(ZoneManager.ActiveZones) do
+		SharedState.MonsterCounts[zoneName] = getZoneMonsterCounts(zoneName)
+	end
+
+	print("[MonsterSpawner] モンスターカウント更新完了")
+end
+
+-- カスタムカウントでモンスターをスポーン（ロード時用）
+local function spawnMonstersWithCounts(zoneName, customCounts)
+	if isSafeZone(zoneName) then
+		print(("[MonsterSpawner] %s は安全地帯です。モンスターをスポーンしません"):format(zoneName))
+		return
+	end
+
+	if not customCounts or type(customCounts) ~= "table" then
+		print(("[MonsterSpawner] カスタムカウントが無効です。通常スポーンを実行: %s"):format(zoneName))
+		spawnMonstersForZone(zoneName)
+		return
+	end
+
+	print(("[MonsterSpawner] カスタムカウントでモンスターをスポーン: %s"):format(zoneName))
+	print(("[MonsterSpawner] カウント: %s"):format(
+		game:GetService("HttpService"):JSONEncode(customCounts)
+	))
+
+	-- カスタムカウントに基づいてスポーン
+	for monsterName, count in pairs(customCounts) do
+		local template = TemplateCache[monsterName]
+		local def = nil
+
+		-- 定義を取得
+		for _, regDef in ipairs(Registry) do
+			if regDef.Name == monsterName then
+				def = regDef
+				break
+			end
+		end
+
+		if template and def and count > 0 then
+			print(("[MonsterSpawner] %s を %d 体スポーン"):format(monsterName, count))
+
+			-- 各モンスターの配置先を決定
+			if def.SpawnLocations then
+				-- 各ロケーションに均等配分
+				local locationsInZone = {}
+				for _, location in ipairs(def.SpawnLocations) do
+					-- このゾーンに含まれる島かチェック
+					local isInZone = false
+
+					-- 大陸の場合
+					local Continents = {}
+					for _, continent in ipairs(ContinentsRegistry) do
+						Continents[continent.name] = continent
+					end
+
+					if Continents[zoneName] then
+						for _, islandName in ipairs(Continents[zoneName].islands) do
+							if islandName == location.islandName then
+								isInZone = true
+								break
+							end
+						end
+					elseif zoneName == location.islandName then
+						isInZone = true
+					end
+
+					if isInZone then
+						table.insert(locationsInZone, location.islandName)
+					end
+				end
+
+				-- 各ロケーションに配分
+				if #locationsInZone > 0 then
+					local countPerLocation = math.ceil(count / #locationsInZone)
+
+					for _, islandName in ipairs(locationsInZone) do
+						for i = 1, math.min(countPerLocation, count) do
+							local spawnDef = {}
+							for k, v in pairs(def) do
+								spawnDef[k] = v
+							end
+
+							spawnMonster(template, i, spawnDef, islandName)
+							count = count - 1
+
+							if count <= 0 then break end
+							if i % 5 == 0 then task.wait() end
+						end
+
+						if count <= 0 then break end
+					end
+				end
+			end
+		else
+			if not template then
+				warn(("[MonsterSpawner] テンプレート未発見: %s"):format(monsterName))
+			end
+			if not def then
+				warn(("[MonsterSpawner] 定義未発見: %s"):format(monsterName))
+			end
+		end
+	end
+end
+
 -- ゾーンにモンスターをスポーンする（大陸対応版）
 function spawnMonstersForZone(zoneName)
 	if isSafeZone(zoneName) then
@@ -642,6 +780,24 @@ else
 	print("[MonsterSpawner] BattleSystemなしで起動")
 end
 
+-- モンスターカウントリクエストに応答
+GameEvents.MonsterCountRequest.Event:Connect(function(zoneName)
+	print(("[MonsterSpawner] モンスターカウントリクエスト受信: %s"):format(zoneName or "全ゾーン"))
+
+	if zoneName then
+		-- 特定ゾーンのみ
+		SharedState.MonsterCounts[zoneName] = getZoneMonsterCounts(zoneName)
+	else
+		-- 全ゾーン
+		updateAllMonsterCounts()
+	end
+
+	-- 完了通知
+	GameEvents.MonsterCountResponse:Fire()
+end)
+
+print("[MonsterSpawner] GameEventsへの応答登録完了")
+
 Workspace:WaitForChild("World", 10)
 print("[MonsterSpawner] World フォルダ検出")
 
@@ -666,3 +822,8 @@ print("[MonsterSpawner] === 初期化完了（バトル即座開始対応）==="
 
 _G.SpawnMonstersForZone = spawnMonstersForZone
 _G.DespawnMonstersForZone = despawnMonstersForZone
+_G.SpawnMonstersWithCounts = spawnMonstersWithCounts
+_G.GetZoneMonsterCounts = getZoneMonsterCounts
+_G.UpdateAllMonsterCounts = updateAllMonsterCounts
+
+print("[MonsterSpawner] グローバル関数登録完了（カウント機能付き）")

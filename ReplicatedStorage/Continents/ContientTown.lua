@@ -46,6 +46,6 @@ return {
         },
 	},
 
-	BGM = "rbxassetid://115666507179769",  -- 後でアセットIDに変更
+	BGM = "rbxassetid://139951867631287",  -- 後でアセットIDに変更
 	BGMVolume = 0.2,
 }

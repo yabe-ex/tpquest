@@ -1,30 +1,40 @@
 -- ServerScriptService/BattleSystem.lua
 -- バトルシステムの管理（敵の定期攻撃対応版）
+-- ステップ4: SharedState統合版
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
+
+-- 【ステップ4】SharedStateとGameEventsをロード
+local SharedState = require(ReplicatedStorage:WaitForChild("SharedState"))
+local GameEvents = require(ReplicatedStorage:WaitForChild("GameEvents"))
 
 local BattleSystem = {}
 
 -- PlayerStatsモジュールをロード
 local PlayerStats = require(ServerScriptService:WaitForChild("PlayerStats"))
 
--- 戦闘中のプレイヤーを追跡
-local ActiveBattles = {}
+-- 【ステップ4】グローバル変数をSharedStateに移行
+-- SharedState.ActiveBattles = {}  -- 既にSharedStateで定義済み
+-- SharedState.GlobalBattleActive = false  -- 追加が必要
+-- SharedState.EndingBattles = {}  -- 追加が必要
+-- SharedState.DefeatedByMonster = {}  -- 追加が必要
 
--- グローバルバトルフラグ
-local GlobalBattleActive = false
+-- 初期化（SharedStateに追加のフィールドを設定）
+if not SharedState.GlobalBattleActive then
+	SharedState.GlobalBattleActive = false
+end
+if not SharedState.EndingBattles then
+	SharedState.EndingBattles = {}
+end
+if not SharedState.DefeatedByMonster then
+	SharedState.DefeatedByMonster = {}
+end
 
 -- バトル終了直後のクールダウン
 local LastBattleEndTime = 0
 local BATTLE_COOLDOWN = 0.5
-
--- バトル終了処理中のプレイヤー（二重終了防止）
-local EndingBattles = {}
-
--- 敗北時のモンスター記録（消去用）
-local DefeatedByMonster = {}
 
 -- RemoteEvent の作成/取得
 local function getOrCreateRemoteEvent(name)
@@ -77,12 +87,12 @@ end
 
 -- プレイヤーが戦闘中かチェック
 function BattleSystem.isInBattle(player: Player): boolean
-	return ActiveBattles[player] ~= nil
+	return SharedState.ActiveBattles[player] ~= nil
 end
 
 -- グローバルなバトル状態を取得
 function BattleSystem.isAnyBattleActive(): boolean
-	return GlobalBattleActive
+	return SharedState.GlobalBattleActive
 end
 
 -- モンスター定義を名前から取得
@@ -117,7 +127,7 @@ end
 
 -- 敵の攻撃処理
 local function enemyAttack(player: Player, battleData)
-	if not ActiveBattles[player] or EndingBattles[player] then
+	if not SharedState.ActiveBattles[player] or SharedState.EndingBattles[player] then
 		return  -- バトル終了済み
 	end
 
@@ -167,7 +177,7 @@ function BattleSystem.startBattle(player: Player, monster: Model)
 	end
 
 	-- 二重チェック
-	if GlobalBattleActive then
+	if SharedState.GlobalBattleActive then
 		return false
 	end
 
@@ -176,7 +186,7 @@ function BattleSystem.startBattle(player: Player, monster: Model)
 	end
 
 	-- 終了処理中チェック
-	if EndingBattles[player] then
+	if SharedState.EndingBattles[player] then
 		print(("[BattleSystem] %s は終了処理中です"):format(player.Name))
 		return false
 	end
@@ -221,7 +231,7 @@ function BattleSystem.startBattle(player: Player, monster: Model)
 		))
 
 	-- グローバルバトルフラグをON
-	GlobalBattleActive = true
+	SharedState.GlobalBattleActive = true
 
 	-- 元の速度を保存
 	local originalPlayerSpeed = humanoid.WalkSpeed
@@ -266,7 +276,7 @@ function BattleSystem.startBattle(player: Player, monster: Model)
 	local nextAttackTime = tick() + attackInterval
 
 	-- 戦闘データを記録
-	ActiveBattles[player] = {
+	SharedState.ActiveBattles[player] = {
 		monster = monster,
 		monsterDef = monsterDef,
 		monsterHP = monsterDef.HP,
@@ -293,8 +303,8 @@ function BattleSystem.startBattle(player: Player, monster: Model)
 
 	-- 敵の攻撃ループを開始
 	task.spawn(function()
-		while ActiveBattles[player] and not EndingBattles[player] do
-			local battleData = ActiveBattles[player]
+		while SharedState.ActiveBattles[player] and not SharedState.EndingBattles[player] do
+			local battleData = SharedState.ActiveBattles[player]
 			if not battleData then break end
 
 			-- 攻撃タイミングをチェック
@@ -312,12 +322,12 @@ end
 -- プレイヤーからのダメージ処理
 local function onDamageReceived(player, damageAmount)
 	-- バトル終了処理中はダメージを無視
-	if EndingBattles[player] then
+	if SharedState.EndingBattles[player] then
 		print(("[BattleSystem] %s は終了処理中のため、ダメージを無視"):format(player.Name))
 		return
 	end
 
-	local battleData = ActiveBattles[player]
+	local battleData = SharedState.ActiveBattles[player]
 	if not battleData then
 		warn(("[BattleSystem] %s はバトル中ではありません（ダメージ無視）"):format(player.Name))
 		return
@@ -360,24 +370,24 @@ function BattleSystem.endBattle(player: Player, victory: boolean)
 		))
 
 	-- 二重終了チェック
-	if EndingBattles[player] then
+	if SharedState.EndingBattles[player] then
 		warn(("[BattleSystem] %s は既に終了処理中です"):format(player.Name))
 		return
 	end
 
 	-- 終了処理中フラグを立てる
-	EndingBattles[player] = true
+	SharedState.EndingBattles[player] = true
 
 	-- 【重要】勝利時のみグローバルバトルフラグをOFF
 	-- 敗北時は死亡選択が完了するまで維持
 	if victory then
-		GlobalBattleActive = false
+		SharedState.GlobalBattleActive = false
 	end
 
 	-- クールダウン開始
 	LastBattleEndTime = tick()
 
-	local battleData = ActiveBattles[player]
+	local battleData = SharedState.ActiveBattles[player]
 	if not battleData then
 		warn("[BattleSystem] battleDataが存在しません！")
 
@@ -397,11 +407,11 @@ function BattleSystem.endBattle(player: Player, victory: boolean)
 		end
 
 		BattleEndEvent:FireClient(player, victory)
-		ActiveBattles[player] = nil
+		SharedState.ActiveBattles[player] = nil
 
 		-- 終了処理完了後にフラグを解除
 		task.delay(1, function()
-			EndingBattles[player] = nil
+			SharedState.EndingBattles[player] = nil
 		end)
 
 		return
@@ -519,7 +529,7 @@ function BattleSystem.endBattle(player: Player, victory: boolean)
 			end
 
 			-- 【重要】倒したモンスターを記録（選択後に消去するため）
-			DefeatedByMonster[player] = monster
+			SharedState.DefeatedByMonster[player] = monster
 			print(("[BattleSystem] 倒したモンスター %s を記録"):format(monster.Name))
 
 			ShowDeathUIEvent:FireClient(player, playerStats.Gold, reviveCost)
@@ -533,24 +543,24 @@ function BattleSystem.endBattle(player: Player, victory: boolean)
 
 	-- 勝利時は戦闘データをクリアして終了処理フラグも解除
 	if victory then
-		ActiveBattles[player] = nil
+		SharedState.ActiveBattles[player] = nil
 
 		-- 終了処理完了後にフラグを解除（1秒後）
 		task.delay(1, function()
-			EndingBattles[player] = nil
+			SharedState.EndingBattles[player] = nil
 			print(("[BattleSystem] %s の終了処理フラグを解除"):format(player.Name))
 		end)
 	else
 		-- 敗北時は戦闘データをクリアするが、終了処理フラグは維持
 		-- （死亡選択UIで選んだ後に解除する）
-		ActiveBattles[player] = nil
+		SharedState.ActiveBattles[player] = nil
 		print(("[BattleSystem] 敗北 - 終了処理フラグを維持します（選択まで）"))
 	end
 end
 
 -- 初期化
 function BattleSystem.init()
-	-- ステータス要求イベント
+	-- ステータスリクエストイベント
 	RequestStatusEvent.OnServerEvent:Connect(function(player)
 		print(("[BattleSystem] %s がステータスを要求しました"):format(player.Name))
 		sendStatusUpdate(player)
@@ -576,11 +586,11 @@ function BattleSystem.init()
 		print(("[BattleSystem] %s が選択: %s"):format(player.Name, choice))
 
 		-- 【重要】グローバルバトルフラグを解除（敗北時に維持していた）
-		GlobalBattleActive = false
+		SharedState.GlobalBattleActive = false
 		print("[BattleSystem] グローバルバトルフラグを解除")
 
 		-- 【重要】終了処理フラグを解除（モンスターが接触できるようにする）
-		EndingBattles[player] = nil
+		SharedState.EndingBattles[player] = nil
 		print(("[BattleSystem] %s の終了処理フラグを解除"):format(player.Name))
 
 		local playerStats = PlayerStats.getStats(player)
@@ -608,7 +618,7 @@ function BattleSystem.init()
 		end
 
 		-- 【重要】倒したモンスターを消去（両方の選択肢で消去）
-		local defeatedMonster = DefeatedByMonster[player]
+		local defeatedMonster = SharedState.DefeatedByMonster[player]
 		if defeatedMonster and defeatedMonster.Parent then
 			print(("[BattleSystem] 倒したモンスター %s を消去"):format(defeatedMonster.Name))
 
@@ -638,7 +648,7 @@ function BattleSystem.init()
 		end
 
 		-- 記録をクリア
-		DefeatedByMonster[player] = nil
+		SharedState.DefeatedByMonster[player] = nil
 
 		if choice == "return" then
 			-- 街に戻る
@@ -740,7 +750,7 @@ function BattleSystem.init()
 	TypingMistakeEvent.OnServerEvent:Connect(function(player)
 		print(("[BattleSystem] タイプミス受信: %s"):format(player.Name))
 
-		local battleData = ActiveBattles[player]
+		local battleData = SharedState.ActiveBattles[player]
 		if not battleData then
 			warn(("[BattleSystem] %s はバトル中ではありません（タイプミス無視）"):format(player.Name))
 			return
@@ -781,7 +791,7 @@ function BattleSystem.init()
 		while true do
 			task.wait(5)
 
-			for player, battleData in pairs(ActiveBattles) do
+			for player, battleData in pairs(SharedState.ActiveBattles) do
 				local duration = tick() - battleData.startTime
 
 				if duration > 60 then
@@ -799,11 +809,11 @@ end
 function BattleSystem.resetAllBattles()
 	print("[BattleSystem] 全バトル状態をリセット")
 
-	GlobalBattleActive = false
+	SharedState.GlobalBattleActive = false
 
-	for player, _ in pairs(ActiveBattles) do
-		ActiveBattles[player] = nil
-		EndingBattles[player] = nil
+	for player, _ in pairs(SharedState.ActiveBattles) do
+		SharedState.ActiveBattles[player] = nil
+		SharedState.EndingBattles[player] = nil
 
 		if player.Character then
 			player.Character:SetAttribute("InBattle", false)

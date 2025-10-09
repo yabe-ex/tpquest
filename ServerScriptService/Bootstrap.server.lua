@@ -207,7 +207,7 @@ task.spawn(function()
 		soundsFolder.Parent = ReplicatedStorage
 	end
 
-	if not soundsFolder:FindFirstChild("TypingCorrect") then
+    if not soundsFolder:FindFirstChild("TypingCorrect") then
 		local typingCorrect = Instance.new("Sound")
 		typingCorrect.Name = "TypingCorrect"
 		typingCorrect.SoundId = "rbxassetid://159534615"
@@ -220,6 +220,7 @@ task.spawn(function()
 		typingError.Name = "TypingError"
 		typingError.SoundId = "rbxassetid://113721818600044"
 		typingError.Volume = 0.5
+		typingError.Parent = soundsFolder
 	end
 
 	print("[Bootstrap] Soundsフォルダを初期化しました")
