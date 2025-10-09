@@ -102,10 +102,13 @@ local function setupPlayerSpawn(player)
 
     -- DataStoreからのロード処理（同期的に待つ）
     local function loadDataAndPrepareSpawn()
+        local startTime = os.clock()
         print(("[Bootstrap] %s のDataStoreロード開始"):format(player.Name))
 
         local loadedLocation = PlayerStatsModule.initPlayer(player)
         local fullLoadedData = PlayerStatsModule.getLastLoadedData(player)
+
+        print(("[Bootstrap] ⏱️ DataStoreロード完了: %.2f秒"):format(os.clock() - startTime))
 
         if not loadedLocation then
             warn(("[Bootstrap] %s のロードデータがnil、デフォルト使用"):format(player.Name))
@@ -136,6 +139,8 @@ local function setupPlayerSpawn(player)
 
     -- メイン処理
     task.spawn(function()
+        local totalStartTime = os.clock()
+
         -- DataStoreロードを待つ
         local loadedData = loadDataAndPrepareSpawn()
         local loadedLocation = loadedData.Location
@@ -143,22 +148,38 @@ local function setupPlayerSpawn(player)
 
         -- 【重要】キャラクター生成前にゾーンをロード
         if targetZone ~= START_ZONE_NAME then
+            local zoneLoadStart = os.clock()
             print(("[Bootstrap] キャラ生成前: %s のゾーンをロード"):format(targetZone))
             ZoneManager.LoadZone(targetZone)
             task.wait(2) -- 地形生成完了を待つ
+            print(("[Bootstrap] ⏱️ ゾーンロード完了: %.2f秒"):format(os.clock() - zoneLoadStart))
         end
 
         -- キャラクター生成
+        local charGenStart = os.clock()
         print(("[Bootstrap] %s のキャラクター生成を開始"):format(player.Name))
+
+        -- 【追加】SpawnReadyEventを取得/作成
+        local SpawnReadyEvent = ReplicatedStorage:FindFirstChild("SpawnReady")
+        if not SpawnReadyEvent then
+            SpawnReadyEvent = Instance.new("RemoteEvent")
+            SpawnReadyEvent.Name = "SpawnReady"
+            SpawnReadyEvent.Parent = ReplicatedStorage
+        end
 
         -- CharacterAddedを先に接続（生成と同時にワープするため）
         local connection
         connection = player.CharacterAdded:Connect(function(character)
             connection:Disconnect() -- 一度だけ実行
 
+            print(("[Bootstrap] ⏱️ キャラクター生成完了: %.2f秒"):format(os.clock() - charGenStart))
+
             -- 即座にワープ（描画される前に）
             task.spawn(function()
+                local hrpStart = os.clock()
                 local hrp = character:WaitForChild("HumanoidRootPart", 5)
+                print(("[Bootstrap] ⏱️ HRP取得完了: %.2f秒"):format(os.clock() - hrpStart))
+
                 if not hrp then
                     warn(("[Bootstrap] %s のHRPが見つかりません"):format(player.Name))
                     return
@@ -175,58 +196,67 @@ local function setupPlayerSpawn(player)
                 ZoneManager.PlayerZones[player] = targetZone
 
                 print(("[Bootstrap] %s を配置完了"):format(player.Name))
+                print(("[Bootstrap] ⏱️ 合計時間: %.2f秒"):format(os.clock() - totalStartTime))
 
-                -- モンスターとポータルの復元
-                task.wait(1) -- 少し待ってから復元
+                -- 【追加】ワープ完了後、即座にローディング解除通知
+                SpawnReadyEvent:FireClient(player)
+                print(("[Bootstrap] %s にスポーン準備完了を通知（即座）"):format(player.Name))
 
-                if loadedData.FieldState and loadedData.CurrentZone then
-                    local zoneName = loadedData.CurrentZone
-                    print(("[Bootstrap] %s のフィールド状態を復元: %s"):format(player.Name, zoneName))
+                -- 【修正】モンスターとポータルの復元を並行処理に変更
+                task.spawn(function()
+                    task.wait(1) -- 少し待ってから復元
 
-                    DataCollectors.restoreFieldState(zoneName, loadedData.FieldState)
+                    if loadedData.FieldState and loadedData.CurrentZone then
+                        local zoneName = loadedData.CurrentZone
+                        print(("[Bootstrap] %s のフィールド状態を復元: %s"):format(player.Name, zoneName))
 
-                    if _G.CreatePortalsForZone then
-                        _G.CreatePortalsForZone(zoneName)
-                    end
-                else
-                    print(("[Bootstrap] %s は初回プレイ"):format(player.Name))
+                        DataCollectors.restoreFieldState(zoneName, loadedData.FieldState)
 
-                    if targetZone ~= START_ZONE_NAME then
-                        if _G.SpawnMonstersForZone then
-                            _G.SpawnMonstersForZone(targetZone)
-                        end
                         if _G.CreatePortalsForZone then
-                            _G.CreatePortalsForZone(targetZone)
+                            _G.CreatePortalsForZone(zoneName)
                         end
                     else
-                        if _G.CreatePortalsForZone then
-                            _G.CreatePortalsForZone(START_ZONE_NAME)
+                        print(("[Bootstrap] %s は初回プレイ"):format(player.Name))
+
+                        if targetZone ~= START_ZONE_NAME then
+                            if _G.SpawnMonstersForZone then
+                                _G.SpawnMonstersForZone(targetZone)
+                            end
+                            if _G.CreatePortalsForZone then
+                                _G.CreatePortalsForZone(targetZone)
+                            end
+                        else
+                            if _G.CreatePortalsForZone then
+                                _G.CreatePortalsForZone(START_ZONE_NAME)
+                            end
                         end
                     end
-                end
 
-                -- ステータス更新
-                local stats = PlayerStatsModule.getStats(player)
-                if stats then
-                    local expToNext = stats.Level * 100
-                    local StatusUpdateEvent = ReplicatedStorage:FindFirstChild("StatusUpdate")
-                    if StatusUpdateEvent then
-                        StatusUpdateEvent:FireClient(
-                            player,
-                            stats.CurrentHP,
-                            stats.MaxHP,
-                            stats.Level,
-                            stats.Experience,
-                            expToNext,
-                            stats.Gold
-                        )
+                    -- クリーンアップ
+                    LastLoadedData[player] = nil
+                end)
+
+                -- ステータス更新（並行処理）
+                task.spawn(function()
+                    local stats = PlayerStatsModule.getStats(player)
+                    if stats then
+                        local expToNext = stats.Level * 100
+                        local StatusUpdateEvent = ReplicatedStorage:FindFirstChild("StatusUpdate")
+                        if StatusUpdateEvent then
+                            StatusUpdateEvent:FireClient(
+                                player,
+                                stats.CurrentHP,
+                                stats.MaxHP,
+                                stats.Level,
+                                stats.Experience,
+                                expToNext,
+                                stats.Gold
+                            )
+                        end
                     end
-                end
+                end)
 
                 print(("[Bootstrap] %s のスポーン処理完了"):format(player.Name))
-
-                -- クリーンアップ
-                LastLoadedData[player] = nil
             end)
         end)
 
