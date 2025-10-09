@@ -26,9 +26,9 @@ end
 
 -- 【最適化1】バッチ生成システム
 local function fillTerrainBatch(terrain, blocks)
-	local batchSize = 100  -- 一度に処理する数
+	local batchSize = 200  -- 一度に処理する数
 	local totalBlocks = #blocks
-
+print("[FieldGen] バッチ生成スタート");
 	for i = 1, totalBlocks, batchSize do
 		local endIdx = math.min(i + batchSize - 1, totalBlocks)
 
@@ -38,11 +38,12 @@ local function fillTerrainBatch(terrain, blocks)
 		end
 
 		-- サーバーの負荷分散
-		if i % 500 == 0 then
+		if i % 2000 == 0 then
 			task.wait()
 			print(("[FieldGen] 進行状況: %d/%d (%.1f%%)"):format(i, totalBlocks, i/totalBlocks*100))
 		end
 	end
+	print("[FieldGen] バッチ生成終了");
 end
 
 -- ReplicatedStorage/FieldGen.lua
