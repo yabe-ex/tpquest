@@ -12,6 +12,7 @@ local ZoneManager = require(script.Parent.ZoneManager)
 
 local SharedState = require(ReplicatedStorage:WaitForChild("SharedState"))
 local GameEvents = require(ReplicatedStorage:WaitForChild("GameEvents"))
+local ContinentsRegistry = require(ReplicatedStorage.Continents.Registry)
 
 -- BattleSystem読込（オプショナル）
 local BattleSystem = nil
@@ -453,26 +454,66 @@ local function spawnMonster(template: Model, index: number, def, islandName)
 	-- print(("[MonsterSpawner] %s を %s にスポーン"):format(m.Name, islandName))
 end
 
--- ゾーン内のモンスター数をカウント
+-- ゾーン内のモンスターカウントを取得
 local function getZoneMonsterCounts(zoneName)
-	local counts = {}
+    local counts = {}
 
-	for _, aiState in ipairs(ActiveMonsters) do
-		if aiState.monster and aiState.monster.Parent then
-			local monsterZone = aiState.monster:GetAttribute("SpawnZone")
-			if monsterZone == zoneName then
-				local monsterKind = aiState.def.Name or "Unknown"
-				counts[monsterKind] = (counts[monsterKind] or 0) + 1
-			end
-		end
-	end
+    -- 大陸名から島のリストを取得
+    local islandNames = {}
 
-	print(("[MonsterSpawner] ゾーン %s のモンスターカウント: %s"):format(
-		zoneName,
-		game:GetService("HttpService"):JSONEncode(counts)
-	))
+    -- ContinentsRegistryをロード（まだロードされていない場合）
+    if not ContinentsRegistry then
+        local ContinentsFolder = ReplicatedStorage:FindFirstChild("Continents")
+        if ContinentsFolder then
+            local RegistryModule = ContinentsFolder:FindFirstChild("Registry")
+            if RegistryModule then
+                ContinentsRegistry = require(RegistryModule)
+                print("[MonsterSpawner] ContinentsRegistryをロードしました")
+            end
+        end
+    end
 
-	return counts
+    -- 大陸の場合は、含まれる島をすべて取得
+    local continent = nil
+    if ContinentsRegistry then
+        for _, cont in ipairs(ContinentsRegistry) do
+            if cont.name == zoneName then
+                continent = cont
+                break
+            end
+        end
+    end
+
+    if continent and continent.islands then
+        -- 大陸内の全島を対象にする
+        for _, islandName in ipairs(continent.islands) do
+            table.insert(islandNames, islandName)
+        end
+        print(("[MonsterSpawner] 大陸 %s の島リスト: %s"):format(
+            zoneName,
+            table.concat(islandNames, ", ")
+        ))
+    else
+        -- 大陸でない場合は、ゾーン名自体を島名とする
+        table.insert(islandNames, zoneName)
+        print(("[MonsterSpawner] %s は島として扱います"):format(zoneName))
+    end
+
+    -- 各島のモンスターカウントを集計
+    for _, islandName in ipairs(islandNames) do
+        if MonsterCounts[islandName] then
+            for monsterName, count in pairs(MonsterCounts[islandName]) do
+                counts[monsterName] = (counts[monsterName] or 0) + count
+            end
+        end
+    end
+
+    print(("[MonsterSpawner] ゾーン %s のモンスターカウント: %s"):format(
+        zoneName,
+        game:GetService("HttpService"):JSONEncode(counts)
+    ))
+
+    return counts
 end
 
 -- 全ゾーンのモンスター数をSharedStateに保存

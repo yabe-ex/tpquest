@@ -1,43 +1,79 @@
 -- ServerScriptService/Bootstrap.server.lua
--- ゲーム初期化スクリプト（ステップ5: 依存関係整理版）
+-- ゲーム初期化スクリプト（最終安定版 - DataStoreロード安定化）
 
 local ServerScriptService = game:GetService("ServerScriptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
-print("[Bootstrap] === ゲーム初期化開始 (ステップ5) ===")
+print("[Bootstrap] === ゲーム初期化開始 (最終安定版) ===")
 
--- ============================================
--- 1. 共有モジュールの初期化
--- ============================================
-local SharedState = require(ReplicatedStorage:WaitForChild("SharedState"))
-local GameEvents = require(ReplicatedStorage:WaitForChild("GameEvents"))
-print("[Bootstrap] SharedState/GameEvents 初期化完了")
+-- ZoneManagerを読み込み（ServerScriptServiceの兄弟モジュール）
+local ZoneManager = require(script.Parent:WaitForChild("ZoneManager"))
 
--- ============================================
--- 2. コアモジュールの読み込み
--- ============================================
-local ZoneManager = require(ServerScriptService:WaitForChild("ZoneManager"))
-local PlayerStats = require(ServerScriptService:WaitForChild("PlayerStats"))
-print("[Bootstrap] ZoneManager/PlayerStats 読み込み完了")
+-- PlayerStatsのModuleScriptの実行結果をロード（ServerScriptServiceの兄弟モジュール）
+local PlayerStatsModule = require(script.Parent:WaitForChild("PlayerStats"))
+local DataCollectors = require(script.Parent:WaitForChild("DataCollectors"))
 
--- ============================================
--- 3. 定数定義
--- ============================================
 local START_ZONE_NAME = "ContinentTown"
 local LOAD_TIMEOUT = 10 -- DataStoreロードのタイムアウト(秒)
 
--- ============================================
--- 4. プレイヤーごとのロードデータ管理
--- ============================================
+-- プレイヤーごとのロードデータ管理
 local LastLoadedLocation = {}
+local LastLoadedData = {}
 
--- ============================================
--- 5. 初期地形生成
--- ============================================
--- print("[Bootstrap] 街を生成中...")
--- ZoneManager.LoadZone(START_ZONE_NAME)
--- print("[Bootstrap] 地形生成完了（待機なし）")
+-- PlayerStatsの初期化（DataStoreロード処理を含む）
+PlayerStatsModule.init()
+
+print("[Bootstrap] セーブ機能を初期化中...")
+
+local SaveGameEvent = ReplicatedStorage:FindFirstChild("SaveGame")
+if not SaveGameEvent then
+    SaveGameEvent = Instance.new("RemoteEvent")
+    SaveGameEvent.Name = "SaveGame"
+    SaveGameEvent.Parent = ReplicatedStorage
+    print("[Bootstrap] ✓ SaveGameイベント作成")
+end
+
+local SaveSuccessEvent = ReplicatedStorage:FindFirstChild("SaveSuccess")
+if not SaveSuccessEvent then
+    SaveSuccessEvent = Instance.new("RemoteEvent")
+    SaveSuccessEvent.Name = "SaveSuccess"
+    SaveSuccessEvent.Parent = ReplicatedStorage
+    print("[Bootstrap] ✓ SaveSuccessイベント作成")
+end
+
+-- DataStoreManagerとDataCollectorsをロード
+local DataStoreManager = require(ServerScriptService:WaitForChild("DataStoreManager"))
+local DataCollectors = require(ServerScriptService:WaitForChild("DataCollectors"))
+
+-- セーブイベントハンドラを登録
+SaveGameEvent.OnServerEvent:Connect(function(player)
+    print(("[Bootstrap] 💾 %s からセーブリクエスト受信"):format(player.Name))
+
+    -- プレイヤーのステータスを取得
+    local stats = PlayerStatsModule.getStats(player)
+    if not stats then
+        warn(("[Bootstrap] ❌ %s のステータスが見つかりません"):format(player.Name))
+        SaveSuccessEvent:FireClient(player, false)
+        return
+    end
+
+    -- セーブデータを作成
+    local saveData = DataCollectors.createSaveData(player, stats)
+
+    print(("[Bootstrap] 📦 セーブデータ作成完了"):format())
+
+    -- DataStoreに保存
+    local success = DataStoreManager.SaveData(player, saveData)
+
+    if success then
+        print(("[Bootstrap] ✅ %s のセーブ成功"):format(player.Name))
+    else
+        warn(("[Bootstrap] ❌ %s のセーブ失敗"):format(player.Name))
+    end
+end)
+
+print("[Bootstrap] ✓ セーブ機能の初期化完了")
 
 print("[Bootstrap] 街を生成中（非同期）...")
 task.spawn(function()
@@ -45,27 +81,26 @@ task.spawn(function()
     print("[Bootstrap] 地形生成完了")
 end)
 
--- ============================================
--- 6. 街の設定取得
--- ============================================
+-- 街の設定を取得
 local IslandsRegistry = require(ReplicatedStorage.Islands.Registry)
 local townConfig = nil
 for _, island in ipairs(IslandsRegistry) do
-    if island.name == "StartTown" then
-        townConfig = island
-        break
-    end
+	if island.name == "StartTown" then
+		townConfig = island
+		break
+	end
 end
 
 if not townConfig then
-    warn("[Bootstrap] StartTown の設定が見つかりません！")
-    return
+	warn("[Bootstrap] StartTown の設定が見つかりません！")
+	return
 end
 
--- ============================================
--- 7. プレイヤースポーン処理
--- ============================================
+
+-- プレイヤーのスポーン位置を街に設定
+-- プレイヤーのスポーン位置を街に設定
 local function setupPlayerSpawn(player)
+
     local characterAddedConnection = nil
 
     -- DataStoreからのロード処理（非同期）
@@ -73,7 +108,11 @@ local function setupPlayerSpawn(player)
         task.spawn(function()
             print(("[Bootstrap] %s のDataStoreロード開始"):format(player.Name))
 
-            local loadedLocation = PlayerStats.initPlayer(player)
+            -- PlayerStatsModuleのinitPlayerを呼び出し、ロード結果（Locationテーブル）を取得
+            local loadedLocation = PlayerStatsModule.initPlayer(player)
+
+            -- 【追加】完全なロードデータも取得
+            local fullLoadedData = PlayerStatsModule.getLastLoadedData(player)
 
             -- nilチェック（ロード失敗時のフォールバック）
             if not loadedLocation then
@@ -86,7 +125,13 @@ local function setupPlayerSpawn(player)
                 }
             end
 
-            LastLoadedLocation[player] = loadedLocation
+            -- 【変更】LastLoadedLocation → LastLoadedData に変更し、全データを保存
+            LastLoadedData[player] = {
+                Location = loadedLocation,
+                FieldState = fullLoadedData and fullLoadedData.FieldState or nil,
+                CurrentZone = fullLoadedData and fullLoadedData.CurrentZone or nil,
+            }
+
             print(("[Bootstrap] %s のロード完了: %s (%.0f, %.0f, %.0f)"):format(
                 player.Name,
                 loadedLocation.ZoneName,
@@ -100,104 +145,115 @@ local function setupPlayerSpawn(player)
     -- キャラクタースポーン時の処理
     local function performTeleportAndZoneSetup(player, character)
         -- ロードデータが準備されるまで待機
-        local loadedLocation = LastLoadedLocation[player]
-        local waited = 0
+        local loadedData = LastLoadedData[player]
 
-        while not loadedLocation and waited < LOAD_TIMEOUT do
+        local waited = 0
+        while not loadedData and waited < LOAD_TIMEOUT do
             task.wait(0.1)
             waited = waited + 0.1
-            loadedLocation = LastLoadedLocation[player]
+            loadedData = LastLoadedData[player]
         end
 
-        -- タイムアウト時のフォールバック
-        if not loadedLocation then
-            warn(("[Bootstrap] %s のロードタイムアウト、デフォルト座標使用"):format(player.Name))
-            loadedLocation = {
-                ZoneName = "ContinentTown",
-                X = townConfig.centerX,
-                Y = townConfig.baseY + 25,
-                Z = townConfig.centerZ
+        if not loadedData then
+            warn(("[Bootstrap] %s のロードがタイムアウトしました。デフォルト位置を使用します"):format(player.Name))
+            loadedData = {
+                Location = {
+                    ZoneName = "ContinentTown",
+                    X = townConfig.centerX,
+                    Y = townConfig.baseY + 25,
+                    Z = townConfig.centerZ
+                },
+                FieldState = nil,
+                CurrentZone = nil
             }
-            LastLoadedLocation[player] = loadedLocation
+            LastLoadedData[player] = loadedData
         end
 
-        -- テレポート処理が完了したらイベント接続を切断
+        local loadedLocation = loadedData.Location
+        local targetZone = loadedLocation.ZoneName
+        local targetX = loadedLocation.X
+        local targetY = loadedLocation.Y
+        local targetZ = loadedLocation.Z
+
+        print(("[Bootstrap] %s をワープします: %s (%.0f, %.0f, %.0f)"):format(
+            player.Name, targetZone, targetX, targetY, targetZ
+        ))
+
+        -- ゾーン読み込みとワープ
+        if targetZone ~= START_ZONE_NAME then
+            print(("[Bootstrap] %s のゾーンをロード: %s"):format(player.Name, targetZone))
+            ZoneManager.LoadZone(targetZone)
+            task.wait(1)
+        end
+
+        local success = ZoneManager.WarpPlayerToZone(player, targetZone, targetX, targetY, targetZ, true)
+
+        if not success then
+            warn(("[Bootstrap] %s のワープに失敗しました。デフォルト位置に配置します"):format(player.Name))
+            ZoneManager.WarpPlayerToZone(player, START_ZONE_NAME,
+                townConfig.centerX,
+                townConfig.baseY + 25,
+                townConfig.centerZ,
+                true
+            )
+        end
+
+        -- 【重要】モンスターとポータルの復元処理
+        if loadedData.FieldState and loadedData.CurrentZone then
+            task.spawn(function()
+                task.wait(2) -- ゾーンが完全にロードされるまで待つ
+
+                local zoneName = loadedData.CurrentZone
+                print(("[Bootstrap] %s のフィールド状態を復元: %s"):format(player.Name, zoneName))
+
+                -- モンスター復元
+                local restoreSuccess = DataCollectors.restoreFieldState(zoneName, loadedData.FieldState)
+
+                if restoreSuccess then
+                    print(("[Bootstrap] %s のモンスター復元成功"):format(player.Name))
+                else
+                    print(("[Bootstrap] %s のモンスター復元失敗または不要"):format(player.Name))
+                end
+
+                -- ポータル生成
+                if _G.CreatePortalsForZone then
+                    _G.CreatePortalsForZone(zoneName)
+                    print(("[Bootstrap] %s のポータル生成完了"):format(player.Name))
+                end
+            end)
+        else
+            print(("[Bootstrap] %s は初回プレイまたはフィールド状態なし"):format(player.Name))
+
+            -- 初回プレイの場合、通常のモンスター・ポータル生成
+            if targetZone ~= START_ZONE_NAME then
+                task.spawn(function()
+                    task.wait(1)
+                    if _G.SpawnMonstersForZone then
+                        _G.SpawnMonstersForZone(targetZone)
+                        print(("[Bootstrap] %s の初回モンスタースポーン完了"):format(player.Name))
+                    end
+                    if _G.CreatePortalsForZone then
+                        _G.CreatePortalsForZone(targetZone)
+                        print(("[Bootstrap] %s の初回ポータル生成完了"):format(player.Name))
+                    end
+                end)
+            end
+        end
+
+        print(("[Bootstrap] %s のスポーン処理完了"):format(player.Name))
+    end
+
+    -- CharacterAddedイベントを接続
+    characterAddedConnection = player.CharacterAdded:Connect(function(character)
+        performTeleportAndZoneSetup(player, character)
+
+        -- 一度使ったらキャッシュをクリア
         if characterAddedConnection then
             characterAddedConnection:Disconnect()
             characterAddedConnection = nil
+
+            LastLoadedData[player] = nil
         end
-
-        task.spawn(function()
-            -- 既にゾーンが設定済みならスキップ
-            if ZoneManager.GetPlayerZone(player) then
-                return
-            end
-
-            local spawnZone = loadedLocation.ZoneName
-            task.wait(0.05) -- 物理エンジン安定化
-
-            local hrp = character:WaitForChild("HumanoidRootPart", 5)
-            if not hrp then return end
-
-            -- Town以外のゾーンの場合、地形生成とアセットロードを非同期化
-            if spawnZone ~= START_ZONE_NAME then
-                task.spawn(function()
-                    print(("[Bootstrap] 非同期: %s のロード開始"):format(spawnZone))
-
-                    ZoneManager.LoadZone(spawnZone)
-
-                    -- ポータル/モンスター生成
-                    if _G.DestroyPortalsForZone and _G.CreatePortalsForZone then
-                        _G.DestroyPortalsForZone(START_ZONE_NAME)
-                        _G.CreatePortalsForZone(spawnZone)
-                    end
-
-                    if _G.SpawnMonstersForZone then
-                        _G.SpawnMonstersForZone(spawnZone)
-                    end
-
-                    print(("[Bootstrap] 非同期: %s のロード完了"):format(spawnZone))
-                end)
-            end
-
-            -- 最終座標の決定
-            local spawnX = loadedLocation.X
-            local spawnY = loadedLocation.Y
-            local spawnZ = loadedLocation.Z
-
-            -- Town内で、デフォルト座標の場合は中心に上書き
-            local DEFAULT_X = -50
-            local DEFAULT_Y = 50
-            local DEFAULT_Z = 50
-            local isDefaultLocation = (spawnX == DEFAULT_X and spawnY == DEFAULT_Y and spawnZ == DEFAULT_Z)
-
-            if spawnZone == START_ZONE_NAME and isDefaultLocation then
-                spawnY = townConfig.baseY + 50
-                spawnX = townConfig.centerX
-                spawnZ = townConfig.centerZ
-                print(("[Bootstrap] Town中心座標に上書き: (%.0f, %.0f, %.0f)"):format(spawnX, spawnY, spawnZ))
-            end
-
-            print(("[Bootstrap] 最終テレポート座標: %s (%.0f, %.0f, %.0f)"):format(
-                spawnZone, spawnX, spawnY, spawnZ
-            ))
-
-            -- テレポート実行
-            hrp.CFrame = CFrame.new(spawnX, spawnY, spawnZ)
-
-            -- ゾーン情報を設定
-            ZoneManager.PlayerZones[player] = spawnZone
-
-            -- Townの場合のみポータル生成
-            if spawnZone == START_ZONE_NAME and _G.CreatePortalsForZone then
-                _G.CreatePortalsForZone(START_ZONE_NAME)
-            end
-        end)
-    end
-
-    -- CharacterAddedイベント接続
-    characterAddedConnection = player.CharacterAdded:Connect(function(character)
-        performTeleportAndZoneSetup(player, character)
     end)
 
     -- ロード開始
@@ -208,10 +264,6 @@ local function setupPlayerSpawn(player)
         performTeleportAndZoneSetup(player, player.Character)
     end
 end
-
--- ============================================
--- 8. プレイヤー管理イベント
--- ============================================
 -- 既存プレイヤーに適用
 for _, player in ipairs(Players:GetPlayers()) do
     setupPlayerSpawn(player)
@@ -225,9 +277,7 @@ Players.PlayerRemoving:Connect(function(player)
     LastLoadedLocation[player] = nil
 end)
 
--- ============================================
--- 9. 効果音の初期化
--- ============================================
+-- 効果音の初期化
 task.spawn(function()
     local soundsFolder = ReplicatedStorage:FindFirstChild("Sounds")
     if not soundsFolder then
@@ -255,20 +305,46 @@ task.spawn(function()
     print("[Bootstrap] Soundsフォルダを初期化しました")
 end)
 
--- ============================================
--- 10. モジュール初期化（順序重要）
--- ============================================
-print("[Bootstrap] モジュール初期化開始...")
+-- 【追加】セーブイベントハンドラの登録
+local SaveGameEvent = ReplicatedStorage:FindFirstChild("SaveGame")
+if not SaveGameEvent then
+    SaveGameEvent = Instance.new("RemoteEvent")
+    SaveGameEvent.Name = "SaveGame"
+    SaveGameEvent.Parent = ReplicatedStorage
+    print("[Bootstrap] SaveGameイベントを作成しました")
+end
 
--- PlayerStats初期化（最優先）
-PlayerStats.init()
-print("[Bootstrap] PlayerStats初期化完了")
+local DataStoreManager = require(ServerScriptService:WaitForChild("DataStoreManager"))
+local DataCollectors = require(ServerScriptService:WaitForChild("DataCollectors"))
 
--- BattleSystemは自動的にPlayerStatsを参照（循環依存なし）
-print("[Bootstrap] BattleSystem準備完了")
+SaveGameEvent.OnServerEvent:Connect(function(player)
+    print(("[Bootstrap] %s からセーブリクエストを受信"):format(player.Name))
 
--- MonsterSpawnerはイベント駆動で動作（循環依存なし）
-print("[Bootstrap] MonsterSpawner準備完了")
+    -- プレイヤーのステータスを取得
+    local stats = PlayerStatsModule.getStats(player)
+    if not stats then
+        warn(("[Bootstrap] %s のステータスが見つかりません"):format(player.Name))
+        local SaveSuccessEvent = ReplicatedStorage:FindFirstChild("SaveSuccess")
+        if SaveSuccessEvent then
+            SaveSuccessEvent:FireClient(player, false)
+        end
+        return
+    end
+
+    -- セーブデータを作成
+    local saveData = DataCollectors.createSaveData(player, stats)
+
+    -- DataStoreに保存
+    local success = DataStoreManager.SaveData(player, saveData)
+
+    if success then
+        print(("[Bootstrap] %s のセーブ成功"):format(player.Name))
+    else
+        warn(("[Bootstrap] %s のセーブ失敗"):format(player.Name))
+    end
+end)
+
+print("[Bootstrap] セーブイベントハンドラを登録しました")
 
 print("[Bootstrap] === ゲーム初期化完了 ===")
 print(("[Bootstrap] プレイヤーは街（%s）からスタートします"):format(START_ZONE_NAME))

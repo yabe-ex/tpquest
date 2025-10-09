@@ -201,7 +201,7 @@ print("[StatusUI] RemoteEventを待機中...")
 
 -- RemoteEventを待機（最大30秒）
 task.spawn(function()
-	local StatusUpdateEvent = ReplicatedStorage:WaitForChild("StatusUpdate", 30)
+	local StatusUpdateEvent = ReplicatedStorage:WaitForChild("StatusUpdate", 10)
 	if StatusUpdateEvent then
 		StatusUpdateEvent.OnClientEvent:Connect(onStatusUpdate)
 		print("[StatusUI] StatusUpdateイベント接続完了")

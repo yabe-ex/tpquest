@@ -9,7 +9,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SharedState = require(ReplicatedStorage:WaitForChild("SharedState"))
 local GameEvents = require(ReplicatedStorage:WaitForChild("GameEvents"))
 
+local DataStoreManager = require(script.Parent:WaitForChild("DataStoreManager"))
+
 local PlayerStats = {}
+local LoadedDataCache = {}
 
 -- RemoteEventを取得する関数
 local function getRemoteEvent(name)
@@ -46,21 +49,61 @@ local PlayerData = {}
 function PlayerStats.initPlayer(player: Player)
 	if PlayerData[player] then
 		warn(("[PlayerStats] %s は既に初期化済みです"):format(player.Name))
-		return
+        -- 既に初期化済みの場合はLocationを返却
+        return PlayerData[player].Location or {
+            ZoneName = "ContinentTown", X = DEFAULT_STATS.MaxHP, Y = DEFAULT_STATS.MaxHP, Z = DEFAULT_STATS.MaxHP
+        }
 	end
 
 	-- デフォルト値でステータスを作成
-	PlayerData[player] = {}
+	local stats = {}
 	for key, value in pairs(DEFAULT_STATS) do
-		PlayerData[player][key] = value
+		stats[key] = value
 	end
 
-	print(("[PlayerStats] %s のステータスを初期化しました"):format(player.Name))
+	-- ★DataStoreからデータをロード（ブロッキング）
+	local loadedData = DataStoreManager.LoadData(player)
+	LoadedDataCache[player] = loadedData
+
+	local loadedLocation = nil
+
+	if loadedData and loadedData.PlayerState then
+		local playerState = loadedData.PlayerState
+
+		-- ステータスを適用
+		for key, value in pairs(playerState.Stats) do
+			if stats[key] ~= nil then
+				stats[key] = value
+			end
+		end
+
+		-- Locationを適用
+		if playerState.Location then
+			loadedLocation = playerState.Location
+			print(("[PlayerStats] %s のセーブデータを適用しました: %s (%.0f, %.0f, %.0f)"):format(
+				player.Name,
+				loadedLocation.ZoneName,
+				loadedLocation.X,
+				loadedLocation.Y,
+				loadedLocation.Z
+			))
+		end
+	else
+		print(("[PlayerStats] %s の新規データ、またはロード失敗（デフォルト値使用）"):format(player.Name))
+	end
+
+	PlayerData[player] = stats
+	print(("[PlayerStats] %s のステータスを初期化しました（DataStore適用後）"):format(player.Name))
 
 	-- 【ステップ2】SharedStateにプレイヤーゾーンを初期化
 	SharedState.PlayerZones[player] = nil
 
-	-- TODO: DataStoreから読み込み
+	-- ★ロードされたLocation情報を返す
+	return loadedLocation
+end
+
+function PlayerStats.getLastLoadedData(player: Player)
+    return LoadedDataCache[player]
 end
 
 -- プレイヤーのステータスを取得
@@ -304,13 +347,10 @@ end
 
 -- プレイヤーが退出したらデータをクリア
 function PlayerStats.removePlayer(player: Player)
-	-- TODO: DataStoreに保存
-	PlayerData[player] = nil
-
-	-- 【ステップ2】SharedStateからも削除
-	SharedState.PlayerZones[player] = nil
-
-	print(("[PlayerStats] %s のデータを削除しました"):format(player.Name))
+    PlayerData[player] = nil
+    LoadedDataCache[player] = nil -- 【追加】
+    SharedState.PlayerZones[player] = nil
+    print(("[PlayerStats] %s のデータを削除しました"):format(player.Name))
 end
 
 -- 初期化

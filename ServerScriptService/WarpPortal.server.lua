@@ -381,7 +381,7 @@ task.spawn(function()
 end)
 
 task.wait(0.3)
--- createPortalsForZone("ContinentTown") -- ★修正: StartTownからContinentTownに変更
+createPortalsForZone("ContinentTown") -- ★修正: StartTownからContinentTownに変更
 
 Players.PlayerRemoving:Connect(function(player)
 	warpingPlayers[player.UserId] = nil

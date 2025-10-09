@@ -22,19 +22,22 @@ function DataStoreManager.SaveData(player: Player, data: table)
         PLAYER_DATA_STORE:SetAsync(player.UserId, data)
     end)
 
+    -- 【修正】毎回SaveSuccessEventを取得
+    local SaveSuccessEvent = ReplicatedStorage:FindFirstChild("SaveSuccess")
+
     if success then
         print(("[DataStoreManager] %s のデータを保存しました。キー: %d"):format(player.Name, player.UserId))
 
         -- クライアントに保存成功を通知
-        if SAVE_SUCCESS_EVENT then
-            SAVE_SUCCESS_EVENT:FireClient(player, true)
+        if SaveSuccessEvent then
+            SaveSuccessEvent:FireClient(player, true)
         end
     else
         warn(("[DataStoreManager] %s のデータ保存に失敗しました: %s"):format(player.Name, err))
 
         -- クライアントに保存失敗を通知
-        if SAVE_SUCCESS_EVENT then
-            SAVE_SUCCESS_EVENT:FireClient(player, false)
+        if SaveSuccessEvent then
+            SaveSuccessEvent:FireClient(player, false)
         end
     end
     return success

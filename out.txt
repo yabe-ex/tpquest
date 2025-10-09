@@ -3,12 +3,12 @@ drwxr-xr-x  11 yabea  staff  352 10  6 18:17 ReplicatedStorage
 drwxr-xr-x  13 yabea  staff  416 10  6 19:27 ServerScriptService
 drwxr-xr-x  10 yabea  staff  320 10  6 14:42 StartPlayerScripts
 -rwxr-xr-x   1 yabea  staff  976 10  4 11:52 go.sh
--rw-r--r--   1 yabea  staff    0 10  9 12:09 out.txt
+-rw-r--r--   1 yabea  staff    0 10  9 13:44 out.txt
 
 ./ReplicatedStorage:
 total 40
 drwxr-xr-x  7 yabea  staff   224 10  6 10:42 Continents
--rw-r--r--  1 yabea  staff  6593 10  6 11:53 FieldGen.lua
+-rw-r--r--  1 yabea  staff  6686 10  9 12:36 FieldGen.lua
 -rw-r--r--  1 yabea  staff  2722 10  6 18:17 GameEvents.lua
 drwxr-xr-x  8 yabea  staff   256 10  6 10:43 Islands
 drwxr-xr-x  5 yabea  staff   160 10  6 14:42 Monsters
@@ -45,13 +45,13 @@ total 0
 ./ServerScriptService:
 total 264
 -rw-r--r--  1 yabea  staff  27963 10  9 12:05 BattleSystem.lua
--rw-r--r--  1 yabea  staff   8961 10  8 17:42 Bootstrap.server.lua
+-rw-r--r--  1 yabea  staff   9420 10  9 13:14 Bootstrap.server.lua
 -rw-r--r--  1 yabea  staff   3486 10  6 14:42 DataCollectors.lua
 -rw-r--r--  1 yabea  staff   2874 10  6 14:42 DataStoreManager.lua
 -rw-r--r--  1 yabea  staff    687 10  3 18:05 LoadTest.server.lua
 -rw-r--r--  1 yabea  staff  25267 10  9 11:58 MonsterSpawner.server.lua
 -rw-r--r--  1 yabea  staff   2313 10  5 17:26 OceanSafety.server.lua
--rw-r--r--  1 yabea  staff  10663 10  6 21:45 PlayerStats.lua
+-rw-r--r--  1 yabea  staff  11885 10  9 13:09 PlayerStats.lua
 -rw-r--r--  1 yabea  staff   5612 10  5 20:34 TowerPlacement.server.lua
 -rw-r--r--  1 yabea  staff  12656 10  7 09:45 WarpPortal.server.lua
 -rw-r--r--  1 yabea  staff   9727 10  7 09:35 ZoneManager.lua
@@ -62,9 +62,9 @@ total 232
 -rw-r--r--  1 yabea  staff  26090 10  5 20:30 BattleUI.client.lua
 -rw-r--r--  1 yabea  staff   7575 10  3 18:05 DeathUI.client.lua
 -rw-r--r--  1 yabea  staff   5844 10  3 18:05 LevelUpUI.client.lua
--rw-r--r--  1 yabea  staff  31643 10  6 08:55 MenuUI.client.lua
+-rw-r--r--  1 yabea  staff  31646 10  9 13:36 MenuUI.client.lua
 -rw-r--r--  1 yabea  staff  17989 10  6 14:42 Minimap.client.lua
--rw-r--r--  1 yabea  staff   6847 10  3 22:44 StatusUI.client.lua
+-rw-r--r--  1 yabea  staff   6847 10  9 13:33 StatusUI.client.lua
 -rw-r--r--  1 yabea  staff   2045 10  6 10:49 WarpUI.client.lua
 ===== ./StartPlayerScripts/Minimap.client.lua =====
 -- StarterPlayer/StarterPlayerScripts/Minimap.client.lua
@@ -705,10 +705,10 @@ local currentModal = nil
 local isInBattle = false
 
 -- RemoteEvent取得
-local RequestStatusEvent = ReplicatedStorage:WaitForChild("RequestStatus", 10)
-local SaveGameEvent = ReplicatedStorage:WaitForChild("SaveGame", 10)
-local SaveSuccessEvent = ReplicatedStorage:WaitForChild("SaveSuccess", 10)
-local RequestLoadRespawnEvent = ReplicatedStorage:WaitForChild("RequestLoadRespawn", 10)
+local RequestStatusEvent = ReplicatedStorage:WaitForChild("RequestStatus", 0.1)
+local SaveGameEvent = ReplicatedStorage:WaitForChild("SaveGame", 0.1)
+local SaveSuccessEvent = ReplicatedStorage:WaitForChild("SaveSuccess", 0.1)
+local RequestLoadRespawnEvent = ReplicatedStorage:WaitForChild("RequestLoadRespawn", 0.1)
 
 
 -- UIコンテナ
@@ -742,7 +742,7 @@ end
 task.spawn(function()
 	print("[MenuUI] StatsDetailイベント接続を開始...")
 
-	local StatsDetailEvent = ReplicatedStorage:WaitForChild("StatsDetail", 30)
+	local StatsDetailEvent = ReplicatedStorage:WaitForChild("StatsDetail", 5)
 	if not StatsDetailEvent then
 		warn("[MenuUI] StatsDetailイベントが見つかりません！")
 		return
@@ -2855,7 +2855,7 @@ print("[StatusUI] RemoteEventを待機中...")
 
 -- RemoteEventを待機（最大30秒）
 task.spawn(function()
-	local StatusUpdateEvent = ReplicatedStorage:WaitForChild("StatusUpdate", 30)
+	local StatusUpdateEvent = ReplicatedStorage:WaitForChild("StatusUpdate", 10)
 	if StatusUpdateEvent then
 		StatusUpdateEvent.OnClientEvent:Connect(onStatusUpdate)
 		print("[StatusUI] StatusUpdateイベント接続完了")
@@ -3627,6 +3627,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SharedState = require(ReplicatedStorage:WaitForChild("SharedState"))
 local GameEvents = require(ReplicatedStorage:WaitForChild("GameEvents"))
 
+local DataStoreManager = require(script.Parent:WaitForChild("DataStoreManager"))
+
 local PlayerStats = {}
 
 -- RemoteEventを取得する関数
@@ -3664,21 +3666,56 @@ local PlayerData = {}
 function PlayerStats.initPlayer(player: Player)
 	if PlayerData[player] then
 		warn(("[PlayerStats] %s は既に初期化済みです"):format(player.Name))
-		return
+        -- 既に初期化済みの場合はLocationを返却
+        return PlayerData[player].Location or {
+            ZoneName = "ContinentTown", X = DEFAULT_STATS.MaxHP, Y = DEFAULT_STATS.MaxHP, Z = DEFAULT_STATS.MaxHP
+        }
 	end
 
 	-- デフォルト値でステータスを作成
-	PlayerData[player] = {}
+	local stats = {}
 	for key, value in pairs(DEFAULT_STATS) do
-		PlayerData[player][key] = value
+		stats[key] = value
 	end
 
-	print(("[PlayerStats] %s のステータスを初期化しました"):format(player.Name))
+	-- ★DataStoreからデータをロード（ブロッキング）
+	local loadedData = DataStoreManager.LoadData(player)
+
+	local loadedLocation = nil
+
+	if loadedData and loadedData.PlayerState then
+		local playerState = loadedData.PlayerState
+
+		-- ステータスを適用
+		for key, value in pairs(playerState.Stats) do
+			if stats[key] ~= nil then
+				stats[key] = value
+			end
+		end
+
+		-- Locationを適用
+		if playerState.Location then
+			loadedLocation = playerState.Location
+			print(("[PlayerStats] %s のセーブデータを適用しました: %s (%.0f, %.0f, %.0f)"):format(
+				player.Name,
+				loadedLocation.ZoneName,
+				loadedLocation.X,
+				loadedLocation.Y,
+				loadedLocation.Z
+			))
+		end
+	else
+		print(("[PlayerStats] %s の新規データ、またはロード失敗（デフォルト値使用）"):format(player.Name))
+	end
+
+	PlayerData[player] = stats
+	print(("[PlayerStats] %s のステータスを初期化しました（DataStore適用後）"):format(player.Name))
 
 	-- 【ステップ2】SharedStateにプレイヤーゾーンを初期化
 	SharedState.PlayerZones[player] = nil
 
-	-- TODO: DataStoreから読み込み
+	-- ★ロードされたLocation情報を返す
+	return loadedLocation
 end
 
 -- プレイヤーのステータスを取得
@@ -3979,33 +4016,34 @@ end
 return PlayerStats
 ===== ./ServerScriptService/Bootstrap.server.lua =====
 -- ServerScriptService/Bootstrap.server.lua
--- ゲーム初期化スクリプト（最終安定版 - セーブ機能有効）
+-- ゲーム初期化スクリプト（最終安定版 - DataStoreロード安定化）
 
 local ServerScriptService = game:GetService("ServerScriptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
-print("[Bootstrap] === ゲーム初期化開始 ===")
+print("[Bootstrap] === ゲーム初期化開始 (最終安定版) ===")
 
--- ZoneManagerを読み込み
-local ZoneManager = require(script.Parent.ZoneManager)
--- PlayerStatsのロードはsetupPlayerSpawnに任せ、ここではWaitForChildで参照を用意
-local PlayerStats = ServerScriptService:WaitForChild("PlayerStats")
+-- ZoneManagerを読み込み（ServerScriptServiceの兄弟モジュール）
+local ZoneManager = require(script.Parent:WaitForChild("ZoneManager"))
+
+-- PlayerStatsのModuleScriptの実行結果をロード（ServerScriptServiceの兄弟モジュール）
+local PlayerStatsModule = require(script.Parent:WaitForChild("PlayerStats"))
 
 local START_ZONE_NAME = "ContinentTown"
+local LOAD_TIMEOUT = 10 -- DataStoreロードのタイムアウト(秒)
 
--- 【修正】プレイヤーごとにロードした最終位置を保存するテーブル (このバージョンでは未使用だが、ロジック維持のため残す)
+-- プレイヤーごとのロードデータ管理
 local LastLoadedLocation = {}
 
--- PlayerStatsの初期化（ロード処理はPlayerStats内でtask.spawnに任せる）
-require(PlayerStats).init()
+-- PlayerStatsの初期化（DataStoreロード処理を含む）
+PlayerStatsModule.init()
 
-print("[Bootstrap] 街を生成中...")
--- 最初にデフォルトゾーンをロード (地形生成を開始)
-ZoneManager.LoadZone(START_ZONE_NAME)
-
--- 【修正】地形生成後の強制待機 (5秒) を完全に削除
-print("[Bootstrap] 地形生成の待機完了（5秒待機を削除）")
+print("[Bootstrap] 街を生成中（非同期）...")
+task.spawn(function()
+    ZoneManager.LoadZone(START_ZONE_NAME)
+    print("[Bootstrap] 地形生成完了")
+end)
 
 -- 街の設定を取得
 local IslandsRegistry = require(ReplicatedStorage.Islands.Registry)
@@ -4028,113 +4066,17 @@ local function setupPlayerSpawn(player)
 
     local characterAddedConnection = nil
 
-    -- ロード後のテレポート、ゾーン初期化処理 (CharacterAdded接続時に実行される)
-    local function performTeleportAndZoneSetup(player, character)
-
-        -- 【重要】LastLoadedLocationにデータが入るまで待機
-        local loadedLocation = LastLoadedLocation[player]
-        while not loadedLocation do
-            task.wait(0.05) -- 50msごとにチェック
-            loadedLocation = LastLoadedLocation[player]
-        end
-
-        -- ★テレポート処理が一度完了したら、イベント接続を切断する
-        if characterAddedConnection then
-            characterAddedConnection:Disconnect()
-        end
-
-        task.spawn(function()
-
-            -- 【重要】既にテレポート処理が完了しているか、データがない場合はスキップ
-            if ZoneManager.GetPlayerZone(player) then
-                return
-            end
-
-            local spawnZone = loadedLocation.ZoneName
-
-            task.wait(0.05) -- 物理エンジン安定化のための最小待機
-
-            local hrp = character:WaitForChild("HumanoidRootPart", 5)
-            if not hrp then return end
-
-            -- ロードされたゾーンがTown以外の場合、Terrain生成とポータル/モンスター生成をトリガー
-            if spawnZone ~= START_ZONE_NAME then
-                -- 【修正】地形生成とポータル/モンスター生成を非同期タスクに委譲
-                task.spawn(function()
-                    print(("[Bootstrap] 非同期タスク開始: %s の地形生成とアセットロード"):format(spawnZone))
-
-                    -- 地形生成 (LoadZoneは完了を待つ)
-                    ZoneManager.LoadZone(spawnZone)
-
-                    -- ポータル/モンスター生成 (地形生成後)
-                    if _G.DestroyPortalsForZone and _G.CreatePortalsForZone then
-                        _G.DestroyPortalsForZone(START_ZONE_NAME)
-                        _G.CreatePortalsForZone(spawnZone)
-                    end
-
-                    if _G.SpawnMonstersForZone then
-                        _G.SpawnMonstersForZone(spawnZone)
-                    end
-                    print(("[Bootstrap] 非同期タスク完了: %s のロード完了"):format(spawnZone))
-                end)
-            end
-
-            -- 座標の最終決定
-            local spawnX = loadedLocation.X
-            local spawnZ = loadedLocation.Z
-            local spawnY = loadedLocation.Y
-
-            -- Townゾーンであっても、ロードデータがあればそれを優先する
-            local DEFAULT_X = -50
-            local DEFAULT_Y = 50
-            local DEFAULT_Z = 50
-
-            local isDefaultLocation = (spawnX == DEFAULT_X and spawnY == DEFAULT_Y and spawnZ == DEFAULT_Z)
-
-            if spawnZone == START_ZONE_NAME then
-                if isDefaultLocation then
-                    print(("[Bootstrap] 判定: ロード座標がデフォルトのため、Town中心に上書き: (%.0f, %.0f, %.0f)"):format(townConfig.centerX, townConfig.baseY + 50, townConfig.centerZ))
-                    spawnY = townConfig.baseY + 50
-                    spawnX = townConfig.centerX
-                    spawnZ = townConfig.centerZ
-                else
-                    print(("[Bootstrap] 判定: Town内のロード位置を使用: (%.0f, %.0f, %.0f)"):format(spawnX, spawnY, spawnZ))
-                end
-            elseif spawnZone ~= START_ZONE_NAME then
-                print(("[Bootstrap] 判定: Town外(%s)のロード位置を使用: (%.0f, %.0f, %.0f)"):format(spawnZone, spawnX, spawnY, spawnZ))
-            end
-
-
-            print(("[Bootstrap] 最終テレポート座標 (決定): %s (%.0f, %.0f, %.0f)"):format(
-                spawnZone, spawnX,
-                spawnY, spawnZ
-                ))
-
-            local hrp = character:FindFirstChild("HumanoidRootPart")
-            if not hrp then return end
-
-            -- CFrame設定 (テレポート)
-            hrp.CFrame = CFrame.new(spawnX, spawnY, spawnZ)
-
-            -- ゾーン情報を設定
-            ZoneManager.PlayerZones[player] = spawnZone
-
-            -- ロード後のポータル生成（Townの場合）
-            if spawnZone == START_ZONE_NAME and _G.CreatePortalsForZone then
-                _G.CreatePortalsForZone(START_ZONE_NAME)
-            end
-        end)
-    end
-
-    -- 【新規】PlayerAdded時にDataStoreロードを開始
+    -- DataStoreからのロード処理（非同期）
     local function startDataStoreLoad()
         task.spawn(function()
-            -- ★1. DataStoreからロードし、結果を待つ
-            local loadedLocation = require(PlayerStats).initPlayer(player)
+            print(("[Bootstrap] %s のDataStoreロード開始"):format(player.Name))
 
-            -- ★1.5. nil チェック追加（暫定）
+            -- PlayerStatsModuleのinitPlayerを呼び出し、ロード結果（Locationテーブル）を取得
+            local loadedLocation = PlayerStatsModule.initPlayer(player)
+
+            -- nilチェック（ロード失敗時のフォールバック）
             if not loadedLocation then
-                print(("[Bootstrap] DataStoreロード結果がnil。デフォルト設定を使用"):format())
+                warn(("[Bootstrap] %s のロードデータがnil、デフォルト使用"):format(player.Name))
                 loadedLocation = {
                     ZoneName = "ContinentTown",
                     X = townConfig.centerX,
@@ -4143,67 +4085,187 @@ local function setupPlayerSpawn(player)
                 }
             end
 
-            -- ★2. ロードが完了したら、結果を保存
             LastLoadedLocation[player] = loadedLocation
-            print(("[Bootstrap] DataStoreロード完了。座標保存済み: %s"):format(loadedLocation.ZoneName))
+            print(("[Bootstrap] %s のロード完了: %s (%.0f, %.0f, %.0f)"):format(
+                player.Name,
+                loadedLocation.ZoneName,
+                loadedLocation.X,
+                loadedLocation.Y,
+                loadedLocation.Z
+            ))
         end)
     end
 
-    -- CharacterAddedイベントを接続
+    -- キャラクタースポーン時の処理
+    local function performTeleportAndZoneSetup(player, character)
+        -- ロードデータが準備されるまで待機
+        local loadedLocation = LastLoadedLocation[player]
+        local waited = 0
+
+        while not loadedLocation and waited < LOAD_TIMEOUT do
+            task.wait(0.05)
+            waited = waited + 0.05
+            loadedLocation = LastLoadedLocation[player]
+        end
+
+        -- タイムアウト時のフォールバック
+        if not loadedLocation then
+            warn(("[Bootstrap] %s のロードタイムアウト、デフォルト座標使用"):format(player.Name))
+            loadedLocation = {
+                ZoneName = "ContinentTown",
+                X = townConfig.centerX,
+                Y = townConfig.baseY + 25,
+                Z = townConfig.centerZ
+            }
+            LastLoadedLocation[player] = loadedLocation
+        end
+
+        -- テレポート処理が完了したらイベント接続を切断
+        if characterAddedConnection then
+            characterAddedConnection:Disconnect()
+            characterAddedConnection = nil
+        end
+
+        task.spawn(function()
+            -- 既にゾーンが設定済みならスキップ
+            if ZoneManager.GetPlayerZone(player) then
+                return
+            end
+
+            local spawnZone = loadedLocation.ZoneName
+            task.wait(0.05) -- 物理エンジン安定化
+
+            local hrp = character:WaitForChild("HumanoidRootPart", 5)
+            if not hrp then return end
+
+            -- Town以外のゾーンの場合、地形生成とアセットロードを非同期化
+            if spawnZone ~= START_ZONE_NAME then
+                task.spawn(function()
+                    print(("[Bootstrap] 非同期: %s のロード開始"):format(spawnZone))
+
+                    ZoneManager.LoadZone(spawnZone)
+
+                    -- ポータル/モンスター生成
+                    if _G.DestroyPortalsForZone and _G.CreatePortalsForZone then
+                        _G.DestroyPortalsForZone(START_ZONE_NAME)
+                        _G.CreatePortalsForZone(spawnZone)
+                    end
+
+                    if _G.SpawnMonstersForZone then
+                        _G.SpawnMonstersForZone(spawnZone)
+                    end
+
+                    print(("[Bootstrap] 非同期: %s のロード完了"):format(spawnZone))
+                end)
+            end
+
+            -- 最終座標の決定
+            local spawnX = loadedLocation.X
+            local spawnZ = loadedLocation.Z
+            local spawnY = loadedLocation.Y
+
+            -- Town内で、デフォルト座標の場合は中心に上書き
+            local DEFAULT_X = -50
+            local DEFAULT_Y = 50
+            local DEFAULT_Z = 50
+            local isDefaultLocation = (spawnX == DEFAULT_X and spawnY == DEFAULT_Y and spawnZ == DEFAULT_Z)
+
+            if spawnZone == START_ZONE_NAME and isDefaultLocation then
+                spawnY = townConfig.baseY + 50
+                spawnX = townConfig.centerX
+                spawnZ = townConfig.centerZ
+                print(("[Bootstrap] Town中心座標に上書き: (%.0f, %.0f, %.0f)"):format(spawnX, spawnY, spawnZ))
+            end
+
+            print(("[Bootstrap] 最終テレポート座標: %s (%.0f, %.0f, %.0f)"):format(
+                spawnZone, spawnX, spawnY, spawnZ
+            ))
+
+            -- テレポート実行
+            hrp.CFrame = CFrame.new(spawnX, spawnY, spawnZ)
+
+            -- ゾーン情報を設定
+            ZoneManager.PlayerZones[player] = spawnZone
+
+            -- Townの場合のみポータル生成
+            if spawnZone == START_ZONE_NAME and _G.CreatePortalsForZone then
+                _G.CreatePortalsForZone(START_ZONE_NAME)
+            end
+
+            -- クライアントのUIが待機している初回ステータス更新を強制的に発行
+            local stats = PlayerStatsModule.getStats(player)
+            if stats then
+                local expToNext = stats.Level * 100
+                local StatusUpdateEvent = ReplicatedStorage:FindFirstChild("StatusUpdate")
+                if StatusUpdateEvent then
+                    StatusUpdateEvent:FireClient(
+                        player,
+                        stats.CurrentHP,
+                        stats.MaxHP,
+                        stats.Level,
+                        stats.Experience,
+                        expToNext,
+                        stats.Gold
+                    )
+                    print(("[Bootstrap] 🎯 %s に初回StatusUpdateを送信しました"):format(player.Name))
+                end
+            end
+        end)
+    end
+
+    -- CharacterAddedイベント接続
     characterAddedConnection = player.CharacterAdded:Connect(function(character)
-         performTeleportAndZoneSetup(player, character)
+        performTeleportAndZoneSetup(player, character)
     end)
 
-    -- ロードプロセスを開始
+    -- ロード開始
     startDataStoreLoad()
 
-    -- プレイヤーが既にスポーンしている場合
+    -- 既にスポーン済みの場合
     if player.Character then
-         performTeleportAndZoneSetup(player, player.Character)
+        performTeleportAndZoneSetup(player, player.Character)
     end
 end
 
-
--- 既存プレイヤーと新規プレイヤーに適用
+-- 既存プレイヤーに適用
 for _, player in ipairs(Players:GetPlayers()) do
-	setupPlayerSpawn(player)
+    setupPlayerSpawn(player)
 end
 
+-- 新規プレイヤーに適用
 Players.PlayerAdded:Connect(setupPlayerSpawn)
 
+-- 退出時のクリーンアップ
 Players.PlayerRemoving:Connect(function(player)
-    -- 退出時に保存した位置情報をクリア
     LastLoadedLocation[player] = nil
 end)
 
-
+-- 効果音の初期化
 task.spawn(function()
-	local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-	local soundsFolder = ReplicatedStorage:FindFirstChild("Sounds")
-	if not soundsFolder then
-		soundsFolder = Instance.new("Folder")
-		soundsFolder.Name = "Sounds"
-		soundsFolder.Parent = ReplicatedStorage
-	end
+    local soundsFolder = ReplicatedStorage:FindFirstChild("Sounds")
+    if not soundsFolder then
+        soundsFolder = Instance.new("Folder")
+        soundsFolder.Name = "Sounds"
+        soundsFolder.Parent = ReplicatedStorage
+    end
 
     if not soundsFolder:FindFirstChild("TypingCorrect") then
-		local typingCorrect = Instance.new("Sound")
-		typingCorrect.Name = "TypingCorrect"
-		typingCorrect.SoundId = "rbxassetid://159534615"
-		typingCorrect.Volume = 0.4
-		typingCorrect.Parent = soundsFolder
-	end
+        local typingCorrect = Instance.new("Sound")
+        typingCorrect.Name = "TypingCorrect"
+        typingCorrect.SoundId = "rbxassetid://159534615"
+        typingCorrect.Volume = 0.4
+        typingCorrect.Parent = soundsFolder
+    end
 
-	if not soundsFolder:FindFirstChild("TypingError") then
-		local typingError = Instance.new("Sound")
-		typingError.Name = "TypingError"
-		typingError.SoundId = "rbxassetid://113721818600044"
-		typingError.Volume = 0.5
-		typingError.Parent = soundsFolder
-	end
+    if not soundsFolder:FindFirstChild("TypingError") then
+        local typingError = Instance.new("Sound")
+        typingError.Name = "TypingError"
+        typingError.SoundId = "rbxassetid://113721818600044"
+        typingError.Volume = 0.5
+        typingError.Parent = soundsFolder
+    end
 
-	print("[Bootstrap] Soundsフォルダを初期化しました")
+    print("[Bootstrap] Soundsフォルダを初期化しました")
 end)
 
 print("[Bootstrap] === ゲーム初期化完了 ===")
@@ -7258,9 +7320,9 @@ end
 
 -- 【最適化1】バッチ生成システム
 local function fillTerrainBatch(terrain, blocks)
-	local batchSize = 100  -- 一度に処理する数
+	local batchSize = 200  -- 一度に処理する数
 	local totalBlocks = #blocks
-
+print("[FieldGen] バッチ生成スタート");
 	for i = 1, totalBlocks, batchSize do
 		local endIdx = math.min(i + batchSize - 1, totalBlocks)
 
@@ -7270,11 +7332,12 @@ local function fillTerrainBatch(terrain, blocks)
 		end
 
 		-- サーバーの負荷分散
-		if i % 500 == 0 then
+		if i % 2000 == 0 then
 			task.wait()
 			print(("[FieldGen] 進行状況: %d/%d (%.1f%%)"):format(i, totalBlocks, i/totalBlocks*100))
 		end
 	end
+	print("[FieldGen] バッチ生成終了");
 end
 
 -- ReplicatedStorage/FieldGen.lua

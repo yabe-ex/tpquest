@@ -4,6 +4,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
 
 local DataCollectors = {}
 
@@ -22,6 +23,7 @@ function DataCollectors.collectPlayerState(player: Player, playerStats)
             Experience = playerStats.Experience,
             Gold = playerStats.Gold,
             CurrentHP = playerStats.CurrentHP,
+            MonstersDefeated = playerStats.MonstersDefeated,
         },
         -- 位置情報
         Location = {
@@ -35,43 +37,57 @@ function DataCollectors.collectPlayerState(player: Player, playerStats)
     return playerState
 end
 
--- ワールドの状態（モンスターなど）を収集
+-- 【修正】ワールドの状態（モンスターカウントのみ）を収集
 function DataCollectors.collectFieldState(zoneName)
     local fieldState = {
-        Monsters = {}
+        MonsterCounts = {}
     }
 
-    -- 現在のアクティブなモンスターを検索し、状態を保存
-    local monstersInZone = {}
-
-    -- MonsterSpawnerの内部構造に依存しない汎用的な方法でモンスターを検索
-    for _, model in ipairs(Workspace:GetChildren()) do
-        if model:IsA("Model") and model:GetAttribute("IsEnemy") and model:GetAttribute("SpawnZone") == zoneName then
-            local monsterHrp = model:FindFirstChild("HumanoidRootPart")
-            local monsterHumanoid = model:FindFirstChildOfClass("Humanoid")
-
-            if monsterHrp and monsterHumanoid and monsterHumanoid.Health > 0 then
-                local monsterKind = model:GetAttribute("MonsterKind")
-                local monsterHP = monsterHumanoid.Health
-
-                table.insert(fieldState.Monsters, {
-                    Kind = monsterKind,
-                    HP = monsterHP,
-                    X = monsterHrp.Position.X,
-                    Y = monsterHrp.Position.Y,
-                    Z = monsterHrp.Position.Z,
-                })
-            end
+    -- MonsterSpawnerのグローバル関数を使ってカウント取得
+    if _G.GetZoneMonsterCounts then
+        local counts = _G.GetZoneMonsterCounts(zoneName)
+        if counts then
+            fieldState.MonsterCounts = counts
+            print(("[DataCollectors] %s のモンスターカウント収集: %s"):format(
+                zoneName,
+                HttpService:JSONEncode(counts)
+            ))
+        else
+            print(("[DataCollectors] %s にモンスターカウントがありません"):format(zoneName))
         end
+    else
+        warn("[DataCollectors] _G.GetZoneMonsterCounts が利用できません")
     end
 
     return fieldState
 end
 
--- ワールドの状態を復元 (ロード時に使用)
-function DataCollectors.restoreFieldState(player: Player, fieldState: table)
-    -- この機能は、MonsterSpawnerモジュールに依存するため、後でMonsterSpawner.server.luaを修正して実装します。
-    warn("[DataCollectors] restoreFieldState はまだ実装されていません。")
+-- 【修正】ワールドの状態を復元 (ロード時に使用)
+function DataCollectors.restoreFieldState(zoneName, fieldState)
+    if not fieldState then
+        warn("[DataCollectors] 復元するフィールド状態がありません")
+        return false
+    end
+
+    if not fieldState.MonsterCounts or next(fieldState.MonsterCounts) == nil then
+        print(("[DataCollectors] %s に復元するモンスターがありません"):format(zoneName))
+        return false
+    end
+
+    print(("[DataCollectors] %s のモンスターを復元中: %s"):format(
+        zoneName,
+        HttpService:JSONEncode(fieldState.MonsterCounts)
+    ))
+
+    -- MonsterSpawnerのグローバル関数を使ってスポーン
+    if _G.SpawnMonstersWithCounts then
+        _G.SpawnMonstersWithCounts(zoneName, fieldState.MonsterCounts)
+        print(("[DataCollectors] %s のモンスター復元完了"):format(zoneName))
+        return true
+    else
+        warn("[DataCollectors] _G.SpawnMonstersWithCounts が利用できません")
+        return false
+    end
 end
 
 -- 総合セーブデータを作成
@@ -80,8 +96,10 @@ function DataCollectors.createSaveData(player: Player, playerStats)
 
     local saveData = {
         PlayerState = DataCollectors.collectPlayerState(player, playerStats),
-        -- Townはセーブ対象外 (モンスターがいないため)
-        FieldState = currentZone ~= "ContinentTown" and DataCollectors.collectFieldState(currentZone) or nil,
+        -- 【修正】CurrentZoneを追加し、FieldStateの構造を変更
+        CurrentZone = currentZone,
+        -- Townはセーブ対象外（モンスターがいないため）
+        FieldState = (currentZone ~= "ContinentTown") and DataCollectors.collectFieldState(currentZone) or nil,
         SaveTime = os.time(),
     }
 

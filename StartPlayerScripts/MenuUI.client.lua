@@ -15,10 +15,10 @@ local currentModal = nil
 local isInBattle = false
 
 -- RemoteEvent取得
-local RequestStatusEvent = ReplicatedStorage:WaitForChild("RequestStatus", 10)
-local SaveGameEvent = ReplicatedStorage:WaitForChild("SaveGame", 10)
-local SaveSuccessEvent = ReplicatedStorage:WaitForChild("SaveSuccess", 10)
-local RequestLoadRespawnEvent = ReplicatedStorage:WaitForChild("RequestLoadRespawn", 10)
+local RequestStatusEvent = ReplicatedStorage:WaitForChild("RequestStatus", 5)
+local SaveGameEvent = ReplicatedStorage:WaitForChild("SaveGame", 5)
+local SaveSuccessEvent = ReplicatedStorage:WaitForChild("SaveSuccess", 5)
+local RequestLoadRespawnEvent = ReplicatedStorage:WaitForChild("RequestLoadRespawn", 5)
 
 
 -- UIコンテナ
@@ -52,7 +52,7 @@ end
 task.spawn(function()
 	print("[MenuUI] StatsDetailイベント接続を開始...")
 
-	local StatsDetailEvent = ReplicatedStorage:WaitForChild("StatsDetail", 30)
+	local StatsDetailEvent = ReplicatedStorage:WaitForChild("StatsDetail", 5)
 	if not StatsDetailEvent then
 		warn("[MenuUI] StatsDetailイベントが見つかりません！")
 		return
