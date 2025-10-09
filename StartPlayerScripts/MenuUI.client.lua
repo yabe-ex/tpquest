@@ -15,10 +15,10 @@ local currentModal = nil
 local isInBattle = false
 
 -- RemoteEvent取得
-local RequestStatusEvent = ReplicatedStorage:WaitForChild("RequestStatus", 5)
-local SaveGameEvent = ReplicatedStorage:WaitForChild("SaveGame", 5)
-local SaveSuccessEvent = ReplicatedStorage:WaitForChild("SaveSuccess", 5)
-local RequestLoadRespawnEvent = ReplicatedStorage:WaitForChild("RequestLoadRespawn", 5)
+local RequestStatusEvent = ReplicatedStorage:WaitForChild("RequestStatus", 1)
+local SaveGameEvent = ReplicatedStorage:WaitForChild("SaveGame", 1)
+local SaveSuccessEvent = ReplicatedStorage:WaitForChild("SaveSuccess", 1)
+local RequestLoadRespawnEvent = ReplicatedStorage:WaitForChild("RequestLoadRespawn", 1)
 
 
 -- UIコンテナ

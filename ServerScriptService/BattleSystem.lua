@@ -43,7 +43,7 @@ local function getOrCreateRemoteEvent(name)
 		event = Instance.new("RemoteEvent")
 		event.Name = name
 		event.Parent = ReplicatedStorage
-		print(("[BattleSystem] RemoteEvent作成: %s"):format(name))
+		-- print(("[BattleSystem] RemoteEvent作成: %s"):format(name))
 	end
 	return event
 end
