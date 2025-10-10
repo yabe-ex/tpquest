@@ -104,49 +104,26 @@ titleLabel.TextStrokeTransparency = 0.5
 titleLabel.Parent = minimapFrame
 
 -- プレイヤーアイコン（縦長の矢印型）
-local playerIconContainer = Instance.new("Frame")
-playerIconContainer.Name = "PlayerIconContainer"
-playerIconContainer.Size = UDim2.new(0, 12, 0, 18)
-playerIconContainer.AnchorPoint = Vector2.new(0.5, 0.5)
-playerIconContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
-playerIconContainer.BackgroundTransparency = 1
-playerIconContainer.ZIndex = 10
-playerIconContainer.Parent = minimapFrame
+-- local playerIconContainer = Instance.new("Frame")
+-- playerIconContainer.Name = "PlayerIconContainer"
+-- playerIconContainer.Size = UDim2.new(0, 12, 0, 18)
+-- playerIconContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+-- playerIconContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
+-- playerIconContainer.BackgroundTransparency = 1
+-- playerIconContainer.ZIndex = 10
+-- playerIconContainer.Parent = minimapFrame
+local playerIcon = Instance.new("ImageLabel")
+playerIcon.Name = "PlayerIcon"
+playerIcon.Size = UDim2.new(0, 24, 0, 24) -- サイズは調整可能
+playerIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+playerIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
+playerIcon.BackgroundTransparency = 1
+playerIcon.Image = "rbxassetid://137204683713117" -- 上向
+-- playerIcon.Image = "rbxassetid://88281133700630"
+playerIcon.ImageColor3 = PLAYER_COLOR
+playerIcon.ZIndex = 10
+playerIcon.Parent = minimapFrame
 
--- 矢印の先端（小さい四角）
-local arrowTip = Instance.new("Frame")
-arrowTip.Name = "ArrowTip"
-arrowTip.Size = UDim2.new(0, 2, 0, 4)
-arrowTip.Position = UDim2.new(0.5, 0, 0, 0)
-arrowTip.AnchorPoint = Vector2.new(0.5, 0)
-arrowTip.BackgroundColor3 = PLAYER_COLOR
-arrowTip.BorderSizePixel = 0
-arrowTip.ZIndex = 10
-arrowTip.Parent = playerIconContainer
-
--- 矢印の中央部分
-local arrowMiddle = Instance.new("Frame")
-arrowMiddle.Name = "ArrowMiddle"
-arrowMiddle.Size = UDim2.new(0, 4, 0, 6)
-arrowMiddle.Position = UDim2.new(0.5, 0, 0, 3)
-arrowMiddle.AnchorPoint = Vector2.new(0.5, 0)
-arrowMiddle.BackgroundColor3 = PLAYER_COLOR
-arrowMiddle.BorderSizePixel = 0
-arrowMiddle.ZIndex = 10
-arrowMiddle.Parent = playerIconContainer
-
--- 矢印の下部（広い部分）
-local arrowBottom = Instance.new("Frame")
-arrowBottom.Name = "ArrowBottom"
-arrowBottom.Size = UDim2.new(0, 6, 0, 4)
-arrowBottom.Position = UDim2.new(0.5, 0, 0, 9)
-arrowBottom.AnchorPoint = Vector2.new(0.5, 0)
-arrowBottom.BackgroundColor3 = PLAYER_COLOR
-arrowBottom.BorderSizePixel = 0
-arrowBottom.ZIndex = 10
-arrowBottom.Parent = playerIconContainer
-
-local playerIcon = playerIconContainer
 
 -- アイコンを格納するフォルダ
 local monstersFolder = Instance.new("Folder")
@@ -327,7 +304,7 @@ local function updateTerrainMap()
 			local mapZ = (gridZ + 0.5) / settings.terrainGrid
 
 			local relativeX = (mapX - 0.5) * MINIMAP_SIZE * settings.scale
-			local relativeZ = -(mapZ - 0.5) * MINIMAP_SIZE * settings.scale
+			local relativeZ = (mapZ - 0.5) * MINIMAP_SIZE * settings.scale
 
 			local worldX = playerPos.X + relativeX
 			local worldZ = playerPos.Z + relativeZ
@@ -369,7 +346,8 @@ local function worldToMinimap(worldPos, playerPos)
 	local relativeZ = worldPos.Z - playerPos.Z
 
 	local minimapX = (relativeX / settings.scale)
-	local minimapZ = -(relativeZ / settings.scale)
+	-- local minimapZ = -(relativeZ / settings.scale)
+	local minimapZ = (relativeZ / settings.scale)
 
 	local normalizedX = 0.5 + (minimapX / MINIMAP_SIZE)
 	local normalizedZ = 0.5 + (minimapZ / MINIMAP_SIZE)
@@ -388,6 +366,179 @@ local function isInRange(worldPos, playerPos)
 end
 
 -- プレイヤーアイコンの向きを更新
+local function updatePlayerRotation_debug()
+	local character = player.Character
+	if not character then return end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	if not playerIcon then return end
+
+	-- プレイヤーの向きを取得
+	local lookVector = hrp.CFrame.LookVector
+
+	-- 8パターン全て試す
+	local patterns = {
+		{name = "パターン1", calc = function() return math.atan2(lookVector.X, lookVector.Z) end},
+		{name = "パターン2", calc = function() return math.atan2(lookVector.Z, lookVector.X) end},
+		{name = "パターン3", calc = function() return math.atan2(-lookVector.X, lookVector.Z) end},
+		{name = "パターン4", calc = function() return math.atan2(lookVector.X, -lookVector.Z) end},
+		{name = "パターン5", calc = function() return math.atan2(-lookVector.Z, lookVector.X) end},
+		{name = "パターン6", calc = function() return math.atan2(lookVector.Z, -lookVector.X) end},
+		{name = "パターン7", calc = function() return math.atan2(-lookVector.X, -lookVector.Z) end},
+		{name = "パターン8", calc = function() return math.atan2(-lookVector.Z, -lookVector.X) end},
+	}
+
+	-- パターン1を使用（後で変更できる）
+	local angle = patterns[1].calc()
+	local degrees = math.deg(angle)
+
+	-- 回転を適用
+	playerIcon.Rotation = degrees
+
+	-- 5秒に1回デバッグ情報を表示
+	if os.clock() % 5 < 0.1 then
+		print(string.format("[Minimap DEBUG] LookVector: (%.2f, %.2f, %.2f)", lookVector.X, lookVector.Y, lookVector.Z))
+		print(string.format("[Minimap DEBUG] 角度: %.1f度", degrees))
+	end
+end
+
+local function updatePlayerRotation_ok()
+	local character = player.Character
+	if not character then return end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	if not playerIcon then return end
+
+	-- プレイヤーの向きを取得
+	local lookVector = hrp.CFrame.LookVector
+
+	local angle = math.atan2(lookVector.X, lookVector.Z)
+	local degrees = math.deg(angle)
+
+	-- 回転を適用
+	playerIcon.Rotation = degrees
+end
+
+
+local function updatePlayerRotationx()
+	local character = player.Character
+	if not character then return end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	if not playerIcon then return end
+
+	-- プレイヤーの向きを取得
+	local lookVector = hrp.CFrame.LookVector
+
+	local angle = math.atan2(lookVector.X, -lookVector.Z)
+	local degrees =  - math.deg(angle)
+
+	-- 回転を適用
+	playerIcon.Rotation = - degrees
+end
+
+local function updatePlayerRotation_ok_up()
+	local character = player.Character
+	if not character then return end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	if not playerIcon then return end
+
+	-- プレイヤーの向きを取得
+	local lookVector = hrp.CFrame.LookVector
+
+	local angle = math.atan2(-lookVector.X, lookVector.Z)
+	local degrees =  - math.deg(angle)
+
+	-- 回転を適用
+	playerIcon.Rotation = degrees
+end
+
+local function updatePlayerRotation_okl2()
+	local character = player.Character
+	if not character then return end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	if not playerIcon then return end
+
+	-- プレイヤーの向きを取得
+	local lookVector = hrp.CFrame.LookVector
+
+	-- 【変更】atan2の引数順序を変える
+	local angle = math.atan2(lookVector.Z, lookVector.X)
+	local degrees = math.deg(angle)
+
+	-- そのまま適用
+	playerIcon.Rotation = degrees
+
+	if os.clock() % 5 < 0.1 then
+		print(string.format("[Minimap DEBUG] LookVector: (%.2f, %.2f, %.2f)", lookVector.X, lookVector.Y, lookVector.Z))
+		print(string.format("[Minimap DEBUG] 角度: %.1f度", degrees))
+	end
+
+end
+
+local function updatePlayerRotation_x()
+	local character = player.Character
+	if not character then return end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	if not playerIcon then return end
+
+	local lookVector = hrp.CFrame.LookVector
+
+	-- 角度計算
+	local angle = math.atan2(lookVector.Z, lookVector.X)
+	local degrees = math.deg(angle)
+
+	-- 90度を加算して補正
+	playerIcon.Rotation = degrees - 90
+end
+
+-- デバッグ版（方角名も表示）
+local function updatePlayerRotation_news()
+	local character = player.Character
+	if not character then return end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	if not playerIcon then return end
+
+	local lookVector = hrp.CFrame.LookVector
+
+	-- 方角を判定
+	local direction = ""
+	if math.abs(lookVector.Z) > math.abs(lookVector.X) then
+		direction = lookVector.Z < 0 and "北" or "南"
+	else
+		direction = lookVector.X > 0 and "東" or "西"
+	end
+
+	local angle = math.atan2(lookVector.Z, lookVector.X)
+	local degrees = math.deg(angle)
+
+	playerIcon.Rotation = degrees
+
+	if os.clock() % 5 < 0.1 then
+		print(string.format("[Minimap DEBUG] 方角: %s", direction))
+		print(string.format("[Minimap DEBUG] LookVector: (%.2f, %.2f, %.2f)", lookVector.X, lookVector.Y, lookVector.Z))
+		print(string.format("[Minimap DEBUG] 角度: %.1f度", degrees))
+	end
+end
+
 local function updatePlayerRotation()
 	local character = player.Character
 	if not character then return end
@@ -395,17 +546,20 @@ local function updatePlayerRotation()
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
 
-	-- プレイヤーの向きを取得（CFrameのLookVector）
-	local lookVector = hrp.CFrame.LookVector
+	if not playerIcon then return end
 
-	-- ミニマップ上の角度に変換（上が0度、時計回り）
-	-- LookVectorのXとZから角度を計算
-	local angle = math.atan2(lookVector.X, lookVector.Z)
-	local degrees = math.deg(angle)
+	-- 【変更】CFrameから直接Y軸回転を取得
+	local _, yRotation, _ = hrp.CFrame:ToOrientation()
+	local degrees = math.deg(yRotation)
 
-	-- コンテナのRotationを更新
-	playerIcon.Rotation = degrees
+	-- 座標系を合わせる（地形マップと同じ反転）
+	playerIcon.Rotation = -degrees
+
+	if os.clock() % 1 < 0.1 then
+		print(string.format("[DEBUG] Y軸回転: %.1f度 → 表示: %.1f度", degrees, -degrees))
+	end
 end
+
 
 -- モンスターアイコンを更新
 local lastIconUpdate = 0
@@ -587,6 +741,7 @@ end)
 RunService.Heartbeat:Connect(function()
 	updateTerrainMap()
 	updateMonsterIcons()
+	updatePlayerRotation()
 end)
 
 -- ポータル専用の高速更新ループ（独立）
