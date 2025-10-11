@@ -28,12 +28,12 @@ return {
 	-- スポーン設定
 	SpawnLocations = {
 		{
-			islandName = "Hokkaido_N1",
+			islandName = "Kyushu_C23",
 			count = 3,
 			radiusPercent = 80,
 		},
 		{
-			islandName = "Hokkaido_N4",
+			islandName = "Kyushu_C24",
 			count = 5,
 			radiusPercent = 80,
 		},

@@ -7,4 +7,6 @@ return {
     require(ContinentsFolder.ContinentHokkaido),
     require(ContinentsFolder.ContinentShikoku),
     require(ContinentsFolder.ContinentKyushu),
+    require(ContinentsFolder.Snowland),
+    require(ContinentsFolder.Greenland),
 }

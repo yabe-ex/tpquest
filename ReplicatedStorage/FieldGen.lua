@@ -1,5 +1,4 @@
--- ReplicatedStorage/FieldGen (最適化版)
--- パフォーマンスを大幅に改善した地形生成エンジン
+-- ReplicatedStorage/FieldGen
 
 local FieldGen = {}
 
@@ -151,7 +150,58 @@ function FieldGen.generateIsland(config)
 	marker.BrickColor = BrickColor.new("Bright blue")
 	marker.Parent = worldFolder
 
+print("[FieldGen] 木や岩を載せる")
+		-- マーカー作成（ここまで既存）
+	local marker = Instance.new("Part")
+	marker.Name = cfg.name .. "_Center"
+	marker.Size = Vector3.new(10, 1, 10)
+	marker.Position = Vector3.new(cfg.centerX, cfg.baseY + 5, cfg.centerZ)
+	marker.Anchored = true
+	marker.CanCollide = false
+	marker.Transparency = 0.5
+	marker.BrickColor = BrickColor.new("Bright blue")
+	marker.Parent = worldFolder
+
+	-- 🌳【追加】FieldObjects（木や岩など）を配置する
+	if config.fieldObjects then
+		print("[FieldGen]config.fieldObjetsに入りました")
+		local templateFolder = game:GetService("ServerStorage"):FindFirstChild("FieldObjectTemplates")
+		if not templateFolder then
+			warn("[FieldGen] FieldObjectTemplates フォルダが ServerStorage に存在しません")
+			return
+		end
+
+		local fieldFolder = workspace:FindFirstChild("FieldObjects")
+		if not fieldFolder then
+			fieldFolder = Instance.new("Folder")
+			fieldFolder.Name = "FieldObjects"
+			fieldFolder.Parent = workspace
+		end
+
+		for _, obj in ipairs(config.fieldObjects) do
+			local template = templateFolder:FindFirstChild(obj.model)
+			if template then
+				local instance = template:Clone()
+				instance.Anchored = true
+				instance.Position = Vector3.new(unpack(obj.position))
+
+				if obj.size then
+					instance.Size = instance.Size * obj.size
+				end
+
+				if obj.rotationY then
+					instance.Orientation = Vector3.new(0, obj.rotationY, 0)
+				end
+
+				instance.Parent = fieldFolder
+			else
+				warn(("[FieldGen] モデルが見つかりません: %s"):format(obj.model))
+			end
+		end
+	end
+
 	-- print(("[FieldGen] 完了: %s"):format(cfg.name))
+
 end
 
 -- レイキャスト（変更なし）
@@ -218,5 +268,359 @@ function FieldGen.generateBridge(fromIsland, toIsland, config)
 	fillTerrainBatch(terrain, bridgeBlocks)
 	print(("[FieldGen] 橋生成完了: %s (距離: %.1f)"):format(cfg.name, distance))
 end
+
+-- ===== Field Objects Placement =====
+local ServerStorage = game:GetService("ServerStorage")
+
+local function ensureFolder(parent: Instance, name: string): Instance
+	local f = parent:FindFirstChild(name)
+	if not f then
+		f = Instance.new("Folder")
+		f.Name = name
+		f.Parent = parent
+	end
+	return f
+end
+
+local function setAnchoredAll(inst: Instance, anchored: boolean)
+	for _, d in ipairs(inst:GetDescendants()) do
+		if d:IsA("BasePart") then
+			d.Anchored = anchored
+		end
+	end
+end
+
+local function ensurePrimaryPart(model: Model)
+	if model.PrimaryPart then return end
+	local pp = model:FindFirstChild("HumanoidRootPart") or model:FindFirstChildWhichIsA("BasePart")
+	if pp then
+		model.PrimaryPart = pp
+	end
+end
+
+local function pivotModel(model: Model, cf: CFrame)
+	ensurePrimaryPart(model)
+	if model.PrimaryPart then
+		model:PivotTo(cf)
+	else
+		-- どうしてもPrimaryPartが無い場合のフォールバック
+		for _, d in ipairs(model:GetDescendants()) do
+			if d:IsA("BasePart") then
+				d.CFrame = cf
+			end
+		end
+	end
+end
+
+function FieldGen.placeFieldObjects(continentName: string?, objects: {any})
+	if not objects or #objects == 0 then return end
+
+	task.wait(1)
+
+	local ServerStorage = game:GetService("ServerStorage")
+	local templatesRoot = ServerStorage:FindFirstChild("FieldObjects")
+	if not templatesRoot then
+		warn("[FieldGen] ServerStorage/FieldObjects が見つかりません。配置スキップ")
+		return
+	end
+
+	local function ensureFolder(parent: Instance, name: string): Instance
+		local f = parent:FindFirstChild(name)
+		if not f then
+			f = Instance.new("Folder"); f.Name = name; f.Parent = parent
+		end
+		return f
+	end
+
+	local function setAnchoredAll(inst: Instance, anchored: boolean)
+		for _, d in ipairs(inst:GetDescendants()) do
+			if d:IsA("BasePart") then d.Anchored = anchored end
+		end
+	end
+
+	local function ensurePrimaryPart(model: Model)
+		if model.PrimaryPart then return end
+		local pp = model:FindFirstChild("HumanoidRootPart") or model:FindFirstChildWhichIsA("BasePart")
+		if pp then model.PrimaryPart = pp end
+	end
+
+	local function pivotModel(model: Model, cf: CFrame)
+		ensurePrimaryPart(model)
+		if model.PrimaryPart then model:PivotTo(cf)
+		else
+			for _, d in ipairs(model:GetDescendants()) do
+				if d:IsA("BasePart") then d.CFrame = cf end
+			end
+		end
+	end
+
+	local root = ensureFolder(workspace, "FieldObjects")
+	local parentFolder = continentName and ensureFolder(root, continentName) or root
+
+	-- 地面レイキャスト（法線も取得）
+	local function rayToTerrain(x: number, z: number, startY: number)
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Include
+		params.FilterDescendantsInstances = {workspace.Terrain}
+		params.IgnoreWater = false
+		local origin = Vector3.new(x, startY, z)
+		local result = workspace:Raycast(origin, Vector3.new(0, -startY - 1000, 0), params)
+		return result -- result.Position, result.Normal を持つ
+	end
+
+	for _, obj in ipairs(objects) do
+		local template = templatesRoot:FindFirstChild(tostring(obj.model or ""))
+		if not template then
+			warn(("[FieldGen] テンプレートが見つかりません: %s"):format(tostring(obj.model)))
+			continue
+		end
+
+		local p = obj.position or {0,0,0}
+		local x, y, z = p[1] or 0, p[2] or 0, p[3] or 0
+
+		local clone = template:Clone()
+		setAnchoredAll(clone, true) -- デフォでアンカー固定
+
+		-- スケール
+		local scale = tonumber(obj.size) or 1
+		if clone:IsA("Model") then
+			if scale ~= 1 then pcall(function() clone:ScaleTo(scale) end) end
+		elseif clone:IsA("BasePart") then
+			if scale ~= 1 then clone.Size = clone.Size * scale end
+		end
+
+		-- Up軸補正
+		local upAxis = tostring(obj.upAxis or "Y")
+		local baseRot = CFrame.new()
+		if upAxis == "Z" then
+			baseRot = CFrame.Angles(math.rad(-90), 0, 0)
+		elseif upAxis == "X" then
+			baseRot = CFrame.Angles(0, 0, math.rad(90))
+		end
+
+		-- 追加回転（rotation = {x,y,z} or 個別指定）
+		local rot = obj.rotation or {}
+		local rx = math.rad(rot[1] or obj.rotationX or 0)
+		local ry = math.rad(rot[2] or obj.rotationY or 0)
+		local rz = math.rad(rot[3] or obj.rotationZ or 0)
+		local userRot = CFrame.Angles(rx, ry, rz)
+
+		-- まずは大体の位置に仮置き
+		local cf = CFrame.new(x, y, z) * baseRot * userRot
+		if clone:IsA("Model") then
+			pivotModel(clone, cf)
+		elseif clone:IsA("BasePart") then
+			clone.CFrame = cf
+		end
+
+		-- === 地面吸着 ===
+		local stick = (obj.stickToGround ~= false) -- 既定true
+		local offset = tonumber(obj.groundOffset) or 0
+		local align  = (obj.alignToSlope == true)
+
+		local startY = 3000 -- 高めから確実に落とす
+		local hit = nil
+		do
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Include
+		params.FilterDescendantsInstances = {workspace.Terrain}
+		params.IgnoreWater = false
+		hit = workspace:Raycast(Vector3.new(x, startY, z), Vector3.new(0, -6000, 0), params)
+		end
+
+		if stick and hit then
+		local groundY = hit.Position.Y
+		local up = align and hit.Normal or Vector3.yAxis
+
+		print(("[FieldGen] '%s' at (%.1f, %.1f, %.1f), groundY=%.1f, offset=%.2f, align=%s"):format(
+			tostring(obj.model),
+			x, y, z,
+			hit and hit.Position.Y or -9999,
+			offset or 0,
+			tostring(align)
+		))
+
+
+		if clone:IsA("Model") then
+			-- いったん回転だけ反映（位置は後で底面に合わせる）
+			local yawCF = CFrame.new(x, 0, z) * baseRot * userRot
+			pivotModel(clone, yawCF)
+
+			-- バウンディングボックスの“底”を算出
+			local bbCFrame, bbSize = clone:GetBoundingBox()
+			local bottomY = bbCFrame.Position.Y - (bbSize.Y * 0.5)
+
+			-- 必要な持ち上げ量 = 地面高さ + オフセット - 現在の底
+			local deltaY = (groundY + offset) - bottomY
+
+			if align then
+			-- 斜面に合わせたい場合はUpベクトルを法線に
+			local look = clone:GetPivot().LookVector
+			local tangent = (look - look:Dot(up) * up).Unit
+			local right = tangent:Cross(up).Unit
+			local pos = bbCFrame.Position + Vector3.new(0, deltaY, 0)
+			local newCF = CFrame.fromMatrix(pos, right, up)
+			pivotModel(clone, newCF)
+			else
+			pivotModel(clone, clone:GetPivot() + Vector3.new(0, deltaY, 0))
+			end
+
+		elseif clone:IsA("BasePart") then
+			local height = clone.Size.Y * 0.5
+			if align then
+			local up = align and hit.Normal or Vector3.yAxis
+			local right = clone.CFrame.RightVector
+			local forward = right:Cross(up).Unit
+			right = up:Cross(forward).Unit
+			clone.CFrame = CFrame.fromMatrix(Vector3.new(x, groundY + height + offset, z), right, up)
+			else
+			clone.CFrame = CFrame.new(x, groundY + height + offset, z) * (baseRot * userRot)
+			end
+		end
+		else
+		-- レイキャスト失敗時はログ出してそのまま（原因の切り分け用）
+		warn(("[FieldGen] ground hit failed at (%.1f, %.1f) for '%s'"):format(x, z, tostring(obj.model)))
+		end
+
+		clone.Parent = parentFolder
+	end
+end
+
+--=====================================================
+-- Paths (MVP): Catmull-Rom spline -> Terrain FillBlock
+--=====================================================
+
+-- {x,y,z} -> Vector3
+local function v3(arr)
+	return Vector3.new(arr[1] or 0, arr[2] or 0, arr[3] or 0)
+end
+
+-- Catmull-Rom 補間（MVP: 標準係数0.5）
+local function catmullRom(p0, p1, p2, p3, t: number)
+	local t2, t3 = t*t, t*t*t
+	-- 0.5 * (2P1 + (-P0+P2)t + (2P0-5P1+4P2-P3)t^2 + (-P0+3P1-3P2+P3)t^3)
+	return 0.5 * (
+		(2 * p1)
+		+ (-p0 + p2) * t
+		+ (2*p0 - 5*p1 + 4*p2 - p3) * t2
+		+ (-p0 + 3*p1 - 3*p2 + p3) * t3
+	)
+end
+
+-- 区間長に応じてサンプル数を決める（等間隔っぽく）
+local function sampleSegment(p1, p2, stepStuds)
+	local dist = (p2 - p1).Magnitude
+	local n = math.max(2, math.floor(dist / math.max(0.1, stepStuds)))
+	return n
+end
+
+-- points端のガード（p[-1]=p[0], p[n+1]=p[n]）
+local function getPoint(points, i)
+	if i < 1 then return points[1]
+	elseif i > #points then return points[#points]
+	else return points[i]
+	end
+end
+
+-- 道ブロック1枚をTerrainに塗る
+local function fillRoadSlice(terrain, centerPos: Vector3, forward: Vector3, up: Vector3, width: number, length: number, thickness: number, material)
+	-- 直交基底
+	local fwd = forward.Magnitude > 0 and forward.Unit or Vector3.zAxis
+	local upv = up.Magnitude > 0 and up.Unit or Vector3.yAxis
+	local right = fwd:Cross(upv)
+	if right.Magnitude < 1e-6 then
+		-- ほぼ平行なら右をX軸にフォールバック
+		right = Vector3.xAxis
+	end
+	right = right.Unit
+	upv = right:Cross(fwd).Unit
+
+	-- CFrame.fromMatrix(pos, right, up, back)
+	local cf = CFrame.fromMatrix(centerPos, right, upv, -fwd)
+	local size = Vector3.new(length, thickness, width)
+	terrain:FillBlock(cf, size, material)
+end
+
+-- 公開API：大陸名（ログ/親フォルダ名用）と paths 配列を受け取り、道をTerrainに塗る
+function FieldGen.buildPaths(continentName: string?, paths: {any})
+	if not paths or #paths == 0 then return end
+
+	local terrain = workspace.Terrain
+	local logPrefix = ("[FieldGen/Paths]%s "):format(continentName and ("["..continentName.."]") or "")
+
+	for _, path in ipairs(paths) do
+		local pts = path.points or {}
+		if #pts < 2 then
+			warn(logPrefix .. "points が不足（最低2点）: " .. tostring(path.name))
+			continue
+		end
+
+		-- 既定値
+		local width  = tonumber(path.width) or 12
+		local step   = tonumber(path.step) or 3        -- サンプリング間隔（目安）
+		local mat    = path.material or Enum.Material.Ground
+		local stick  = (path.stickToGround ~= false)   -- 既定true
+		local align  = (path.alignToSlope == true)     -- 既定false
+		local yOffset= tonumber(path.groundOffset) or 0.05
+		local thick  = 2                               -- 地形塗り厚み（埋め漏れ防止）
+
+		-- Vector3列に変換（Yは適当でもOK。下で吸着する）
+		local P = table.create(#pts)
+		for i=1, #pts do P[i] = v3(pts[i]) end
+
+		local slices = 0
+		for seg = 1, #P - 1 do
+			-- セグメント p1->p2 をCatmull-Romで補間
+			local p0 = getPoint(P, seg - 1)
+			local p1 = getPoint(P, seg)
+			local p2 = getPoint(P, seg + 1)
+			local p3 = getPoint(P, seg + 2)
+
+			local n = sampleSegment(p1, p2, step)
+			for j = 0, n-1 do
+				local t0 = j / n
+				local t1 = (j + 1) / n
+
+				local a = catmullRom(p0, p1, p2, p3, t0)
+				local b = catmullRom(p0, p1, p2, p3, t1)
+				local mid = (a + b) * 0.5
+				local dir = (b - a)
+				if dir.Magnitude < 1e-6 then
+					dir = Vector3.zAxis
+				end
+
+				-- 地面に吸着（サンプル区間の中心点）
+local useY = mid.Y
+local up = Vector3.yAxis
+if stick then
+	local startY = 1000
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = {workspace.Terrain}
+	params.IgnoreWater = false
+
+	local res = workspace:Raycast(Vector3.new(mid.X, startY, mid.Z), Vector3.new(0, -2000, 0), params)
+	if res then
+		useY = res.Position.Y + (yOffset or -3)
+		if align then up = res.Normal end
+	else
+		warn(("地面未検出: (%.1f, %.1f)"):format(mid.X, mid.Z))
+	end
+end
+
+-- ブロックの中心を半分沈めて設置
+local centerY = useY - (thick / 2) - 5
+fillRoadSlice(terrain, Vector3.new(mid.X, centerY, mid.Z), dir.Unit, up, width, (b - a).Magnitude, thick, mat)
+
+				slices += 1
+			end
+		end
+
+		print(("%sdraw path '%s': points=%d, slices=%d, width=%.1f, step=%.1f"):format(logPrefix, tostring(path.name or "?"), #P, slices, width, step))
+	end
+end
+
+
+
 
 return FieldGen

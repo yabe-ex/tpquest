@@ -1,9 +1,9 @@
 total 8
 drwxr-xr-x  11 yabea  staff  352 10  6 18:17 ReplicatedStorage
-drwxr-xr-x  13 yabea  staff  416 10  6 19:27 ServerScriptService
-drwxr-xr-x  10 yabea  staff  320 10  6 14:42 StartPlayerScripts
+drwxr-xr-x  13 yabea  staff  416 10 10 13:04 ServerScriptService
+drwxr-xr-x  11 yabea  staff  352 10 10 13:05 StartPlayerScripts
 -rwxr-xr-x   1 yabea  staff  976 10  4 11:52 go.sh
--rw-r--r--   1 yabea  staff    0 10  9 13:44 out.txt
+-rw-r--r--   1 yabea  staff    0 10 10 13:07 out.txt
 
 ./ReplicatedStorage:
 total 40
@@ -43,27 +43,28 @@ total 24
 total 0
 
 ./ServerScriptService:
-total 264
--rw-r--r--  1 yabea  staff  27963 10  9 12:05 BattleSystem.lua
--rw-r--r--  1 yabea  staff   9420 10  9 13:14 Bootstrap.server.lua
--rw-r--r--  1 yabea  staff   3486 10  6 14:42 DataCollectors.lua
--rw-r--r--  1 yabea  staff   2874 10  6 14:42 DataStoreManager.lua
--rw-r--r--  1 yabea  staff    687 10  3 18:05 LoadTest.server.lua
--rw-r--r--  1 yabea  staff  25267 10  9 11:58 MonsterSpawner.server.lua
+total 272
+-rw-r--r--  1 yabea  staff  27966 10 10 13:04 BattleSystem.lua
+-rw-r--r--  1 yabea  staff  13632 10 10 13:04 Bootstrap.server.lua
+-rw-r--r--  1 yabea  staff   4027 10  9 14:03 DataCollectors.lua
+-rw-r--r--  1 yabea  staff   2995 10  9 14:37 DataStoreManager.lua
+-rw-r--r--  1 yabea  staff    708 10  9 15:11 LoadTest.server.lua
+-rw-r--r--  1 yabea  staff  26859 10  9 14:56 MonsterSpawner.server.lua
 -rw-r--r--  1 yabea  staff   2313 10  5 17:26 OceanSafety.server.lua
--rw-r--r--  1 yabea  staff  11885 10  9 13:09 PlayerStats.lua
+-rw-r--r--  1 yabea  staff  12023 10  9 14:09 PlayerStats.lua
 -rw-r--r--  1 yabea  staff   5612 10  5 20:34 TowerPlacement.server.lua
--rw-r--r--  1 yabea  staff  12656 10  7 09:45 WarpPortal.server.lua
+-rw-r--r--  1 yabea  staff  12653 10 10 13:04 WarpPortal.server.lua
 -rw-r--r--  1 yabea  staff   9727 10  7 09:35 ZoneManager.lua
 
 ./StartPlayerScripts:
-total 232
+total 248
 -rw-r--r--  1 yabea  staff   4870 10  5 08:26 BGMManager.client.lua
 -rw-r--r--  1 yabea  staff  26090 10  5 20:30 BattleUI.client.lua
 -rw-r--r--  1 yabea  staff   7575 10  3 18:05 DeathUI.client.lua
 -rw-r--r--  1 yabea  staff   5844 10  3 18:05 LevelUpUI.client.lua
--rw-r--r--  1 yabea  staff  31646 10  9 13:36 MenuUI.client.lua
--rw-r--r--  1 yabea  staff  17989 10  6 14:42 Minimap.client.lua
+-rw-r--r--  1 yabea  staff   2872 10  9 20:42 LoadingScreen.client.lua
+-rw-r--r--  1 yabea  staff  31638 10  9 15:01 MenuUI.client.lua
+-rw-r--r--  1 yabea  staff  22552 10 10 13:05 Minimap.client.lua
 -rw-r--r--  1 yabea  staff   6847 10  9 13:33 StatusUI.client.lua
 -rw-r--r--  1 yabea  staff   2045 10  6 10:49 WarpUI.client.lua
 ===== ./StartPlayerScripts/Minimap.client.lua =====
@@ -173,49 +174,26 @@ titleLabel.TextStrokeTransparency = 0.5
 titleLabel.Parent = minimapFrame
 
 -- プレイヤーアイコン（縦長の矢印型）
-local playerIconContainer = Instance.new("Frame")
-playerIconContainer.Name = "PlayerIconContainer"
-playerIconContainer.Size = UDim2.new(0, 12, 0, 18)
-playerIconContainer.AnchorPoint = Vector2.new(0.5, 0.5)
-playerIconContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
-playerIconContainer.BackgroundTransparency = 1
-playerIconContainer.ZIndex = 10
-playerIconContainer.Parent = minimapFrame
+-- local playerIconContainer = Instance.new("Frame")
+-- playerIconContainer.Name = "PlayerIconContainer"
+-- playerIconContainer.Size = UDim2.new(0, 12, 0, 18)
+-- playerIconContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+-- playerIconContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
+-- playerIconContainer.BackgroundTransparency = 1
+-- playerIconContainer.ZIndex = 10
+-- playerIconContainer.Parent = minimapFrame
+local playerIcon = Instance.new("ImageLabel")
+playerIcon.Name = "PlayerIcon"
+playerIcon.Size = UDim2.new(0, 24, 0, 24) -- サイズは調整可能
+playerIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+playerIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
+playerIcon.BackgroundTransparency = 1
+playerIcon.Image = "rbxassetid://137204683713117" -- 上向
+-- playerIcon.Image = "rbxassetid://88281133700630"
+playerIcon.ImageColor3 = PLAYER_COLOR
+playerIcon.ZIndex = 10
+playerIcon.Parent = minimapFrame
 
--- 矢印の先端（小さい四角）
-local arrowTip = Instance.new("Frame")
-arrowTip.Name = "ArrowTip"
-arrowTip.Size = UDim2.new(0, 2, 0, 4)
-arrowTip.Position = UDim2.new(0.5, 0, 0, 0)
-arrowTip.AnchorPoint = Vector2.new(0.5, 0)
-arrowTip.BackgroundColor3 = PLAYER_COLOR
-arrowTip.BorderSizePixel = 0
-arrowTip.ZIndex = 10
-arrowTip.Parent = playerIconContainer
-
--- 矢印の中央部分
-local arrowMiddle = Instance.new("Frame")
-arrowMiddle.Name = "ArrowMiddle"
-arrowMiddle.Size = UDim2.new(0, 4, 0, 6)
-arrowMiddle.Position = UDim2.new(0.5, 0, 0, 3)
-arrowMiddle.AnchorPoint = Vector2.new(0.5, 0)
-arrowMiddle.BackgroundColor3 = PLAYER_COLOR
-arrowMiddle.BorderSizePixel = 0
-arrowMiddle.ZIndex = 10
-arrowMiddle.Parent = playerIconContainer
-
--- 矢印の下部（広い部分）
-local arrowBottom = Instance.new("Frame")
-arrowBottom.Name = "ArrowBottom"
-arrowBottom.Size = UDim2.new(0, 6, 0, 4)
-arrowBottom.Position = UDim2.new(0.5, 0, 0, 9)
-arrowBottom.AnchorPoint = Vector2.new(0.5, 0)
-arrowBottom.BackgroundColor3 = PLAYER_COLOR
-arrowBottom.BorderSizePixel = 0
-arrowBottom.ZIndex = 10
-arrowBottom.Parent = playerIconContainer
-
-local playerIcon = playerIconContainer
 
 -- アイコンを格納するフォルダ
 local monstersFolder = Instance.new("Folder")
@@ -396,7 +374,7 @@ local function updateTerrainMap()
 			local mapZ = (gridZ + 0.5) / settings.terrainGrid
 
 			local relativeX = (mapX - 0.5) * MINIMAP_SIZE * settings.scale
-			local relativeZ = -(mapZ - 0.5) * MINIMAP_SIZE * settings.scale
+			local relativeZ = (mapZ - 0.5) * MINIMAP_SIZE * settings.scale
 
 			local worldX = playerPos.X + relativeX
 			local worldZ = playerPos.Z + relativeZ
@@ -438,7 +416,8 @@ local function worldToMinimap(worldPos, playerPos)
 	local relativeZ = worldPos.Z - playerPos.Z
 
 	local minimapX = (relativeX / settings.scale)
-	local minimapZ = -(relativeZ / settings.scale)
+	-- local minimapZ = -(relativeZ / settings.scale)
+	local minimapZ = (relativeZ / settings.scale)
 
 	local normalizedX = 0.5 + (minimapX / MINIMAP_SIZE)
 	local normalizedZ = 0.5 + (minimapZ / MINIMAP_SIZE)
@@ -457,6 +436,179 @@ local function isInRange(worldPos, playerPos)
 end
 
 -- プレイヤーアイコンの向きを更新
+local function updatePlayerRotation_debug()
+	local character = player.Character
+	if not character then return end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	if not playerIcon then return end
+
+	-- プレイヤーの向きを取得
+	local lookVector = hrp.CFrame.LookVector
+
+	-- 8パターン全て試す
+	local patterns = {
+		{name = "パターン1", calc = function() return math.atan2(lookVector.X, lookVector.Z) end},
+		{name = "パターン2", calc = function() return math.atan2(lookVector.Z, lookVector.X) end},
+		{name = "パターン3", calc = function() return math.atan2(-lookVector.X, lookVector.Z) end},
+		{name = "パターン4", calc = function() return math.atan2(lookVector.X, -lookVector.Z) end},
+		{name = "パターン5", calc = function() return math.atan2(-lookVector.Z, lookVector.X) end},
+		{name = "パターン6", calc = function() return math.atan2(lookVector.Z, -lookVector.X) end},
+		{name = "パターン7", calc = function() return math.atan2(-lookVector.X, -lookVector.Z) end},
+		{name = "パターン8", calc = function() return math.atan2(-lookVector.Z, -lookVector.X) end},
+	}
+
+	-- パターン1を使用（後で変更できる）
+	local angle = patterns[1].calc()
+	local degrees = math.deg(angle)
+
+	-- 回転を適用
+	playerIcon.Rotation = degrees
+
+	-- 5秒に1回デバッグ情報を表示
+	if os.clock() % 5 < 0.1 then
+		print(string.format("[Minimap DEBUG] LookVector: (%.2f, %.2f, %.2f)", lookVector.X, lookVector.Y, lookVector.Z))
+		print(string.format("[Minimap DEBUG] 角度: %.1f度", degrees))
+	end
+end
+
+local function updatePlayerRotation_ok()
+	local character = player.Character
+	if not character then return end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	if not playerIcon then return end
+
+	-- プレイヤーの向きを取得
+	local lookVector = hrp.CFrame.LookVector
+
+	local angle = math.atan2(lookVector.X, lookVector.Z)
+	local degrees = math.deg(angle)
+
+	-- 回転を適用
+	playerIcon.Rotation = degrees
+end
+
+
+local function updatePlayerRotationx()
+	local character = player.Character
+	if not character then return end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	if not playerIcon then return end
+
+	-- プレイヤーの向きを取得
+	local lookVector = hrp.CFrame.LookVector
+
+	local angle = math.atan2(lookVector.X, -lookVector.Z)
+	local degrees =  - math.deg(angle)
+
+	-- 回転を適用
+	playerIcon.Rotation = - degrees
+end
+
+local function updatePlayerRotation_ok_up()
+	local character = player.Character
+	if not character then return end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	if not playerIcon then return end
+
+	-- プレイヤーの向きを取得
+	local lookVector = hrp.CFrame.LookVector
+
+	local angle = math.atan2(-lookVector.X, lookVector.Z)
+	local degrees =  - math.deg(angle)
+
+	-- 回転を適用
+	playerIcon.Rotation = degrees
+end
+
+local function updatePlayerRotation_okl2()
+	local character = player.Character
+	if not character then return end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	if not playerIcon then return end
+
+	-- プレイヤーの向きを取得
+	local lookVector = hrp.CFrame.LookVector
+
+	-- 【変更】atan2の引数順序を変える
+	local angle = math.atan2(lookVector.Z, lookVector.X)
+	local degrees = math.deg(angle)
+
+	-- そのまま適用
+	playerIcon.Rotation = degrees
+
+	if os.clock() % 5 < 0.1 then
+		print(string.format("[Minimap DEBUG] LookVector: (%.2f, %.2f, %.2f)", lookVector.X, lookVector.Y, lookVector.Z))
+		print(string.format("[Minimap DEBUG] 角度: %.1f度", degrees))
+	end
+
+end
+
+local function updatePlayerRotation_x()
+	local character = player.Character
+	if not character then return end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	if not playerIcon then return end
+
+	local lookVector = hrp.CFrame.LookVector
+
+	-- 角度計算
+	local angle = math.atan2(lookVector.Z, lookVector.X)
+	local degrees = math.deg(angle)
+
+	-- 90度を加算して補正
+	playerIcon.Rotation = degrees - 90
+end
+
+-- デバッグ版（方角名も表示）
+local function updatePlayerRotation_news()
+	local character = player.Character
+	if not character then return end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	if not playerIcon then return end
+
+	local lookVector = hrp.CFrame.LookVector
+
+	-- 方角を判定
+	local direction = ""
+	if math.abs(lookVector.Z) > math.abs(lookVector.X) then
+		direction = lookVector.Z < 0 and "北" or "南"
+	else
+		direction = lookVector.X > 0 and "東" or "西"
+	end
+
+	local angle = math.atan2(lookVector.Z, lookVector.X)
+	local degrees = math.deg(angle)
+
+	playerIcon.Rotation = degrees
+
+	if os.clock() % 5 < 0.1 then
+		print(string.format("[Minimap DEBUG] 方角: %s", direction))
+		print(string.format("[Minimap DEBUG] LookVector: (%.2f, %.2f, %.2f)", lookVector.X, lookVector.Y, lookVector.Z))
+		print(string.format("[Minimap DEBUG] 角度: %.1f度", degrees))
+	end
+end
+
 local function updatePlayerRotation()
 	local character = player.Character
 	if not character then return end
@@ -464,17 +616,20 @@ local function updatePlayerRotation()
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
 
-	-- プレイヤーの向きを取得（CFrameのLookVector）
-	local lookVector = hrp.CFrame.LookVector
+	if not playerIcon then return end
 
-	-- ミニマップ上の角度に変換（上が0度、時計回り）
-	-- LookVectorのXとZから角度を計算
-	local angle = math.atan2(lookVector.X, lookVector.Z)
-	local degrees = math.deg(angle)
+	-- 【変更】CFrameから直接Y軸回転を取得
+	local _, yRotation, _ = hrp.CFrame:ToOrientation()
+	local degrees = math.deg(yRotation)
 
-	-- コンテナのRotationを更新
-	playerIcon.Rotation = degrees
+	-- 座標系を合わせる（地形マップと同じ反転）
+	playerIcon.Rotation = -degrees
+
+	if os.clock() % 1 < 0.1 then
+		print(string.format("[DEBUG] Y軸回転: %.1f度 → 表示: %.1f度", degrees, -degrees))
+	end
 end
+
 
 -- モンスターアイコンを更新
 local lastIconUpdate = 0
@@ -656,6 +811,7 @@ end)
 RunService.Heartbeat:Connect(function()
 	updateTerrainMap()
 	updateMonsterIcons()
+	updatePlayerRotation()
 end)
 
 -- ポータル専用の高速更新ループ（独立）
@@ -705,10 +861,10 @@ local currentModal = nil
 local isInBattle = false
 
 -- RemoteEvent取得
-local RequestStatusEvent = ReplicatedStorage:WaitForChild("RequestStatus", 0.1)
-local SaveGameEvent = ReplicatedStorage:WaitForChild("SaveGame", 0.1)
-local SaveSuccessEvent = ReplicatedStorage:WaitForChild("SaveSuccess", 0.1)
-local RequestLoadRespawnEvent = ReplicatedStorage:WaitForChild("RequestLoadRespawn", 0.1)
+local RequestStatusEvent = ReplicatedStorage:WaitForChild("RequestStatus", 1)
+local SaveGameEvent = ReplicatedStorage:WaitForChild("SaveGame", 1)
+local SaveSuccessEvent = ReplicatedStorage:WaitForChild("SaveSuccess", 1)
+local RequestLoadRespawnEvent = ReplicatedStorage:WaitForChild("RequestLoadRespawn", 1)
 
 
 -- UIコンテナ
@@ -2651,6 +2807,93 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 print("[BattleUI] クライアント初期化完了（タイピングモード）")
+===== ./StartPlayerScripts/LoadingScreen.client.lua =====
+-- StarterPlayer/StarterPlayerScripts/LoadingScreen.client.lua
+-- 初回ロード時のローディング画面
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+print("[LoadingScreen] 初期化中...")
+
+-- ローディング画面のUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "InitialLoadingUI"
+screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
+screenGui.DisplayOrder = 1000 -- 最前面に表示
+screenGui.Parent = playerGui
+
+local frame = Instance.new("Frame")
+frame.Name = "LoadingFrame"
+frame.Size = UDim2.new(1, 0, 1, 0)
+frame.BackgroundColor3 = Color3.new(0, 0, 0)
+frame.BackgroundTransparency = 0
+frame.Visible = true
+frame.Parent = screenGui
+
+local label = Instance.new("TextLabel")
+label.Size = UDim2.new(0.6, 0, 0.2, 0)
+label.Position = UDim2.new(0.2, 0, 0.4, 0)
+label.BackgroundTransparency = 1
+label.Text = "Loading..."
+label.TextColor3 = Color3.new(1, 1, 1)
+label.TextScaled = true
+label.Font = Enum.Font.SourceSansBold
+label.Parent = frame
+
+-- ヒントテキスト（オプション）
+local hintLabel = Instance.new("TextLabel")
+hintLabel.Size = UDim2.new(0.8, 0, 0.1, 0)
+hintLabel.Position = UDim2.new(0.1, 0, 0.6, 0)
+hintLabel.BackgroundTransparency = 1
+hintLabel.Text = "タイピングを練習してモンスターを倒そう！"
+hintLabel.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+hintLabel.TextSize = 18
+hintLabel.Font = Enum.Font.Gotham
+hintLabel.Parent = frame
+
+-- サーバーからの準備完了信号を待つ
+local spawnReadyEvent = ReplicatedStorage:WaitForChild("SpawnReady", 10)
+
+if spawnReadyEvent then
+    spawnReadyEvent.OnClientEvent:Connect(function()
+        print("[LoadingScreen] スポーン準備完了、フェードアウト開始")
+
+        -- フェードアウトアニメーション
+        local fadeOut = TweenService:Create(frame, TweenInfo.new(1, Enum.EasingStyle.Quad), {
+            BackgroundTransparency = 1
+        })
+
+        local labelFadeOut = TweenService:Create(label, TweenInfo.new(1, Enum.EasingStyle.Quad), {
+            TextTransparency = 1
+        })
+
+        local hintFadeOut = TweenService:Create(hintLabel, TweenInfo.new(1, Enum.EasingStyle.Quad), {
+            TextTransparency = 1
+        })
+
+        fadeOut:Play()
+        labelFadeOut:Play()
+        hintFadeOut:Play()
+
+        fadeOut.Completed:Connect(function()
+            screenGui:Destroy()
+            print("[LoadingScreen] ローディング画面を削除")
+        end)
+    end)
+else
+    warn("[LoadingScreen] SpawnReadyイベントが見つかりません")
+    -- フォールバック：3秒後に自動で消す
+    task.wait(3)
+    screenGui:Destroy()
+end
+
+print("[LoadingScreen] 初期化完了")
 ===== ./StartPlayerScripts/StatusUI.client.lua =====
 -- StarterPlayer/StarterPlayerScripts/StatusUI.client.lua
 -- 画面左下に常時表示するプレイヤーステータス
@@ -3630,6 +3873,7 @@ local GameEvents = require(ReplicatedStorage:WaitForChild("GameEvents"))
 local DataStoreManager = require(script.Parent:WaitForChild("DataStoreManager"))
 
 local PlayerStats = {}
+local LoadedDataCache = {}
 
 -- RemoteEventを取得する関数
 local function getRemoteEvent(name)
@@ -3680,6 +3924,7 @@ function PlayerStats.initPlayer(player: Player)
 
 	-- ★DataStoreからデータをロード（ブロッキング）
 	local loadedData = DataStoreManager.LoadData(player)
+	LoadedDataCache[player] = loadedData
 
 	local loadedLocation = nil
 
@@ -3716,6 +3961,10 @@ function PlayerStats.initPlayer(player: Player)
 
 	-- ★ロードされたLocation情報を返す
 	return loadedLocation
+end
+
+function PlayerStats.getLastLoadedData(player: Player)
+    return LoadedDataCache[player]
 end
 
 -- プレイヤーのステータスを取得
@@ -3959,13 +4208,10 @@ end
 
 -- プレイヤーが退出したらデータをクリア
 function PlayerStats.removePlayer(player: Player)
-	-- TODO: DataStoreに保存
-	PlayerData[player] = nil
-
-	-- 【ステップ2】SharedStateからも削除
-	SharedState.PlayerZones[player] = nil
-
-	print(("[PlayerStats] %s のデータを削除しました"):format(player.Name))
+    PlayerData[player] = nil
+    LoadedDataCache[player] = nil -- 【追加】
+    SharedState.PlayerZones[player] = nil
+    print(("[PlayerStats] %s のデータを削除しました"):format(player.Name))
 end
 
 -- 初期化
@@ -4029,15 +4275,68 @@ local ZoneManager = require(script.Parent:WaitForChild("ZoneManager"))
 
 -- PlayerStatsのModuleScriptの実行結果をロード（ServerScriptServiceの兄弟モジュール）
 local PlayerStatsModule = require(script.Parent:WaitForChild("PlayerStats"))
+local DataCollectors = require(script.Parent:WaitForChild("DataCollectors"))
 
 local START_ZONE_NAME = "ContinentTown"
 local LOAD_TIMEOUT = 10 -- DataStoreロードのタイムアウト(秒)
 
 -- プレイヤーごとのロードデータ管理
 local LastLoadedLocation = {}
+local LastLoadedData = {}
 
 -- PlayerStatsの初期化（DataStoreロード処理を含む）
 PlayerStatsModule.init()
+
+print("[Bootstrap] セーブ機能を初期化中...")
+
+local SaveGameEvent = ReplicatedStorage:FindFirstChild("SaveGame")
+if not SaveGameEvent then
+    SaveGameEvent = Instance.new("RemoteEvent")
+    SaveGameEvent.Name = "SaveGame"
+    SaveGameEvent.Parent = ReplicatedStorage
+    print("[Bootstrap] ✓ SaveGameイベント作成")
+end
+
+local SaveSuccessEvent = ReplicatedStorage:FindFirstChild("SaveSuccess")
+if not SaveSuccessEvent then
+    SaveSuccessEvent = Instance.new("RemoteEvent")
+    SaveSuccessEvent.Name = "SaveSuccess"
+    SaveSuccessEvent.Parent = ReplicatedStorage
+    print("[Bootstrap] ✓ SaveSuccessイベント作成")
+end
+
+-- DataStoreManagerとDataCollectorsをロード
+local DataStoreManager = require(ServerScriptService:WaitForChild("DataStoreManager"))
+local DataCollectors = require(ServerScriptService:WaitForChild("DataCollectors"))
+
+-- セーブイベントハンドラを登録
+SaveGameEvent.OnServerEvent:Connect(function(player)
+    print(("[Bootstrap] 💾 %s からセーブリクエスト受信"):format(player.Name))
+
+    -- プレイヤーのステータスを取得
+    local stats = PlayerStatsModule.getStats(player)
+    if not stats then
+        warn(("[Bootstrap] ❌ %s のステータスが見つかりません"):format(player.Name))
+        SaveSuccessEvent:FireClient(player, false)
+        return
+    end
+
+    -- セーブデータを作成
+    local saveData = DataCollectors.createSaveData(player, stats)
+
+    print(("[Bootstrap] 📦 セーブデータ作成完了"):format())
+
+    -- DataStoreに保存
+    local success = DataStoreManager.SaveData(player, saveData)
+
+    if success then
+        print(("[Bootstrap] ✅ %s のセーブ成功"):format(player.Name))
+    else
+        warn(("[Bootstrap] ❌ %s のセーブ失敗"):format(player.Name))
+    end
+end)
+
+print("[Bootstrap] ✓ セーブ機能の初期化完了")
 
 print("[Bootstrap] 街を生成中（非同期）...")
 task.spawn(function()
@@ -4064,168 +4363,171 @@ end
 -- プレイヤーのスポーン位置を街に設定
 local function setupPlayerSpawn(player)
 
-    local characterAddedConnection = nil
+    -- DataStoreからのロード処理（同期的に待つ）
+    local function loadDataAndPrepareSpawn()
+        local startTime = os.clock()
+        print(("[Bootstrap] %s のDataStoreロード開始"):format(player.Name))
 
-    -- DataStoreからのロード処理（非同期）
-    local function startDataStoreLoad()
-        task.spawn(function()
-            print(("[Bootstrap] %s のDataStoreロード開始"):format(player.Name))
+        local loadedLocation = PlayerStatsModule.initPlayer(player)
+        local fullLoadedData = PlayerStatsModule.getLastLoadedData(player)
 
-            -- PlayerStatsModuleのinitPlayerを呼び出し、ロード結果（Locationテーブル）を取得
-            local loadedLocation = PlayerStatsModule.initPlayer(player)
+        print(("[Bootstrap] ⏱️ DataStoreロード完了: %.2f秒"):format(os.clock() - startTime))
 
-            -- nilチェック（ロード失敗時のフォールバック）
-            if not loadedLocation then
-                warn(("[Bootstrap] %s のロードデータがnil、デフォルト使用"):format(player.Name))
-                loadedLocation = {
-                    ZoneName = "ContinentTown",
-                    X = townConfig.centerX,
-                    Y = townConfig.baseY + 25,
-                    Z = townConfig.centerZ
-                }
-            end
-
-            LastLoadedLocation[player] = loadedLocation
-            print(("[Bootstrap] %s のロード完了: %s (%.0f, %.0f, %.0f)"):format(
-                player.Name,
-                loadedLocation.ZoneName,
-                loadedLocation.X,
-                loadedLocation.Y,
-                loadedLocation.Z
-            ))
-        end)
-    end
-
-    -- キャラクタースポーン時の処理
-    local function performTeleportAndZoneSetup(player, character)
-        -- ロードデータが準備されるまで待機
-        local loadedLocation = LastLoadedLocation[player]
-        local waited = 0
-
-        while not loadedLocation and waited < LOAD_TIMEOUT do
-            task.wait(0.05)
-            waited = waited + 0.05
-            loadedLocation = LastLoadedLocation[player]
-        end
-
-        -- タイムアウト時のフォールバック
         if not loadedLocation then
-            warn(("[Bootstrap] %s のロードタイムアウト、デフォルト座標使用"):format(player.Name))
+            warn(("[Bootstrap] %s のロードデータがnil、デフォルト使用"):format(player.Name))
             loadedLocation = {
                 ZoneName = "ContinentTown",
                 X = townConfig.centerX,
                 Y = townConfig.baseY + 25,
                 Z = townConfig.centerZ
             }
-            LastLoadedLocation[player] = loadedLocation
         end
 
-        -- テレポート処理が完了したらイベント接続を切断
-        if characterAddedConnection then
-            characterAddedConnection:Disconnect()
-            characterAddedConnection = nil
+        LastLoadedData[player] = {
+            Location = loadedLocation,
+            FieldState = fullLoadedData and fullLoadedData.FieldState or nil,
+            CurrentZone = fullLoadedData and fullLoadedData.CurrentZone or nil,
+        }
+
+        print(("[Bootstrap] %s のロード完了: %s (%.0f, %.0f, %.0f)"):format(
+            player.Name,
+            loadedLocation.ZoneName,
+            loadedLocation.X,
+            loadedLocation.Y,
+            loadedLocation.Z
+        ))
+
+        return LastLoadedData[player]
+    end
+
+    -- メイン処理
+    task.spawn(function()
+        local totalStartTime = os.clock()
+
+        -- DataStoreロードを待つ
+        local loadedData = loadDataAndPrepareSpawn()
+        local loadedLocation = loadedData.Location
+        local targetZone = loadedLocation.ZoneName
+
+        -- 【重要】キャラクター生成前にゾーンをロード
+        if targetZone ~= START_ZONE_NAME then
+            local zoneLoadStart = os.clock()
+            print(("[Bootstrap] キャラ生成前: %s のゾーンをロード"):format(targetZone))
+            ZoneManager.LoadZone(targetZone)
+            task.wait(2) -- 地形生成完了を待つ
+            print(("[Bootstrap] ⏱️ ゾーンロード完了: %.2f秒"):format(os.clock() - zoneLoadStart))
         end
 
-        task.spawn(function()
-            -- 既にゾーンが設定済みならスキップ
-            if ZoneManager.GetPlayerZone(player) then
-                return
-            end
+        -- キャラクター生成
+        local charGenStart = os.clock()
+        print(("[Bootstrap] %s のキャラクター生成を開始"):format(player.Name))
 
-            local spawnZone = loadedLocation.ZoneName
-            task.wait(0.05) -- 物理エンジン安定化
+        -- 【追加】SpawnReadyEventを取得/作成
+        local SpawnReadyEvent = ReplicatedStorage:FindFirstChild("SpawnReady")
+        if not SpawnReadyEvent then
+            SpawnReadyEvent = Instance.new("RemoteEvent")
+            SpawnReadyEvent.Name = "SpawnReady"
+            SpawnReadyEvent.Parent = ReplicatedStorage
+        end
 
-            local hrp = character:WaitForChild("HumanoidRootPart", 5)
-            if not hrp then return end
+        -- CharacterAddedを先に接続（生成と同時にワープするため）
+        local connection
+        connection = player.CharacterAdded:Connect(function(character)
+            connection:Disconnect() -- 一度だけ実行
 
-            -- Town以外のゾーンの場合、地形生成とアセットロードを非同期化
-            if spawnZone ~= START_ZONE_NAME then
-                task.spawn(function()
-                    print(("[Bootstrap] 非同期: %s のロード開始"):format(spawnZone))
+            print(("[Bootstrap] ⏱️ キャラクター生成完了: %.2f秒"):format(os.clock() - charGenStart))
 
-                    ZoneManager.LoadZone(spawnZone)
+            -- 即座にワープ（描画される前に）
+            task.spawn(function()
+                local hrpStart = os.clock()
+                local hrp = character:WaitForChild("HumanoidRootPart", 5)
+                print(("[Bootstrap] ⏱️ HRP取得完了: %.2f秒"):format(os.clock() - hrpStart))
 
-                    -- ポータル/モンスター生成
-                    if _G.DestroyPortalsForZone and _G.CreatePortalsForZone then
-                        _G.DestroyPortalsForZone(START_ZONE_NAME)
-                        _G.CreatePortalsForZone(spawnZone)
-                    end
-
-                    if _G.SpawnMonstersForZone then
-                        _G.SpawnMonstersForZone(spawnZone)
-                    end
-
-                    print(("[Bootstrap] 非同期: %s のロード完了"):format(spawnZone))
-                end)
-            end
-
-            -- 最終座標の決定
-            local spawnX = loadedLocation.X
-            local spawnZ = loadedLocation.Z
-            local spawnY = loadedLocation.Y
-
-            -- Town内で、デフォルト座標の場合は中心に上書き
-            local DEFAULT_X = -50
-            local DEFAULT_Y = 50
-            local DEFAULT_Z = 50
-            local isDefaultLocation = (spawnX == DEFAULT_X and spawnY == DEFAULT_Y and spawnZ == DEFAULT_Z)
-
-            if spawnZone == START_ZONE_NAME and isDefaultLocation then
-                spawnY = townConfig.baseY + 50
-                spawnX = townConfig.centerX
-                spawnZ = townConfig.centerZ
-                print(("[Bootstrap] Town中心座標に上書き: (%.0f, %.0f, %.0f)"):format(spawnX, spawnY, spawnZ))
-            end
-
-            print(("[Bootstrap] 最終テレポート座標: %s (%.0f, %.0f, %.0f)"):format(
-                spawnZone, spawnX, spawnY, spawnZ
-            ))
-
-            -- テレポート実行
-            hrp.CFrame = CFrame.new(spawnX, spawnY, spawnZ)
-
-            -- ゾーン情報を設定
-            ZoneManager.PlayerZones[player] = spawnZone
-
-            -- Townの場合のみポータル生成
-            if spawnZone == START_ZONE_NAME and _G.CreatePortalsForZone then
-                _G.CreatePortalsForZone(START_ZONE_NAME)
-            end
-
-            -- クライアントのUIが待機している初回ステータス更新を強制的に発行
-            local stats = PlayerStatsModule.getStats(player)
-            if stats then
-                local expToNext = stats.Level * 100
-                local StatusUpdateEvent = ReplicatedStorage:FindFirstChild("StatusUpdate")
-                if StatusUpdateEvent then
-                    StatusUpdateEvent:FireClient(
-                        player,
-                        stats.CurrentHP,
-                        stats.MaxHP,
-                        stats.Level,
-                        stats.Experience,
-                        expToNext,
-                        stats.Gold
-                    )
-                    print(("[Bootstrap] 🎯 %s に初回StatusUpdateを送信しました"):format(player.Name))
+                if not hrp then
+                    warn(("[Bootstrap] %s のHRPが見つかりません"):format(player.Name))
+                    return
                 end
-            end
+
+                local targetX = loadedLocation.X
+                local targetY = loadedLocation.Y
+                local targetZ = loadedLocation.Z
+
+                print(("[Bootstrap] 即座にワープ: %s → (%.0f, %.0f, %.0f)"):format(player.Name, targetX, targetY, targetZ))
+
+                -- 即座に配置
+                hrp.CFrame = CFrame.new(targetX, targetY, targetZ)
+                ZoneManager.PlayerZones[player] = targetZone
+
+                print(("[Bootstrap] %s を配置完了"):format(player.Name))
+                print(("[Bootstrap] ⏱️ 合計時間: %.2f秒"):format(os.clock() - totalStartTime))
+
+                -- 【追加】ワープ完了後、即座にローディング解除通知
+                SpawnReadyEvent:FireClient(player)
+                print(("[Bootstrap] %s にスポーン準備完了を通知（即座）"):format(player.Name))
+
+                -- 【修正】モンスターとポータルの復元を並行処理に変更
+                task.spawn(function()
+                    task.wait(1) -- 少し待ってから復元
+
+                    if loadedData.FieldState and loadedData.CurrentZone then
+                        local zoneName = loadedData.CurrentZone
+                        print(("[Bootstrap] %s のフィールド状態を復元: %s"):format(player.Name, zoneName))
+
+                        DataCollectors.restoreFieldState(zoneName, loadedData.FieldState)
+
+                        if _G.CreatePortalsForZone then
+                            _G.CreatePortalsForZone(zoneName)
+                        end
+                    else
+                        print(("[Bootstrap] %s は初回プレイ"):format(player.Name))
+
+                        if targetZone ~= START_ZONE_NAME then
+                            if _G.SpawnMonstersForZone then
+                                _G.SpawnMonstersForZone(targetZone)
+                            end
+                            if _G.CreatePortalsForZone then
+                                _G.CreatePortalsForZone(targetZone)
+                            end
+                        else
+                            if _G.CreatePortalsForZone then
+                                _G.CreatePortalsForZone(START_ZONE_NAME)
+                            end
+                        end
+                    end
+
+                    -- クリーンアップ
+                    LastLoadedData[player] = nil
+                end)
+
+                -- ステータス更新（並行処理）
+                task.spawn(function()
+                    local stats = PlayerStatsModule.getStats(player)
+                    if stats then
+                        local expToNext = stats.Level * 100
+                        local StatusUpdateEvent = ReplicatedStorage:FindFirstChild("StatusUpdate")
+                        if StatusUpdateEvent then
+                            StatusUpdateEvent:FireClient(
+                                player,
+                                stats.CurrentHP,
+                                stats.MaxHP,
+                                stats.Level,
+                                stats.Experience,
+                                expToNext,
+                                stats.Gold
+                            )
+                        end
+                    end
+                end)
+
+                print(("[Bootstrap] %s のスポーン処理完了"):format(player.Name))
+            end)
         end)
-    end
 
-    -- CharacterAddedイベント接続
-    characterAddedConnection = player.CharacterAdded:Connect(function(character)
-        performTeleportAndZoneSetup(player, character)
+        -- キャラクター生成
+        player:LoadCharacter()
     end)
-
-    -- ロード開始
-    startDataStoreLoad()
-
-    -- 既にスポーン済みの場合
-    if player.Character then
-        performTeleportAndZoneSetup(player, player.Character)
-    end
 end
+
 
 -- 既存プレイヤーに適用
 for _, player in ipairs(Players:GetPlayers()) do
@@ -4268,6 +4570,47 @@ task.spawn(function()
     print("[Bootstrap] Soundsフォルダを初期化しました")
 end)
 
+-- 【追加】セーブイベントハンドラの登録
+local SaveGameEvent = ReplicatedStorage:FindFirstChild("SaveGame")
+if not SaveGameEvent then
+    SaveGameEvent = Instance.new("RemoteEvent")
+    SaveGameEvent.Name = "SaveGame"
+    SaveGameEvent.Parent = ReplicatedStorage
+    print("[Bootstrap] SaveGameイベントを作成しました")
+end
+
+local DataStoreManager = require(ServerScriptService:WaitForChild("DataStoreManager"))
+local DataCollectors = require(ServerScriptService:WaitForChild("DataCollectors"))
+
+SaveGameEvent.OnServerEvent:Connect(function(player)
+    print(("[Bootstrap] %s からセーブリクエストを受信"):format(player.Name))
+
+    -- プレイヤーのステータスを取得
+    local stats = PlayerStatsModule.getStats(player)
+    if not stats then
+        warn(("[Bootstrap] %s のステータスが見つかりません"):format(player.Name))
+        local SaveSuccessEvent = ReplicatedStorage:FindFirstChild("SaveSuccess")
+        if SaveSuccessEvent then
+            SaveSuccessEvent:FireClient(player, false)
+        end
+        return
+    end
+
+    -- セーブデータを作成
+    local saveData = DataCollectors.createSaveData(player, stats)
+
+    -- DataStoreに保存
+    local success = DataStoreManager.SaveData(player, saveData)
+
+    if success then
+        print(("[Bootstrap] %s のセーブ成功"):format(player.Name))
+    else
+        warn(("[Bootstrap] %s のセーブ失敗"):format(player.Name))
+    end
+end)
+
+print("[Bootstrap] セーブイベントハンドラを登録しました")
+
 print("[Bootstrap] === ゲーム初期化完了 ===")
 print(("[Bootstrap] プレイヤーは街（%s）からスタートします"):format(START_ZONE_NAME))
 ===== ./ServerScriptService/LoadTest.server.lua =====
@@ -4276,15 +4619,15 @@ local startTime = os.clock()
 local startMemory = gcinfo()
 
 -- ゲーム開始を待つ
-task.wait(5)
+-- task.wait(5)
 
-local endTime = os.clock()
-local endMemory = gcinfo()
+-- local endTime = os.clock()
+-- local endMemory = gcinfo()
 
-print("=== 負荷テスト結果 ===")
-print(("地形生成時間: %.2f秒"):format(endTime - startTime))
-print(("メモリ使用量: %.2f MB"):format((endMemory - startMemory) / 1024))
-print(("総オブジェクト数: %d"):format(#workspace:GetDescendants()))
+-- print("=== 負荷テスト結果 ===")
+-- print(("地形生成時間: %.2f秒"):format(endTime - startTime))
+-- print(("メモリ使用量: %.2f MB"):format((endMemory - startMemory) / 1024))
+-- print(("総オブジェクト数: %d"):format(#workspace:GetDescendants()))
 
 -- 継続モニタリング
 task.spawn(function()
@@ -4753,7 +5096,7 @@ task.spawn(function()
 end)
 
 task.wait(0.3)
--- createPortalsForZone("ContinentTown") -- ★修正: StartTownからContinentTownに変更
+createPortalsForZone("ContinentTown") -- ★修正: StartTownからContinentTownに変更
 
 Players.PlayerRemoving:Connect(function(player)
 	warpingPlayers[player.UserId] = nil
@@ -4789,19 +5132,22 @@ function DataStoreManager.SaveData(player: Player, data: table)
         PLAYER_DATA_STORE:SetAsync(player.UserId, data)
     end)
 
+    -- 【修正】毎回SaveSuccessEventを取得
+    local SaveSuccessEvent = ReplicatedStorage:FindFirstChild("SaveSuccess")
+
     if success then
         print(("[DataStoreManager] %s のデータを保存しました。キー: %d"):format(player.Name, player.UserId))
 
         -- クライアントに保存成功を通知
-        if SAVE_SUCCESS_EVENT then
-            SAVE_SUCCESS_EVENT:FireClient(player, true)
+        if SaveSuccessEvent then
+            SaveSuccessEvent:FireClient(player, true)
         end
     else
         warn(("[DataStoreManager] %s のデータ保存に失敗しました: %s"):format(player.Name, err))
 
         -- クライアントに保存失敗を通知
-        if SAVE_SUCCESS_EVENT then
-            SAVE_SUCCESS_EVENT:FireClient(player, false)
+        if SaveSuccessEvent then
+            SaveSuccessEvent:FireClient(player, false)
         end
     end
     return success
@@ -4883,7 +5229,7 @@ local function getOrCreateRemoteEvent(name)
 		event = Instance.new("RemoteEvent")
 		event.Name = name
 		event.Parent = ReplicatedStorage
-		print(("[BattleSystem] RemoteEvent作成: %s"):format(name))
+		-- print(("[BattleSystem] RemoteEvent作成: %s"):format(name))
 	end
 	return event
 end
@@ -5707,6 +6053,7 @@ local ZoneManager = require(script.Parent.ZoneManager)
 
 local SharedState = require(ReplicatedStorage:WaitForChild("SharedState"))
 local GameEvents = require(ReplicatedStorage:WaitForChild("GameEvents"))
+local ContinentsRegistry = require(ReplicatedStorage.Continents.Registry)
 
 -- BattleSystem読込（オプショナル）
 local BattleSystem = nil
@@ -6148,26 +6495,66 @@ local function spawnMonster(template: Model, index: number, def, islandName)
 	-- print(("[MonsterSpawner] %s を %s にスポーン"):format(m.Name, islandName))
 end
 
--- ゾーン内のモンスター数をカウント
+-- ゾーン内のモンスターカウントを取得
 local function getZoneMonsterCounts(zoneName)
-	local counts = {}
+    local counts = {}
 
-	for _, aiState in ipairs(ActiveMonsters) do
-		if aiState.monster and aiState.monster.Parent then
-			local monsterZone = aiState.monster:GetAttribute("SpawnZone")
-			if monsterZone == zoneName then
-				local monsterKind = aiState.def.Name or "Unknown"
-				counts[monsterKind] = (counts[monsterKind] or 0) + 1
-			end
-		end
-	end
+    -- 大陸名から島のリストを取得
+    local islandNames = {}
 
-	print(("[MonsterSpawner] ゾーン %s のモンスターカウント: %s"):format(
-		zoneName,
-		game:GetService("HttpService"):JSONEncode(counts)
-	))
+    -- ContinentsRegistryをロード（まだロードされていない場合）
+    if not ContinentsRegistry then
+        local ContinentsFolder = ReplicatedStorage:FindFirstChild("Continents")
+        if ContinentsFolder then
+            local RegistryModule = ContinentsFolder:FindFirstChild("Registry")
+            if RegistryModule then
+                ContinentsRegistry = require(RegistryModule)
+                print("[MonsterSpawner] ContinentsRegistryをロードしました")
+            end
+        end
+    end
 
-	return counts
+    -- 大陸の場合は、含まれる島をすべて取得
+    local continent = nil
+    if ContinentsRegistry then
+        for _, cont in ipairs(ContinentsRegistry) do
+            if cont.name == zoneName then
+                continent = cont
+                break
+            end
+        end
+    end
+
+    if continent and continent.islands then
+        -- 大陸内の全島を対象にする
+        for _, islandName in ipairs(continent.islands) do
+            table.insert(islandNames, islandName)
+        end
+        print(("[MonsterSpawner] 大陸 %s の島リスト: %s"):format(
+            zoneName,
+            table.concat(islandNames, ", ")
+        ))
+    else
+        -- 大陸でない場合は、ゾーン名自体を島名とする
+        table.insert(islandNames, zoneName)
+        print(("[MonsterSpawner] %s は島として扱います"):format(zoneName))
+    end
+
+    -- 各島のモンスターカウントを集計
+    for _, islandName in ipairs(islandNames) do
+        if MonsterCounts[islandName] then
+            for monsterName, count in pairs(MonsterCounts[islandName]) do
+                counts[monsterName] = (counts[monsterName] or 0) + count
+            end
+        end
+    end
+
+    print(("[MonsterSpawner] ゾーン %s のモンスターカウント: %s"):format(
+        zoneName,
+        game:GetService("HttpService"):JSONEncode(counts)
+    ))
+
+    return counts
 end
 
 -- 全ゾーンのモンスター数をSharedStateに保存
@@ -6529,6 +6916,7 @@ print("[MonsterSpawner] グローバル関数登録完了（カウント機能�
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
 
 local DataCollectors = {}
 
@@ -6547,6 +6935,7 @@ function DataCollectors.collectPlayerState(player: Player, playerStats)
             Experience = playerStats.Experience,
             Gold = playerStats.Gold,
             CurrentHP = playerStats.CurrentHP,
+            MonstersDefeated = playerStats.MonstersDefeated,
         },
         -- 位置情報
         Location = {
@@ -6560,43 +6949,57 @@ function DataCollectors.collectPlayerState(player: Player, playerStats)
     return playerState
 end
 
--- ワールドの状態（モンスターなど）を収集
+-- 【修正】ワールドの状態（モンスターカウントのみ）を収集
 function DataCollectors.collectFieldState(zoneName)
     local fieldState = {
-        Monsters = {}
+        MonsterCounts = {}
     }
 
-    -- 現在のアクティブなモンスターを検索し、状態を保存
-    local monstersInZone = {}
-
-    -- MonsterSpawnerの内部構造に依存しない汎用的な方法でモンスターを検索
-    for _, model in ipairs(Workspace:GetChildren()) do
-        if model:IsA("Model") and model:GetAttribute("IsEnemy") and model:GetAttribute("SpawnZone") == zoneName then
-            local monsterHrp = model:FindFirstChild("HumanoidRootPart")
-            local monsterHumanoid = model:FindFirstChildOfClass("Humanoid")
-
-            if monsterHrp and monsterHumanoid and monsterHumanoid.Health > 0 then
-                local monsterKind = model:GetAttribute("MonsterKind")
-                local monsterHP = monsterHumanoid.Health
-
-                table.insert(fieldState.Monsters, {
-                    Kind = monsterKind,
-                    HP = monsterHP,
-                    X = monsterHrp.Position.X,
-                    Y = monsterHrp.Position.Y,
-                    Z = monsterHrp.Position.Z,
-                })
-            end
+    -- MonsterSpawnerのグローバル関数を使ってカウント取得
+    if _G.GetZoneMonsterCounts then
+        local counts = _G.GetZoneMonsterCounts(zoneName)
+        if counts then
+            fieldState.MonsterCounts = counts
+            print(("[DataCollectors] %s のモンスターカウント収集: %s"):format(
+                zoneName,
+                HttpService:JSONEncode(counts)
+            ))
+        else
+            print(("[DataCollectors] %s にモンスターカウントがありません"):format(zoneName))
         end
+    else
+        warn("[DataCollectors] _G.GetZoneMonsterCounts が利用できません")
     end
 
     return fieldState
 end
 
--- ワールドの状態を復元 (ロード時に使用)
-function DataCollectors.restoreFieldState(player: Player, fieldState: table)
-    -- この機能は、MonsterSpawnerモジュールに依存するため、後でMonsterSpawner.server.luaを修正して実装します。
-    warn("[DataCollectors] restoreFieldState はまだ実装されていません。")
+-- 【修正】ワールドの状態を復元 (ロード時に使用)
+function DataCollectors.restoreFieldState(zoneName, fieldState)
+    if not fieldState then
+        warn("[DataCollectors] 復元するフィールド状態がありません")
+        return false
+    end
+
+    if not fieldState.MonsterCounts or next(fieldState.MonsterCounts) == nil then
+        print(("[DataCollectors] %s に復元するモンスターがありません"):format(zoneName))
+        return false
+    end
+
+    print(("[DataCollectors] %s のモンスターを復元中: %s"):format(
+        zoneName,
+        HttpService:JSONEncode(fieldState.MonsterCounts)
+    ))
+
+    -- MonsterSpawnerのグローバル関数を使ってスポーン
+    if _G.SpawnMonstersWithCounts then
+        _G.SpawnMonstersWithCounts(zoneName, fieldState.MonsterCounts)
+        print(("[DataCollectors] %s のモンスター復元完了"):format(zoneName))
+        return true
+    else
+        warn("[DataCollectors] _G.SpawnMonstersWithCounts が利用できません")
+        return false
+    end
 end
 
 -- 総合セーブデータを作成
@@ -6605,8 +7008,10 @@ function DataCollectors.createSaveData(player: Player, playerStats)
 
     local saveData = {
         PlayerState = DataCollectors.collectPlayerState(player, playerStats),
-        -- Townはセーブ対象外 (モンスターがいないため)
-        FieldState = currentZone ~= "ContinentTown" and DataCollectors.collectFieldState(currentZone) or nil,
+        -- 【修正】CurrentZoneを追加し、FieldStateの構造を変更
+        CurrentZone = currentZone,
+        -- Townはセーブ対象外（モンスターがいないため）
+        FieldState = (currentZone ~= "ContinentTown") and DataCollectors.collectFieldState(currentZone) or nil,
         SaveTime = os.time(),
     }
 

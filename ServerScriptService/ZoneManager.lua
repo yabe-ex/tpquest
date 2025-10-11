@@ -113,9 +113,27 @@ local function loadContinent(continentName)
         loadedAt = os.time(),
     }
 
+    local RS = game:GetService("ReplicatedStorage")
+    local FieldGen = require(RS:WaitForChild("FieldGen"))
+
+    if continent.fieldObjects and #continent.fieldObjects > 0 then
+        print(("[ZoneManager] 追加オブジェクトを配置: %d 個"):format(#continent.fieldObjects))
+        FieldGen.placeFieldObjects(continent.name, continent.fieldObjects)
+    end
+
+    local RS = game:GetService("ReplicatedStorage")
+local FieldGen = require(RS:WaitForChild("FieldGen"))
+
+-- …大陸・島を生成し終わったあと
+if continent.paths and #continent.paths > 0 then
+	FieldGen.buildPaths(continent.name, continent.paths)
+end
+
     print(("[ZoneManager] 大陸生成完了: %s"):format(continentName))
     return true
 end
+
+
 
 -- ゾーンをロード（島または大陸をロード）
 function ZoneManager.LoadZone(zoneName)
@@ -123,7 +141,7 @@ function ZoneManager.LoadZone(zoneName)
         print(("[ZoneManager] %s は既に生成済みです"):format(zoneName))
         return true
     end
-print(("[ZoneManager] cska: %s"):format(zoneName))
+
     if isContinent(zoneName) then
         return loadContinent(zoneName)
     else

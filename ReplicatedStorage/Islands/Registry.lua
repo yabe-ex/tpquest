@@ -9,8 +9,10 @@ local allIslands = {}
 local islandModules = {
     IslandsFolder:WaitForChild("Town"),           -- 【修正】Town.lua を参照
     IslandsFolder:WaitForChild("HokkaidoIslands"),
-    IslandsFolder:WaitForChild("ShikokuIslands"),  -- ★新規追加
-    IslandsFolder:WaitForChild("KyushuIslands"),   -- ★新規追加
+    IslandsFolder:WaitForChild("ShikokuIslands"),
+    IslandsFolder:WaitForChild("KyushuIslands"),
+    IslandsFolder:WaitForChild("Snowland"),
+     IslandsFolder:WaitForChild("Greenland"),
 }
 
 -- 各モジュールを読み込み

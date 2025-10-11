@@ -404,108 +404,6 @@ local function updatePlayerRotation_debug()
 	end
 end
 
-local function updatePlayerRotation_ok()
-	local character = player.Character
-	if not character then return end
-
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-
-	if not playerIcon then return end
-
-	-- プレイヤーの向きを取得
-	local lookVector = hrp.CFrame.LookVector
-
-	local angle = math.atan2(lookVector.X, lookVector.Z)
-	local degrees = math.deg(angle)
-
-	-- 回転を適用
-	playerIcon.Rotation = degrees
-end
-
-
-local function updatePlayerRotationx()
-	local character = player.Character
-	if not character then return end
-
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-
-	if not playerIcon then return end
-
-	-- プレイヤーの向きを取得
-	local lookVector = hrp.CFrame.LookVector
-
-	local angle = math.atan2(lookVector.X, -lookVector.Z)
-	local degrees =  - math.deg(angle)
-
-	-- 回転を適用
-	playerIcon.Rotation = - degrees
-end
-
-local function updatePlayerRotation_ok_up()
-	local character = player.Character
-	if not character then return end
-
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-
-	if not playerIcon then return end
-
-	-- プレイヤーの向きを取得
-	local lookVector = hrp.CFrame.LookVector
-
-	local angle = math.atan2(-lookVector.X, lookVector.Z)
-	local degrees =  - math.deg(angle)
-
-	-- 回転を適用
-	playerIcon.Rotation = degrees
-end
-
-local function updatePlayerRotation_okl2()
-	local character = player.Character
-	if not character then return end
-
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-
-	if not playerIcon then return end
-
-	-- プレイヤーの向きを取得
-	local lookVector = hrp.CFrame.LookVector
-
-	-- 【変更】atan2の引数順序を変える
-	local angle = math.atan2(lookVector.Z, lookVector.X)
-	local degrees = math.deg(angle)
-
-	-- そのまま適用
-	playerIcon.Rotation = degrees
-
-	if os.clock() % 5 < 0.1 then
-		print(string.format("[Minimap DEBUG] LookVector: (%.2f, %.2f, %.2f)", lookVector.X, lookVector.Y, lookVector.Z))
-		print(string.format("[Minimap DEBUG] 角度: %.1f度", degrees))
-	end
-
-end
-
-local function updatePlayerRotation_x()
-	local character = player.Character
-	if not character then return end
-
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-
-	if not playerIcon then return end
-
-	local lookVector = hrp.CFrame.LookVector
-
-	-- 角度計算
-	local angle = math.atan2(lookVector.Z, lookVector.X)
-	local degrees = math.deg(angle)
-
-	-- 90度を加算して補正
-	playerIcon.Rotation = degrees - 90
-end
 
 -- デバッグ版（方角名も表示）
 local function updatePlayerRotation_news()
@@ -555,9 +453,9 @@ local function updatePlayerRotation()
 	-- 座標系を合わせる（地形マップと同じ反転）
 	playerIcon.Rotation = -degrees
 
-	if os.clock() % 1 < 0.1 then
-		print(string.format("[DEBUG] Y軸回転: %.1f度 → 表示: %.1f度", degrees, -degrees))
-	end
+	-- if os.clock() % 1 < 0.1 then
+	-- 	print(string.format("[DEBUG] Y軸回転: %.1f度 → 表示: %.1f度", degrees, -degrees))
+	-- end
 end
 
 
@@ -771,5 +669,30 @@ task.spawn(function()
 		end)
 	end
 end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+
+	if input.KeyCode == Enum.KeyCode.P then
+		local character = player.Character
+		if not character then return end
+
+		local hrp = character:FindFirstChild("HumanoidRootPart")
+		if not hrp then return end
+
+		local position = hrp.Position
+
+		local continent = player:GetAttribute("ContinentName") or "?"
+		local island = player:GetAttribute("IslandName") or "?"
+
+		print("📍 現在地情報 -------------------------")
+		print("🗺️ 大陸名: " .. continent)
+		-- print("🏝️ 島名: " .. island)
+		print(string.format("📌 座標: (%.1f, %.1f, %.1f)", position.X, position.Y, position.Z))
+		print("--------------------------------------")
+	end
+end)
+
+
 
 print("[Minimap] 初期化完了（ズーム機能付き）")

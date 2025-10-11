@@ -134,6 +134,7 @@ local function setupPlayerSpawn(player)
             loadedLocation.Z
         ))
 
+        player:SetAttribute("ContinentName", loadedLocation.ZoneName)
         return LastLoadedData[player]
     end
 

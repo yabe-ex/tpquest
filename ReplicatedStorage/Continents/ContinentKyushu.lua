@@ -1,27 +1,56 @@
--- ===== ./ReplicatedStorage/Continents/ContinentKyushu.lua (新規) =====
+--- Continents ---
 return {
-	name = "ContinentKyushu",
-	displayName = "Kyushu Region",
-
-	islands = {
-		"Kyushu_N1", "Kyushu_C1", "Kyushu_S1",
-		"Kyushu_NE1", "Kyushu_SW1", "Kyushu_W1",
-	},
-
-	bridges = {},
-
-	portals = {
-			{
-				name = "Kyushu_to_Town",
-				toZone = "ContinentTown",
-				islandName = "Kyushu_C1", -- 中央の島からポータル
-				offsetX = 0,
-				offsetZ = 0,
-				label = "→ Town",
-				color = Color3.fromRGB(255, 100, 100), -- 赤色のポータル
-			},
-		},
-
-	BGM = "rbxassetid://115666507179769", -- 後でアセットIDに変更
-	BGMVolume = 0.3,
+name = "Kyushu",
+displayName = "Kyushu",
+islands = {
+"Kyushu_C1",
+"Kyushu_C2",
+"Kyushu_C3",
+"Kyushu_C4",
+"Kyushu_C5",
+"Kyushu_C6",
+"Kyushu_C7",
+"Kyushu_C8",
+"Kyushu_C9",
+"Kyushu_C10",
+"Kyushu_C11",
+"Kyushu_C12",
+"Kyushu_C13",
+"Kyushu_C14",
+"Kyushu_C15",
+"Kyushu_C16",
+"Kyushu_C17",
+"Kyushu_C18",
+"Kyushu_C19",
+"Kyushu_C20",
+"Kyushu_C21",
+"Kyushu_C22",
+"Kyushu_C23",
+"Kyushu_C24",
+},
+paths = {
+{
+name = "MainRoad_NorthSouth",
+points = {
+{93100, 10, -520},
+{93200, 10, -420},
+{93250, 10, -260},
+{93300, 10, -100},
+{93320, 10, 20},
+{93300, 10, 180},
+{93280, 10, 320},
+{93220, 10, 430},
+{93180, 10, 520},
+},
+width = 20,
+method = "terrain",
+material = Enum.Material.Ground,
+step = 3,
+alignToSlope = false,
+groundOffset = 0.05
+},
+},
+fieldObjects = {},
+BGM = "",
+BGMVolume = 0.2
 }

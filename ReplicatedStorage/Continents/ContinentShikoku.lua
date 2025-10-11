@@ -11,16 +11,16 @@ return {
 	bridges = {},
 
 	portals = {
-			{
-				name = "Shikoku_to_Town",
-				toZone = "ContinentTown",
-				islandName = "Shikoku_C1", -- 中央の島からポータル
-				offsetX = 0,
-				offsetZ = 0,
-				label = "→ Town",
-				color = Color3.fromRGB(150, 255, 150), -- 緑色のポータル
-			},
-		},
+		{
+			name = "Shikoku_to_Town",
+			toZone = "ContinentTown",
+			islandName = "Shikoku_C1", -- 中央の島からポータル
+			offsetX = 0,
+			offsetZ = 0,
+			label = "→ Town",
+			color = Color3.fromRGB(150, 255, 150), -- 緑色のポータル
+		}
+	},
 
 	BGM = "rbxassetid://139951867631287", -- 後でアセットIDに変更
 	BGMVolume = 0.3,
