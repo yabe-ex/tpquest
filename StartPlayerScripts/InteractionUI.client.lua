@@ -18,6 +18,14 @@ if not InteractEvent then
 	return
 end
 
+-- RemoteFunctionで取得済みリストを取得
+local GetCollectedItemsFunc = ReplicatedStorage:FindFirstChild("GetCollectedItems")
+if not GetCollectedItemsFunc then
+	GetCollectedItemsFunc = Instance.new("RemoteFunction")
+	GetCollectedItemsFunc.Name = "GetCollectedItems"
+	GetCollectedItemsFunc.Parent = ReplicatedStorage
+end
+
 -- 現在のインタラクション対象
 local currentTarget = nil
 local currentButton = nil
@@ -33,25 +41,28 @@ local function createInteractionButton(targetObject, actionText, key)
 		currentButton = nil
 	end
 
-	-- BillboardGuiを作成
-	local billboard = Instance.new("BillboardGui")
-	billboard.Name = "InteractionPrompt"
-	billboard.Adornee = targetObject
-	billboard.Size = UDim2.new(0, 200, 0, 50)
-	billboard.StudsOffset = Vector3.new(0, 3, 0)
-	billboard.AlwaysOnTop = true
-	billboard.Parent = targetObject
+	-- ScreenGuiに配置（画面中央下部）
+	local screenGui = playerGui:FindFirstChild("InteractionButtonGui")
+	if not screenGui then
+		screenGui = Instance.new("ScreenGui")
+		screenGui.Name = "InteractionButtonGui"
+		screenGui.ResetOnSpawn = false
+		screenGui.DisplayOrder = 150
+		screenGui.Parent = playerGui
+	end
 
 	-- 背景フレーム
 	local frame = Instance.new("Frame")
-	frame.Size = UDim2.new(1, 0, 1, 0)
+	frame.Name = "InteractionFrame"
+	frame.Size = UDim2.new(0, 250, 0, 60)
+	frame.Position = UDim2.new(0.5, -125, 0.85, 0) -- 画面下部中央
 	frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	frame.BackgroundTransparency = 0.5
+	frame.BackgroundTransparency = 0.3
 	frame.BorderSizePixel = 0
-	frame.Parent = billboard
+	frame.Parent = screenGui
 
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 8)
+	corner.CornerRadius = UDim.new(0, 12)
 	corner.Parent = frame
 
 	-- ボタン
@@ -59,18 +70,18 @@ local function createInteractionButton(targetObject, actionText, key)
 	button.Size = UDim2.new(0.9, 0, 0.7, 0)
 	button.Position = UDim2.new(0.05, 0, 0.15, 0)
 	button.BackgroundColor3 = Color3.fromRGB(255, 200, 100)
-	button.BackgroundTransparency = 0.3
-	button.BorderSizePixel = 0
+	button.BackgroundTransparency = 0.2
+	button.BorderSizePixel = 2
+	button.BorderColor3 = Color3.new(1, 1, 1)
 	button.Text = string.format("%s [%s]", actionText, key)
-	button.TextColor3 = Color3.new(1, 1, 1)
-	button.TextSize = 18
+	button.TextColor3 = Color3.new(0, 0, 0)
+	button.TextSize = 20
 	button.Font = Enum.Font.SourceSansBold
-	button.Active = true
 	button.AutoButtonColor = true
 	button.Parent = frame
 
 	local buttonCorner = Instance.new("UICorner")
-	buttonCorner.CornerRadius = UDim.new(0, 6)
+	buttonCorner.CornerRadius = UDim.new(0, 8)
 	buttonCorner.Parent = button
 
 	-- ボタンクリック
@@ -92,19 +103,19 @@ local function createInteractionButton(targetObject, actionText, key)
 		currentTarget = nil
 	end)
 
-	-- 【追加】ボタンのホバー検出テスト
+	-- デバッグ：ホバー検出
 	button.MouseEnter:Connect(function()
 		print("[InteractionUI DEBUG] マウスがボタンに入った")
+		button.BackgroundTransparency = 0 -- ハイライト
 	end)
 
 	button.MouseLeave:Connect(function()
 		print("[InteractionUI DEBUG] マウスがボタンから出た")
+		button.BackgroundTransparency = 0.2
 	end)
 
-	print("[InteractionUI] 初期化完了")
-
-	currentButton = billboard
-	return billboard
+	currentButton = frame
+	return frame
 end
 
 -- インタラクション可能なオブジェクトを検出

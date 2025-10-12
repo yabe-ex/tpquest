@@ -312,10 +312,46 @@ local function pivotModel(model: Model, cf: CFrame)
 	end
 end
 
-function FieldGen.placeFieldObjects(continentName: string?, objects: {any})
+function FieldGen.placeFieldObjects(continentName: string?, objects: {any}, player: Player?)
 	if not objects or #objects == 0 then return end
 
 	task.wait(1)
+
+	-- 【修正】全プレイヤーの取得済みアイテムを収集
+	local allCollectedItems = {}
+	local Players = game:GetService("Players")
+	local ServerScriptService = game:GetService("ServerScriptService")
+
+	local success, PlayerStatsModule = pcall(function()
+		return require(ServerScriptService:WaitForChild("PlayerStats"))
+	end)
+
+	if success then
+		-- 全プレイヤーをループ
+		for _, plr in ipairs(Players:GetPlayers()) do
+			local stats = PlayerStatsModule.getStats(plr)
+			if stats and stats.CollectedItems then
+				-- 全プレイヤーの取得済みアイテムをマージ
+				for chestId, _ in pairs(stats.CollectedItems) do
+					allCollectedItems[chestId] = true
+				end
+
+				print(("[FieldGen] %s の取得済みアイテムを読み込み"):format(plr.Name))
+			end
+		end
+
+		-- 【デバッグ】取得済みアイテム総数を表示
+		local count = 0
+		for _ in pairs(allCollectedItems) do count = count + 1 end
+		print(("[FieldGen] 全プレイヤーの取得済みアイテム総数: %d"):format(count))
+
+		-- 具体的なIDを表示
+		for chestId, _ in pairs(allCollectedItems) do
+			print(("[FieldGen] 取得済み: %s"):format(chestId))
+		end
+	else
+		warn("[FieldGen] PlayerStatsModuleの読み込みに失敗")
+	end
 
 	local ServerStorage = game:GetService("ServerStorage")
 	local templatesRoot = ServerStorage:FindFirstChild("FieldObjects")
@@ -369,6 +405,18 @@ function FieldGen.placeFieldObjects(continentName: string?, objects: {any})
 	end
 
 	for _, obj in ipairs(objects) do
+		-- 取得済みアイテムはスキップ
+		if obj.interaction and obj.interaction.chestId then
+			local chestId = obj.interaction.chestId
+
+			if allCollectedItems[chestId] then
+				print(("[FieldGen] ⏭️ 取得済みのため配置スキップ: %s"):format(chestId))
+				continue
+			else
+				print(("[FieldGen] ✅ 配置します: %s"):format(chestId))
+			end
+		end
+
 		local template = templatesRoot:FindFirstChild(tostring(obj.model or ""))
 		if not template then
 			warn(("[FieldGen] テンプレートが見つかりません: %s"):format(tostring(obj.model)))
@@ -491,7 +539,7 @@ function FieldGen.placeFieldObjects(continentName: string?, objects: {any})
 			end
 		end
 
-		-- 【新規追加】インタラクション情報をAttributeに設定
+		-- インタラクション情報をAttributeに設定
 		if obj.interaction then
 			local interaction = obj.interaction
 
@@ -518,6 +566,12 @@ function FieldGen.placeFieldObjects(continentName: string?, objects: {any})
 					interaction.chestId,
 					interaction.range
 				))
+
+				-- 設定後に確認
+				task.wait(0.1)
+				if not clone:GetAttribute("HasInteraction") then
+					warn(("[FieldGen] ⚠️ 属性が消えた: %s"):format(interaction.chestId))
+				end
 			end
 		end
 

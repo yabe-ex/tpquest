@@ -215,4 +215,24 @@ InteractEvent.OnServerEvent:Connect(function(player, object)
 	handleInteraction(player, object)
 end)
 
+-- 取得済みアイテムリストを返すRemoteFunction
+local GetCollectedItemsFunc = ReplicatedStorage:FindFirstChild("GetCollectedItems")
+if not GetCollectedItemsFunc then
+	GetCollectedItemsFunc = Instance.new("RemoteFunction")
+	GetCollectedItemsFunc.Name = "GetCollectedItems"
+	GetCollectedItemsFunc.Parent = ReplicatedStorage
+end
+
+GetCollectedItemsFunc.OnServerInvoke = function(player)
+	local stats = PlayerStatsModule.getStats(player)
+	if stats and stats.CollectedItems then
+		print(("[InteractionSystem] %s の取得済みリストを送信: %d個"):format(
+			player.Name,
+			next(stats.CollectedItems) and #stats.CollectedItems or 0
+		))
+		return stats.CollectedItems
+	end
+	return {}
+end
+
 print("[InteractionSystem] 初期化完了")
