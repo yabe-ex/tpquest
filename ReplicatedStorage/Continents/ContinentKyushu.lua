@@ -1,55 +1,77 @@
 --- Continents ---
 return {
-name = "Kyushu",
-displayName = "Kyushu",
+name = "ContinentKyushu",
+displayName = "ContinentKyushu",
 islands = {
-"Kyushu_C1",
-"Kyushu_C2",
-"Kyushu_C3",
-"Kyushu_C4",
-"Kyushu_C5",
-"Kyushu_C6",
-"Kyushu_C7",
-"Kyushu_C8",
-"Kyushu_C9",
-"Kyushu_C10",
-"Kyushu_C11",
-"Kyushu_C12",
-"Kyushu_C13",
-"Kyushu_C14",
-"Kyushu_C15",
-"Kyushu_C16",
-"Kyushu_C17",
-"Kyushu_C18",
-"Kyushu_C19",
-"Kyushu_C20",
-"Kyushu_C21",
-"Kyushu_C22",
-"Kyushu_C23",
-"Kyushu_C24",
+"ContinentKyushu_C1",
+"ContinentKyushu_C2",
+"ContinentKyushu_C3",
+"ContinentKyushu_C4",
+"ContinentKyushu_C5",
+"ContinentKyushu_C6",
+"ContinentKyushu_C7",
+"ContinentKyushu_C8",
+"ContinentKyushu_C9",
+"ContinentKyushu_C10",
+"ContinentKyushu_C11",
+"ContinentKyushu_C12",
+"ContinentKyushu_C13",
+"ContinentKyushu_C14",
+"ContinentKyushu_C15",
+"ContinentKyushu_C16",
+"ContinentKyushu_C17",
+"ContinentKyushu_C18",
+"ContinentKyushu_C19",
+"ContinentKyushu_C20",
+"ContinentKyushu_C21",
+"ContinentKyushu_C22",
+"ContinentKyushu_C23",
+"ContinentKyushu_C24",
 },
 paths = {
-{
-name = "MainRoad_NorthSouth",
-points = {
-{93100, 10, -520},
-{93200, 10, -420},
-{93250, 10, -260},
-{93300, 10, -100},
-{93320, 10, 20},
-{93300, 10, 180},
-{93280, 10, 320},
-{93220, 10, 430},
-{93180, 10, 520},
+	points = {
+			{93300, 10, -560},
+			{93320, 10, -460},
+			{93340, 10, -360},
+			{93360, 10, -240},
+			{93380, 10, -120},
+			{93390, 10, 0},
+			{93380, 10, 120},
+			{93360, 10, 240},
+			{93340, 10, 360},
+			{93300, 10, 480},
+	},
+	width = 24,                -- 道の幅（stud）
+	method = "terrain",        -- "terrain"（地形を塗る） or "parts"（パーツ敷き）
+	material = Enum.Material.Ground,  -- method="terrain"時の塗り材質
+	step = 3,                  -- サンプリング間隔（小さいほど滑らか＆重い）
+	alignToSlope = false,      -- 斜面に道面を傾けるか（見た目：true、歩きやすさ：false）
+	groundOffset = 4.8,       -- めり込み回避の微小オフセット
 },
-width = 20,
-method = "terrain",
-material = Enum.Material.Ground,
-step = 3,
-alignToSlope = false,
-groundOffset = 0.05
+
+--93080.8, 38.0, 166.2
+portals = {
+		{
+			name = "Kyushu_to_Town",
+			toZone = "ContinentTown",
+			islandName = "ContinentKyushu_C20",
+			offsetX = 100,
+			offsetZ = 100,
+			label = "→ Town",
+			color = Color3.fromRGB(255, 255, 255),
+		},
+		{
+			name = "Kyushu_to_Town",
+			toZone = "Hokkaido_SW2",
+			islandName = "ContinentKyushu_C22",
+			offsetX = 100,
+			offsetZ = 100,
+			label = "→ Hokkaido",
+			color = Color3.fromRGB(255, 255, 255),
+		}
 },
-},
+
+
 fieldObjects = {},
 BGM = "",
 BGMVolume = 0.2

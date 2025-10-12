@@ -66,13 +66,93 @@ return {
 		},
 
 		{
-			model = "Chest",
-			position = {3387.2, 3.4, 178.2},
+			-- model = "Chest",
+			model = "koki3D",
+			position = {-0.0, 56.3, -12.0},
 			size = 1.0,
 			rotation = {0, 0, 0},
 			stickToGround = true,   -- 省略可（trueが既定）
 			groundOffset  = 0,   -- 芝生で少し浮かせたい時
 			alignToSlope  = true,  -- 斜面に木を傾けたくないならfalse
+		},
+
+		{
+			model = "box_closed",
+			position = {3152.0, 59.5, -75.2},
+            mode = "ground",
+			size = 1,
+			rotation = {0, 0, 0},
+			stickToGround = false,   -- 省略可（trueが既定）
+			groundOffset  = 0,   -- 芝生で少し浮かせたい時
+			alignToSlope  = false,  -- 斜面に木を傾けたくないならfalse
+
+            interaction = {
+                type = "chest",           -- インタラクションタイプ
+                action = "開ける",         -- ボタンに表示されるテキスト
+                key = "E",                -- キーバインド
+                range = 8,                -- インタラクション可能距離（スタッド）
+
+                -- 宝箱固有の情報
+                chestId = "hokkaido_chest_01",          -- ユニークID
+                openedModel = "box_opened",         -- 開いた状態のモデル名
+                rewards = {
+                    {item = "ポーション", count = 2},
+					{item = "ゴールド", count = 45},
+                },
+                displayDuration = 3,      -- 報酬表示時間（秒）
+            },
+		},
+
+				{
+			model = "box_closed",
+			position = {2997.1, 26.9, 10.8},
+            mode = "ground",
+			size = 1,
+			rotation = {0, 0, 0},
+			stickToGround = false,   -- 省略可（trueが既定）
+			groundOffset  = 0,   -- 芝生で少し浮かせたい時
+			alignToSlope  = false,  -- 斜面に木を傾けたくないならfalse
+
+            interaction = {
+                type = "chest",           -- インタラクションタイプ
+                action = "開ける",         -- ボタンに表示されるテキスト
+                key = "E",                -- キーバインド
+                range = 8,                -- インタラクション可能距離（スタッド）
+
+                -- 宝箱固有の情報
+                chestId = "hokkaido_chest_02",          -- ユニークID
+                openedModel = "box_opened",         -- 開いた状態のモデル名
+                rewards = {
+                    {item = "ポーション", count = 2}
+                },
+                displayDuration = 10,      -- 報酬表示時間（秒）
+            },
+		},
+
+				{
+			model = "box_closed",
+			position = {3125.8, 47.2, -60.7},
+            mode = "ground",
+			size = 1,
+			rotation = {0, 0, 0},
+			stickToGround = false,   -- 省略可（trueが既定）
+			groundOffset  = 0,   -- 芝生で少し浮かせたい時
+			alignToSlope  = false,  -- 斜面に木を傾けたくないならfalse
+
+            interaction = {
+                type = "chest",           -- インタラクションタイプ
+                action = "開ける",         -- ボタンに表示されるテキスト
+                key = "E",                -- キーバインド
+                range = 8,                -- インタラクション可能距離（スタッド）
+
+                -- 宝箱固有の情報
+                chestId = "hokkaido_chest_03",          -- ユニークID
+                openedModel = "box_opened",         -- 開いた状態のモデル名
+                rewards = {
+					{item = "ゴールド", count = 120},
+                },
+                displayDuration = 3,      -- 報酬表示時間（秒）
+            },
 		},
 	},
 
@@ -80,11 +160,11 @@ return {
 		{
 			name = "MainRoad01",
 			points = {                 -- 制御点：ワールド座標（YはだいたいでOK）
-{3028.7, 16.1, 79.4},
-{3077.0, 16.1, 119.9},
-{3190.9, 16.1, 92.3},
-{3276.1, 16.1, 100.2},
-{3367.9, 16.0, 77.1},
+				{3028.7, 16.1, 79.4},
+				{3077.0, 16.1, 119.9},
+				{3190.9, 16.1, 92.3},
+				{3276.1, 16.1, 100.2},
+				{3367.9, 16.0, 77.1},
 			},
 			width = 24,                -- 道の幅（stud）
 			method = "terrain",        -- "terrain"（地形を塗る） or "parts"（パーツ敷き）

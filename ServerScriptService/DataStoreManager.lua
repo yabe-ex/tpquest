@@ -14,6 +14,23 @@ local PLAYER_DATA_STORE = DataStoreService:GetDataStore("TypingQuestPlayerSaveDa
 local SAVE_SUCCESS_EVENT = ReplicatedStorage:FindFirstChild("SaveSuccess")
 local LOAD_GAME_EVENT = ReplicatedStorage:FindFirstChild("LoadGame")
 
+-- DataStoreサービス取得
+local success, DataStoreService = pcall(function()
+	return game:GetService("DataStoreService")
+end)
+
+if not success then
+	warn("[DataStoreManager] DataStoreが無効です。Studio設定で有効化してください。")
+	-- ダミーのDataStoreを返す
+	return {
+		SavePlayerData = function() warn("[DataStore] 保存スキップ（無効）") end,
+		LoadPlayerData = function() warn("[DataStore] 読込スキップ（無効）") return nil end,
+	}
+else
+	print("[DataStoreManager] ✅ DataStore設定: 有効")
+end
+
+local PlayerDataStore = DataStoreService:GetDataStore("PlayerData_v1")
 
 -- データの保存 (非同期)
 function DataStoreManager.SaveData(player: Player, data: table)

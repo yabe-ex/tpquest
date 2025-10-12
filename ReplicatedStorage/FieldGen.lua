@@ -405,81 +405,120 @@ function FieldGen.placeFieldObjects(continentName: string?, objects: {any})
 		local rz = math.rad(rot[3] or obj.rotationZ or 0)
 		local userRot = CFrame.Angles(rx, ry, rz)
 
-		-- まずは大体の位置に仮置き
-		local cf = CFrame.new(x, y, z) * baseRot * userRot
-		if clone:IsA("Model") then
-			pivotModel(clone, cf)
-		elseif clone:IsA("BasePart") then
-			clone.CFrame = cf
-		end
-
-		-- === 地面吸着 ===
-		local stick = (obj.stickToGround ~= false) -- 既定true
+		-- === 配置モード処理 ===
+		local mode = obj.mode or "ground"  -- 既定: ground
 		local offset = tonumber(obj.groundOffset) or 0
-		local align  = (obj.alignToSlope == true)
+		local align = (obj.alignToSlope == true)
 
-		local startY = 3000 -- 高めから確実に落とす
-		local hit = nil
-		do
-		local params = RaycastParams.new()
-		params.FilterType = Enum.RaycastFilterType.Include
-		params.FilterDescendantsInstances = {workspace.Terrain}
-		params.IgnoreWater = false
-		hit = workspace:Raycast(Vector3.new(x, startY, z), Vector3.new(0, -6000, 0), params)
-		end
+		if mode == "fixed" then
+			-- ===== 座標固定モード =====
+			-- 指定座標にそのまま配置（空中も可能）
+			local finalCF = CFrame.new(x, y, z) * baseRot * userRot
 
-		if stick and hit then
-		local groundY = hit.Position.Y
-		local up = align and hit.Normal or Vector3.yAxis
-
-		print(("[FieldGen] '%s' at (%.1f, %.1f, %.1f), groundY=%.1f, offset=%.2f, align=%s"):format(
-			tostring(obj.model),
-			x, y, z,
-			hit and hit.Position.Y or -9999,
-			offset or 0,
-			tostring(align)
-		))
-
-
-		if clone:IsA("Model") then
-			-- いったん回転だけ反映（位置は後で底面に合わせる）
-			local yawCF = CFrame.new(x, 0, z) * baseRot * userRot
-			pivotModel(clone, yawCF)
-
-			-- バウンディングボックスの“底”を算出
-			local bbCFrame, bbSize = clone:GetBoundingBox()
-			local bottomY = bbCFrame.Position.Y - (bbSize.Y * 0.5)
-
-			-- 必要な持ち上げ量 = 地面高さ + オフセット - 現在の底
-			local deltaY = (groundY + offset) - bottomY
-
-			if align then
-			-- 斜面に合わせたい場合はUpベクトルを法線に
-			local look = clone:GetPivot().LookVector
-			local tangent = (look - look:Dot(up) * up).Unit
-			local right = tangent:Cross(up).Unit
-			local pos = bbCFrame.Position + Vector3.new(0, deltaY, 0)
-			local newCF = CFrame.fromMatrix(pos, right, up)
-			pivotModel(clone, newCF)
-			else
-			pivotModel(clone, clone:GetPivot() + Vector3.new(0, deltaY, 0))
+			if clone:IsA("Model") then
+				pivotModel(clone, finalCF)
+			elseif clone:IsA("BasePart") then
+				clone.CFrame = finalCF
 			end
 
-		elseif clone:IsA("BasePart") then
-			local height = clone.Size.Y * 0.5
-			if align then
-			local up = align and hit.Normal or Vector3.yAxis
-			local right = clone.CFrame.RightVector
-			local forward = right:Cross(up).Unit
-			right = up:Cross(forward).Unit
-			clone.CFrame = CFrame.fromMatrix(Vector3.new(x, groundY + height + offset, z), right, up)
-			else
-			clone.CFrame = CFrame.new(x, groundY + height + offset, z) * (baseRot * userRot)
-			end
-		end
+			print(("[FieldGen] '%s' 固定配置 at (%.1f, %.1f, %.1f)"):format(
+				tostring(obj.model), x, y, z
+			))
+
 		else
-		-- レイキャスト失敗時はログ出してそのまま（原因の切り分け用）
-		warn(("[FieldGen] ground hit failed at (%.1f, %.1f) for '%s'"):format(x, z, tostring(obj.model)))
+			-- ===== 地面接地モード（既定） =====
+			local startY = 3000
+			local hit = nil
+			do
+				local params = RaycastParams.new()
+				params.FilterType = Enum.RaycastFilterType.Include
+				params.FilterDescendantsInstances = {workspace.Terrain}
+				params.IgnoreWater = false
+				hit = workspace:Raycast(Vector3.new(x, startY, z), Vector3.new(0, -6000, 0), params)
+			end
+
+			if hit then
+				local groundY = hit.Position.Y
+				local up = align and hit.Normal or Vector3.yAxis
+
+				print(("[FieldGen] '%s' 接地 at (%.1f, _, %.1f), groundY=%.1f, offset=%.2f"):format(
+					tostring(obj.model), x, z, groundY, offset
+				))
+
+				if clone:IsA("Model") then
+					-- Step 1: 回転のみ適用して仮配置
+					local tempCF = CFrame.new(x, groundY + 100, z) * baseRot * userRot
+					pivotModel(clone, tempCF)
+
+					-- Step 2: バウンディングボックスの底面を取得
+					local bbCFrame, bbSize = clone:GetBoundingBox()
+					local bottomY = bbCFrame.Position.Y - (bbSize.Y * 0.5)
+
+					-- Step 3: 底面が地面に接するように調整
+					local deltaY = (groundY + offset) - bottomY
+
+					if align then
+						-- 斜面対応
+						local look = clone:GetPivot().LookVector
+						local tangent = (look - look:Dot(up) * up).Unit
+						local right = tangent:Cross(up).Unit
+						local pos = bbCFrame.Position + Vector3.new(0, deltaY, 0)
+						local newCF = CFrame.fromMatrix(pos, right, up)
+						pivotModel(clone, newCF)
+					else
+						-- 垂直配置
+						pivotModel(clone, clone:GetPivot() + Vector3.new(0, deltaY, 0))
+					end
+
+				elseif clone:IsA("BasePart") then
+					-- MeshPartの場合
+					local height = clone.Size.Y * 0.5
+
+					if align then
+						local right = clone.CFrame.RightVector
+						local forward = right:Cross(up).Unit
+						right = up:Cross(forward).Unit
+						clone.CFrame = CFrame.fromMatrix(
+							Vector3.new(x, groundY + height + offset, z),
+							right, up
+						)
+					else
+						clone.CFrame = CFrame.new(x, groundY + height + offset, z) * (baseRot * userRot)
+					end
+				end
+			else
+				warn(("[FieldGen] 地面検出失敗 at (%.1f, %.1f) for '%s'"):format(x, z, tostring(obj.model)))
+			end
+		end
+
+		-- 【新規追加】インタラクション情報をAttributeに設定
+		if obj.interaction then
+			local interaction = obj.interaction
+
+			-- 基本情報
+			clone:SetAttribute("HasInteraction", true)
+			clone:SetAttribute("InteractionType", interaction.type or "unknown")
+			clone:SetAttribute("InteractionAction", interaction.action or "調べる")
+			clone:SetAttribute("InteractionKey", interaction.key or "E")
+			clone:SetAttribute("InteractionRange", interaction.range or 8)
+
+			-- タイプ別の情報
+			if interaction.type == "chest" then
+				clone:SetAttribute("ChestId", interaction.chestId)
+				clone:SetAttribute("OpenedModel", interaction.openedModel)
+				clone:SetAttribute("DisplayDuration", interaction.displayDuration or 5)
+
+				-- 報酬情報をJSON化して保存
+				local HttpService = game:GetService("HttpService")
+				local rewardsJson = HttpService:JSONEncode(interaction.rewards or {})
+				clone:SetAttribute("RewardsData", rewardsJson)
+
+				print(("[FieldGen] インタラクション設定: %s (ChestId: %s, Range: %d)"):format(
+					interaction.action,
+					interaction.chestId,
+					interaction.range
+				))
+			end
 		end
 
 		clone.Parent = parentFolder

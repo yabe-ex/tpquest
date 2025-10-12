@@ -96,10 +96,9 @@ function DataCollectors.createSaveData(player: Player, playerStats)
 
     local saveData = {
         PlayerState = DataCollectors.collectPlayerState(player, playerStats),
-        -- 【修正】CurrentZoneを追加し、FieldStateの構造を変更
         CurrentZone = currentZone,
-        -- Townはセーブ対象外（モンスターがいないため）
         FieldState = (currentZone ~= "ContinentTown") and DataCollectors.collectFieldState(currentZone) or nil,
+        CollectedItems = playerStats.CollectedItems or {},
         SaveTime = os.time(),
     }
 

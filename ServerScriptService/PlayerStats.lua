@@ -33,8 +33,9 @@ local DEFAULT_STATS = {
 	Defense = 10,    -- 守備力
 	MonstersDefeated = 0,
 
-	-- 【ステップ2】モンスターカウント追加
-	MonsterCounts = {},  -- {[zoneName] = {[monsterName] = count}}
+
+	MonsterCounts = {}, 	-- モンスターカウント追加
+	CollectedItems = {},	-- 取得済みアイテム
 }
 
 -- レベルアップに必要な経験値（レベル * 100)
@@ -88,6 +89,13 @@ function PlayerStats.initPlayer(player: Player)
 				loadedLocation.Z
 			))
 		end
+
+		 stats.CollectedItems = loadedData.CollectedItems or {}
+
+		print(("[PlayerStats] %s の取得済みアイテム数: %d"):format(
+			player.Name,
+			next(stats.CollectedItems) and #stats.CollectedItems or 0
+		))
 	else
 		print(("[PlayerStats] %s の新規データ、またはロード失敗（デフォルト値使用）"):format(player.Name))
 	end
@@ -97,7 +105,6 @@ function PlayerStats.initPlayer(player: Player)
 
 	-- 【ステップ2】SharedStateにプレイヤーゾーンを初期化
 	SharedState.PlayerZones[player] = nil
-
 	-- ★ロードされたLocation情報を返す
 	return loadedLocation
 end
