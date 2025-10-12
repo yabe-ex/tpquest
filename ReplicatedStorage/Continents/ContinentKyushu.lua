@@ -72,7 +72,34 @@ portals = {
 },
 
 
-fieldObjects = {},
+fieldObjects = {
+		{
+			model = "box_closed",
+			position = {92895.2, 46.2, -205.6},
+			mode = "ground",
+			size = 1,
+			rotation = {0, -90, 0},
+			stickToGround = false,   -- 省略可（trueが既定）
+			groundOffset  = 0,   -- 芝生で少し浮かせたい時
+			alignToSlope  = false,  -- 斜面に木を傾けたくないならfalse
+
+			interaction = {
+				type = "chest",           -- インタラクションタイプ
+				action = "開ける",         -- ボタンに表示されるテキスト
+				key = "E",                -- キーバインド
+				range = 18,                -- インタラクション可能距離（スタッド）
+
+				-- 宝箱固有の情報
+				chestId = "kyushu_chest_01",          -- ユニークID
+				openedModel = "box_opened",         -- 開いた状態のモデル名
+				rewards = {
+					{item = "ポーション", count = 1},
+				},
+				displayDuration = 2,      -- 報酬表示時間（秒）
+			},
+		},
+	},
+
 BGM = "",
 BGMVolume = 0.2
 }

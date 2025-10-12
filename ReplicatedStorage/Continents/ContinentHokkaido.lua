@@ -79,7 +79,7 @@ return {
 		{
 			model = "box_closed",
 			position = {3152.0, 59.5, -75.2},
-            mode = "ground",
+            mode = "fixed",
 			size = 1,
 			rotation = {0, 0, 0},
 			stickToGround = false,   -- 省略可（trueが既定）
@@ -105,8 +105,8 @@ return {
 
 				{
 			model = "box_closed",
-			position = {2997.1, 26.9, 10.8},
-            mode = "ground",
+			position = {2997.1, 28.9, 10.8},
+            mode = "fixed",
 			size = 1,
 			rotation = {0, 0, 0},
 			stickToGround = false,   -- 省略可（trueが既定）
@@ -132,7 +132,7 @@ return {
 				{
 			model = "box_closed",
 			position = {3125.8, 47.2, -60.7},
-            mode = "ground",
+            mode = "fixed",
 			size = 1,
 			rotation = {0, 0, 0},
 			stickToGround = false,   -- 省略可（trueが既定）
@@ -153,25 +153,6 @@ return {
                 },
                 displayDuration = 3,      -- 報酬表示時間（秒）
             },
-		},
-	},
-
-	paths = {
-		{
-			name = "MainRoad01",
-			points = {                 -- 制御点：ワールド座標（YはだいたいでOK）
-				{3028.7, 16.1, 79.4},
-				{3077.0, 16.1, 119.9},
-				{3190.9, 16.1, 92.3},
-				{3276.1, 16.1, 100.2},
-				{3367.9, 16.0, 77.1},
-			},
-			width = 24,                -- 道の幅（stud）
-			method = "terrain",        -- "terrain"（地形を塗る） or "parts"（パーツ敷き）
-			material = Enum.Material.Ground,  -- method="terrain"時の塗り材質
-			step = 3,                  -- サンプリング間隔（小さいほど滑らか＆重い）
-			alignToSlope = false,      -- 斜面に道面を傾けるか（見た目：true、歩きやすさ：false）
-			groundOffset = 4.8,       -- めり込み回避の微小オフセット
 		},
 	},
 

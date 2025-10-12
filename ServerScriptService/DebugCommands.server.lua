@@ -1,22 +1,17 @@
 -- ServerScriptService/DebugCommands.server.lua
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+-- デバッグ用のコマンドを処理するサーバースクリプト
+
 local ServerScriptService = game:GetService("ServerScriptService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-print("[DebugCommands] 初期化開始")
-
--- デバッグモード（本番環境ではfalseに）
-local DEBUG_MODE = true
-
-if not DEBUG_MODE then
-	print("[DebugCommands] デバッグモードOFF")
-	return
+-- RemoteEventの作成/取得
+local DebugCommandEvent = ReplicatedStorage:FindFirstChild("DebugCommand")
+if not DebugCommandEvent then
+	DebugCommandEvent = Instance.new("RemoteEvent")
+	DebugCommandEvent.Name = "DebugCommand"
+	DebugCommandEvent.Parent = ReplicatedStorage
+	print("[DebugCommands] RemoteEventを作成しました")
 end
-
--- 【修正】RemoteEventを必ず作成
-local DebugCommandEvent = Instance.new("RemoteEvent")
-DebugCommandEvent.Name = "DebugCommand"
-DebugCommandEvent.Parent = ReplicatedStorage
-print("[DebugCommands] RemoteEventを作成しました")
 
 -- 依存モジュール
 local PlayerStatsModule = require(ServerScriptService:WaitForChild("PlayerStats"))
@@ -55,21 +50,86 @@ DebugCommandEvent.OnServerEvent:Connect(function(player, command, ...)
 				task.wait(2)
 				print("[DebugCommands DEBUG] セーブ完了")
 			else
-				warn("[DebugCommands DEBUG] AutoSavePlayer が見つかりません")
+				warn("[DebugCommands DEBUG] AutoSavePlayer が見つかりません - 手動セーブを試行")
+
+				-- 【修正】手動セーブ
+				local success, err = pcall(function()
+					local DataStoreManager = require(ServerScriptService:WaitForChild("DataStoreManager"))
+					local DataCollectors = require(ServerScriptService:WaitForChild("DataCollectors"))
+
+					-- statsを使ってセーブデータを作成
+					local saveData = DataCollectors.createSaveData(player, stats)
+
+					if saveData then
+						print(("[DebugCommands DEBUG] セーブデータ作成成功: CollectedItems = %s"):format(
+							game:GetService("HttpService"):JSONEncode(saveData.CollectedItems or {})
+						))
+
+						-- 【重要な修正】関数名を SaveData に変更
+						DataStoreManager.SaveData(player, saveData)
+						print("[DebugCommands DEBUG] 手動セーブ完了")
+					else
+						warn("[DebugCommands DEBUG] セーブデータ作成失敗")
+					end
+				end)
+
+				if not success then
+					warn(("[DebugCommands DEBUG] 手動セーブエラー: %s"):format(tostring(err)))
+				end
 			end
 
-			-- 手動セーブも試行
-			local DataStoreManager = require(ServerScriptService:WaitForChild("DataStoreManager"))
-			local DataCollectors = require(ServerScriptService:WaitForChild("DataCollectors"))
+			-- 【追加】ゾーンをリロードして宝箱を再表示
+			print("[DebugCommands DEBUG] ゾーンリロード開始")
+			local ZoneManager = require(ServerScriptService:WaitForChild("ZoneManager"))
+			local currentZone = ZoneManager.GetPlayerZone(player)
 
-			local saveData = DataCollectors.createSaveData(player, stats)
-			print(("[DebugCommands DEBUG] セーブデータ作成: CollectedItems = %s"):format(
-				game:GetService("HttpService"):JSONEncode(saveData.CollectedItems)
-			))
+			if currentZone then
+				print(("[DebugCommands DEBUG] 現在のゾーン: %s"):format(currentZone))
 
-			DataStoreManager.SavePlayerData(player, saveData)
-			print("[DebugCommands DEBUG] 手動セーブ完了")
+				-- プレイヤーの現在位置を保存
+				local character = player.Character
+				local savedPosition = nil
+				if character then
+					local hrp = character:FindFirstChild("HumanoidRootPart")
+					if hrp then
+						savedPosition = hrp.CFrame
+						-- 【追加】リロード中はプレイヤーを固定して落下を防ぐ
+						hrp.Anchored = true
+						print(("[DebugCommands DEBUG] プレイヤーを固定: %.1f, %.1f, %.1f"):format(
+							savedPosition.Position.X, savedPosition.Position.Y, savedPosition.Position.Z
+						))
+					end
+				end
 
+				-- ゾーンをアンロード
+				ZoneManager.UnloadZone(currentZone)
+				print("[DebugCommands DEBUG] アンロード完了")
+
+				-- 地形削除を待つ
+				task.wait(0.3)
+
+				-- ゾーンを再ロード
+				ZoneManager.LoadZone(currentZone)
+				print("[DebugCommands DEBUG] リロード完了")
+
+				-- 地形生成とFieldObjects配置を十分待つ
+				task.wait(1.5)
+
+				-- プレイヤーの固定を解除
+				if character then
+					local hrp = character:FindFirstChild("HumanoidRootPart")
+					if hrp then
+						hrp.Anchored = false
+						hrp.Velocity = Vector3.new(0, 0, 0)
+						hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+						print("[DebugCommands DEBUG] プレイヤーの固定を解除")
+					end
+				end
+
+				print("[DebugCommands DEBUG] ゾーンリロード完了")
+			else
+				warn("[DebugCommands DEBUG] プレイヤーのゾーンが見つかりません")
+			end
 		else
 			warn(("[DebugCommands] %s のステータスが見つかりません"):format(player.Name))
 		end

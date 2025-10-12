@@ -1,72 +1,190 @@
 total 8
-drwxr-xr-x  11 yabea  staff  352 10  6 18:17 ReplicatedStorage
-drwxr-xr-x  13 yabea  staff  416 10 10 13:04 ServerScriptService
-drwxr-xr-x  11 yabea  staff  352 10 10 13:05 StartPlayerScripts
+drwxr-xr-x  12 yabea  staff  384 10 12 08:58 ReplicatedStorage
+drwxr-xr-x  16 yabea  staff  512 10 12 21:46 ServerScriptService
+drwxr-xr-x  15 yabea  staff  480 10 12 21:46 StartPlayerScripts
 -rwxr-xr-x   1 yabea  staff  976 10  4 11:52 go.sh
--rw-r--r--   1 yabea  staff    0 10 10 13:07 out.txt
+-rw-r--r--   1 yabea  staff    0 10 13 04:05 out.txt
 
 ./ReplicatedStorage:
-total 40
-drwxr-xr-x  7 yabea  staff   224 10  6 10:42 Continents
--rw-r--r--  1 yabea  staff  6686 10  9 12:36 FieldGen.lua
--rw-r--r--  1 yabea  staff  2722 10  6 18:17 GameEvents.lua
-drwxr-xr-x  8 yabea  staff   256 10  6 10:43 Islands
-drwxr-xr-x  5 yabea  staff   160 10  6 14:42 Monsters
--rw-r--r--  1 yabea  staff  1153 10  6 18:17 SharedState.lua
-drwxr-xr-x  2 yabea  staff    64 10  4 10:07 Sounds
--rw-r--r--  1 yabea  staff  3512 10  3 18:05 TypingWords.lua
+total 72
+drwxr-xr-x   9 yabea  staff    288 10 11 11:12 Continents
+-rw-r--r--   1 yabea  staff  22644 10 12 22:06 FieldGen.lua
+drwxr-xr-x   2 yabea  staff     64 10 12 08:58 FieldObjects
+-rw-r--r--   1 yabea  staff   2722 10  6 18:17 GameEvents.lua
+drwxr-xr-x  10 yabea  staff    320 10 11 11:12 Islands
+drwxr-xr-x   5 yabea  staff    160 10  6 14:42 Monsters
+-rw-r--r--   1 yabea  staff   1153 10  6 18:17 SharedState.lua
+drwxr-xr-x   2 yabea  staff     64 10  4 10:07 Sounds
+-rw-r--r--   1 yabea  staff   3512 10  3 18:05 TypingWords.lua
 
 ./ReplicatedStorage/Continents:
-total 40
--rw-r--r--  1 yabea  staff  1407 10  8 17:52 ContientTown.lua
--rw-r--r--  1 yabea  staff   721 10  5 20:30 ContinentHokkaido.lua
--rw-r--r--  1 yabea  staff   632 10  6 10:42 ContinentKyushu.lua
--rw-r--r--  1 yabea  staff   627 10  8 17:51 ContinentShikoku.lua
--rw-r--r--  1 yabea  staff   347 10  6 10:42 Registry.lua
+total 72
+-rw-r--r--  1 yabea  staff  5276 10 12 18:55 ContientTown.lua
+-rw-r--r--  1 yabea  staff  7568 10 13 00:04 ContinentHokkaido.lua
+-rw-r--r--  1 yabea  staff  2819 10 13 00:08 ContinentKyushu.lua
+-rw-r--r--  1 yabea  staff   616 10 10 16:43 ContinentShikoku.lua
+-rw-r--r--  1 yabea  staff  1079 10 11 11:28 Greenland.lua
+-rw-r--r--  1 yabea  staff   428 10 11 11:13 Registry.lua
+-rw-r--r--  1 yabea  staff   726 10 11 10:50 Snowland.lua
+
+./ReplicatedStorage/FieldObjects:
+total 0
 
 ./ReplicatedStorage/Islands:
-total 48
+total 72
 -rw-r--r--  1 yabea  staff   162 10  3 18:05 Bridges.lua
--rw-r--r--  1 yabea  staff  3892 10  5 17:26 HokkaidoIslands.lua
--rw-r--r--  1 yabea  staff  1633 10  6 10:43 KyushuIslands.lua
--rw-r--r--  1 yabea  staff  1498 10  6 10:43 Registry.lua
+-rw-r--r--  1 yabea  staff   910 10 11 11:12 Greenland.lua
+-rw-r--r--  1 yabea  staff  3933 10 12 23:45 HokkaidoIslands.lua
+-rw-r--r--  1 yabea  staff  5995 10 11 20:41 KyushuIslands.lua
+-rw-r--r--  1 yabea  staff  1547 10 11 11:13 Registry.lua
 -rw-r--r--  1 yabea  staff  1356 10  6 10:43 ShikokuIslands.lua
+-rw-r--r--  1 yabea  staff  3679 10 11 11:06 Snowland.lua
 -rw-r--r--  1 yabea  staff  1900 10  5 20:30 Town.lua
 
 ./ReplicatedStorage/Monsters:
 total 24
--rw-r--r--  1 yabea  staff   229 10  4 14:20 Registry.lua
+-rw-r--r--  1 yabea  staff   260 10 11 16:06 Registry.lua
 -rw-r--r--  1 yabea  staff  1359 10  7 09:51 Slime.lua
--rw-r--r--  1 yabea  staff  1106 10  6 11:53 Slime_pink.lua
+-rw-r--r--  1 yabea  staff  1709 10 11 20:33 Slime_pink.lua
 
 ./ReplicatedStorage/Sounds:
 total 0
 
 ./ServerScriptService:
-total 272
+total 304
 -rw-r--r--  1 yabea  staff  27966 10 10 13:04 BattleSystem.lua
--rw-r--r--  1 yabea  staff  13632 10 10 13:04 Bootstrap.server.lua
--rw-r--r--  1 yabea  staff   4027 10  9 14:03 DataCollectors.lua
--rw-r--r--  1 yabea  staff   2995 10  9 14:37 DataStoreManager.lua
+-rw-r--r--  1 yabea  staff  13702 10 10 13:40 Bootstrap.server.lua
+-rw-r--r--  1 yabea  staff   3932 10 12 11:46 DataCollectors.lua
+-rw-r--r--  1 yabea  staff   3617 10 12 06:34 DataStoreManager.lua
+-rw-r--r--  1 yabea  staff   3249 10 13 04:01 DebugCommands.server.lua
+-rw-r--r--  1 yabea  staff   3764 10 11 10:30 FastTravelSystem.server.lua
+-rw-r--r--  1 yabea  staff   7911 10 12 21:53 InteractionSystem.server.lua
 -rw-r--r--  1 yabea  staff    708 10  9 15:11 LoadTest.server.lua
 -rw-r--r--  1 yabea  staff  26859 10  9 14:56 MonsterSpawner.server.lua
 -rw-r--r--  1 yabea  staff   2313 10  5 17:26 OceanSafety.server.lua
--rw-r--r--  1 yabea  staff  12023 10  9 14:09 PlayerStats.lua
+-rw-r--r--  1 yabea  staff  12225 10 12 11:49 PlayerStats.lua
 -rw-r--r--  1 yabea  staff   5612 10  5 20:34 TowerPlacement.server.lua
 -rw-r--r--  1 yabea  staff  12653 10 10 13:04 WarpPortal.server.lua
--rw-r--r--  1 yabea  staff   9727 10  7 09:35 ZoneManager.lua
+-rw-r--r--  1 yabea  staff  10369 10 12 22:07 ZoneManager.lua
 
 ./StartPlayerScripts:
-total 248
+total 304
 -rw-r--r--  1 yabea  staff   4870 10  5 08:26 BGMManager.client.lua
 -rw-r--r--  1 yabea  staff  26090 10  5 20:30 BattleUI.client.lua
 -rw-r--r--  1 yabea  staff   7575 10  3 18:05 DeathUI.client.lua
+-rw-r--r--  1 yabea  staff   3155 10 12 22:32 DebugButtons.client.lua
+-rw-r--r--  1 yabea  staff   7786 10 11 10:36 FastTravelUI.client.lua
+-rw-r--r--  1 yabea  staff   5920 10 12 21:52 InteractionUI.client.lua
 -rw-r--r--  1 yabea  staff   5844 10  3 18:05 LevelUpUI.client.lua
 -rw-r--r--  1 yabea  staff   2872 10  9 20:42 LoadingScreen.client.lua
 -rw-r--r--  1 yabea  staff  31638 10  9 15:01 MenuUI.client.lua
--rw-r--r--  1 yabea  staff  22552 10 10 13:05 Minimap.client.lua
+-rw-r--r--  1 yabea  staff  20744 10 10 13:40 Minimap.client.lua
+-rw-r--r--  1 yabea  staff   5948 10 12 18:45 RewardPopup.client.lua
 -rw-r--r--  1 yabea  staff   6847 10  9 13:33 StatusUI.client.lua
 -rw-r--r--  1 yabea  staff   2045 10  6 10:49 WarpUI.client.lua
+===== ./StartPlayerScripts/DebugButtons.client.lua =====
+-- StarterPlayer/StarterPlayerScripts/DebugButtons.client.lua
+-- デバッグ用ボタン（開発時のみ使用）
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+print("[DebugButtons] 初期化開始")
+
+-- デバッグモード（本番環境ではfalseに）
+local DEBUG_MODE = true
+
+if not DEBUG_MODE then
+	print("[DebugButtons] デバッグモードOFF")
+	return
+end
+
+-- RemoteEvent取得（サーバーが作成するまで待機）
+local DebugCommandEvent = ReplicatedStorage:WaitForChild("DebugCommand", 10)
+if not DebugCommandEvent then
+	warn("[DebugButtons] DebugCommandEventが見つかりません")
+	return
+end
+
+print("[DebugButtons] RemoteEventを取得しました")
+
+-- ScreenGui作成
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "DebugButtonsUI"
+screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
+screenGui.DisplayOrder = 300
+screenGui.Parent = playerGui
+
+-- ボタンコンテナ（右上から左に並ぶ）
+local container = Instance.new("Frame")
+container.Name = "ButtonContainer"
+container.Size = UDim2.new(0, 600, 0, 50)
+container.Position = UDim2.new(1, -620, 0, 20) -- 右上
+container.BackgroundTransparency = 1
+container.Parent = screenGui
+
+local listLayout = Instance.new("UIListLayout")
+listLayout.FillDirection = Enum.FillDirection.Horizontal
+listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+listLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+listLayout.Padding = UDim.new(0, 10)
+listLayout.Parent = container
+
+-- デバッグボタン作成関数
+local function createDebugButton(text, callback)
+	local button = Instance.new("TextButton")
+	button.Size = UDim2.new(0, 180, 0, 40)
+	button.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+	button.BackgroundTransparency = 0.2
+	button.BorderSizePixel = 2
+	button.BorderColor3 = Color3.new(1, 1, 1)
+	button.Text = text
+	button.TextColor3 = Color3.new(1, 1, 1)
+	button.TextSize = 16
+	button.Font = Enum.Font.SourceSansBold
+	button.AutoButtonColor = true
+	button.Parent = container
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = button
+
+	-- ホバーエフェクト
+	button.MouseEnter:Connect(function()
+		button.BackgroundTransparency = 0
+	end)
+
+	button.MouseLeave:Connect(function()
+		button.BackgroundTransparency = 0.2
+	end)
+
+	-- クリックイベント
+	button.MouseButton1Click:Connect(callback)
+
+	return button
+end
+
+-- 【ボタン1】宝箱リセット
+createDebugButton("🔄 宝箱リセット", function()
+	print("[DebugButtons] 宝箱リセットボタンをクリック")
+	DebugCommandEvent:FireServer("reset_chests")
+	print("[DebugButtons] サーバーにリセット要求を送信しました")
+end)
+
+-- 【将来追加予定のボタン例】
+-- createDebugButton("💰 ゴールド+1000", function()
+-- 	DebugCommandEvent:FireServer("add_gold", 1000)
+-- end)
+
+-- createDebugButton("⬆️ レベルアップ", function()
+-- 	DebugCommandEvent:FireServer("level_up")
+-- end)
+
+print("[DebugButtons] 初期化完了")
 ===== ./StartPlayerScripts/Minimap.client.lua =====
 -- StarterPlayer/StarterPlayerScripts/Minimap.client.lua
 -- ミニマップシステム（ズーム機能・ポータル表示対応版）
@@ -474,108 +592,6 @@ local function updatePlayerRotation_debug()
 	end
 end
 
-local function updatePlayerRotation_ok()
-	local character = player.Character
-	if not character then return end
-
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-
-	if not playerIcon then return end
-
-	-- プレイヤーの向きを取得
-	local lookVector = hrp.CFrame.LookVector
-
-	local angle = math.atan2(lookVector.X, lookVector.Z)
-	local degrees = math.deg(angle)
-
-	-- 回転を適用
-	playerIcon.Rotation = degrees
-end
-
-
-local function updatePlayerRotationx()
-	local character = player.Character
-	if not character then return end
-
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-
-	if not playerIcon then return end
-
-	-- プレイヤーの向きを取得
-	local lookVector = hrp.CFrame.LookVector
-
-	local angle = math.atan2(lookVector.X, -lookVector.Z)
-	local degrees =  - math.deg(angle)
-
-	-- 回転を適用
-	playerIcon.Rotation = - degrees
-end
-
-local function updatePlayerRotation_ok_up()
-	local character = player.Character
-	if not character then return end
-
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-
-	if not playerIcon then return end
-
-	-- プレイヤーの向きを取得
-	local lookVector = hrp.CFrame.LookVector
-
-	local angle = math.atan2(-lookVector.X, lookVector.Z)
-	local degrees =  - math.deg(angle)
-
-	-- 回転を適用
-	playerIcon.Rotation = degrees
-end
-
-local function updatePlayerRotation_okl2()
-	local character = player.Character
-	if not character then return end
-
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-
-	if not playerIcon then return end
-
-	-- プレイヤーの向きを取得
-	local lookVector = hrp.CFrame.LookVector
-
-	-- 【変更】atan2の引数順序を変える
-	local angle = math.atan2(lookVector.Z, lookVector.X)
-	local degrees = math.deg(angle)
-
-	-- そのまま適用
-	playerIcon.Rotation = degrees
-
-	if os.clock() % 5 < 0.1 then
-		print(string.format("[Minimap DEBUG] LookVector: (%.2f, %.2f, %.2f)", lookVector.X, lookVector.Y, lookVector.Z))
-		print(string.format("[Minimap DEBUG] 角度: %.1f度", degrees))
-	end
-
-end
-
-local function updatePlayerRotation_x()
-	local character = player.Character
-	if not character then return end
-
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-
-	if not playerIcon then return end
-
-	local lookVector = hrp.CFrame.LookVector
-
-	-- 角度計算
-	local angle = math.atan2(lookVector.Z, lookVector.X)
-	local degrees = math.deg(angle)
-
-	-- 90度を加算して補正
-	playerIcon.Rotation = degrees - 90
-end
 
 -- デバッグ版（方角名も表示）
 local function updatePlayerRotation_news()
@@ -625,9 +641,9 @@ local function updatePlayerRotation()
 	-- 座標系を合わせる（地形マップと同じ反転）
 	playerIcon.Rotation = -degrees
 
-	if os.clock() % 1 < 0.1 then
-		print(string.format("[DEBUG] Y軸回転: %.1f度 → 表示: %.1f度", degrees, -degrees))
-	end
+	-- if os.clock() % 1 < 0.1 then
+	-- 	print(string.format("[DEBUG] Y軸回転: %.1f度 → 表示: %.1f度", degrees, -degrees))
+	-- end
 end
 
 
@@ -841,6 +857,31 @@ task.spawn(function()
 		end)
 	end
 end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+
+	if input.KeyCode == Enum.KeyCode.P then
+		local character = player.Character
+		if not character then return end
+
+		local hrp = character:FindFirstChild("HumanoidRootPart")
+		if not hrp then return end
+
+		local position = hrp.Position
+
+		local continent = player:GetAttribute("ContinentName") or "?"
+		local island = player:GetAttribute("IslandName") or "?"
+
+		print("📍 現在地情報 -------------------------")
+		print("🗺️ 大陸名: " .. continent)
+		-- print("🏝️ 島名: " .. island)
+		print(string.format("📌 座標: (%.1f, %.1f, %.1f)", position.X, position.Y, position.Z))
+		print("--------------------------------------")
+	end
+end)
+
+
 
 print("[Minimap] 初期化完了（ズーム機能付き）")
 ===== ./StartPlayerScripts/MenuUI.client.lua =====
@@ -2807,6 +2848,447 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 print("[BattleUI] クライアント初期化完了（タイピングモード）")
+===== ./StartPlayerScripts/RewardPopup.client.lua =====
+-- StarterPlayer/StarterPlayerScripts/RewardPopup.client.lua
+-- 報酬取得時のポップアップ表示
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+print("[RewardPopup] 初期化開始")
+
+-- RemoteEvent取得
+local InteractionResponseEvent = ReplicatedStorage:WaitForChild("InteractionResponse", 10)
+if not InteractionResponseEvent then
+	warn("[RewardPopup] InteractionResponseが見つかりません")
+	return
+end
+
+-- ScreenGui作成
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "RewardPopupUI"
+screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
+screenGui.DisplayOrder = 200
+screenGui.Parent = playerGui
+
+-- ポップアップを表示
+local function showRewardPopup(rewards, duration)
+	duration = duration or 3
+	print(("[RewardPopup] 報酬を表示: %d個, 表示時間: %d秒"):format(#rewards, duration))
+
+	-- メインフレーム
+	local frame = Instance.new("Frame")
+	frame.Name = "RewardFrame"
+	frame.Size = UDim2.new(0, 400, 0, 0) -- 高さは動的に調整
+	frame.Position = UDim2.new(0.5, -200, 0.3, 0)
+	frame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+	frame.BackgroundTransparency = 0.2
+	frame.BorderSizePixel = 0
+	frame.Parent = screenGui
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 12)
+	corner.Parent = frame
+
+	-- タイトル
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, -20, 0, 40)
+	title.Position = UDim2.new(0, 10, 0, 10)
+	title.BackgroundTransparency = 1
+	title.Text = "✨ アイテムを手に入れた！"
+	title.TextColor3 = Color3.fromRGB(255, 220, 100)
+	title.TextSize = 24
+	title.Font = Enum.Font.GothamBold
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.Parent = frame
+
+	-- 報酬リストコンテナ
+	local listContainer = Instance.new("Frame")
+	listContainer.Size = UDim2.new(1, -20, 1, -60)
+	listContainer.Position = UDim2.new(0, 10, 0, 50)
+	listContainer.BackgroundTransparency = 1
+	listContainer.Parent = frame
+
+	local listLayout = Instance.new("UIListLayout")
+	listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	listLayout.Padding = UDim.new(0, 8)
+	listLayout.Parent = listContainer
+
+	-- 各報酬を表示
+	for i, reward in ipairs(rewards) do
+		local rewardFrame = Instance.new("Frame")
+		rewardFrame.Size = UDim2.new(1, 0, 0, 35)
+		rewardFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+		rewardFrame.BackgroundTransparency = 0.5
+		rewardFrame.BorderSizePixel = 0
+		rewardFrame.LayoutOrder = i
+		rewardFrame.Parent = listContainer
+
+		local rewardCorner = Instance.new("UICorner")
+		rewardCorner.CornerRadius = UDim.new(0, 8)
+		rewardCorner.Parent = rewardFrame
+
+		-- アイテム名
+		local itemLabel = Instance.new("TextLabel")
+		itemLabel.Size = UDim2.new(0.7, 0, 1, 0)
+		itemLabel.Position = UDim2.new(0, 15, 0, 0)
+		itemLabel.BackgroundTransparency = 1
+		itemLabel.Text = reward.item
+		itemLabel.TextColor3 = Color3.new(1, 1, 1)
+		itemLabel.TextSize = 20
+		itemLabel.Font = Enum.Font.SourceSansBold
+		itemLabel.TextXAlignment = Enum.TextXAlignment.Left
+		itemLabel.Parent = rewardFrame
+
+		-- 個数
+		local countLabel = Instance.new("TextLabel")
+		countLabel.Size = UDim2.new(0.3, -15, 1, 0)
+		countLabel.Position = UDim2.new(0.7, 0, 0, 0)
+		countLabel.BackgroundTransparency = 1
+		countLabel.Text = "x" .. tostring(reward.count)
+		countLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+		countLabel.TextSize = 20
+		countLabel.Font = Enum.Font.SourceSansBold
+		countLabel.TextXAlignment = Enum.TextXAlignment.Right
+		countLabel.Parent = rewardFrame
+	end
+
+	-- フレームの高さを調整
+	local contentHeight = 60 + (#rewards * 35) + ((#rewards - 1) * 8)
+	frame.Size = UDim2.new(0, 400, 0, contentHeight)
+
+	-- フェードイン
+	frame.BackgroundTransparency = 1
+	title.TextTransparency = 1
+
+	for _, child in ipairs(listContainer:GetChildren()) do
+		if child:IsA("Frame") then
+			child.BackgroundTransparency = 1
+			for _, label in ipairs(child:GetChildren()) do
+				if label:IsA("TextLabel") then
+					label.TextTransparency = 1
+				end
+			end
+		end
+	end
+
+	-- アニメーション：フェードイン
+	TweenService:Create(frame, TweenInfo.new(0.5), {
+		BackgroundTransparency = 0.2
+	}):Play()
+
+	TweenService:Create(title, TweenInfo.new(0.5), {
+		TextTransparency = 0
+	}):Play()
+
+	for _, child in ipairs(listContainer:GetChildren()) do
+		if child:IsA("Frame") then
+			TweenService:Create(child, TweenInfo.new(0.5), {
+				BackgroundTransparency = 0.5
+			}):Play()
+
+			for _, label in ipairs(child:GetChildren()) do
+				if label:IsA("TextLabel") then
+					TweenService:Create(label, TweenInfo.new(0.5), {
+						TextTransparency = 0
+					}):Play()
+				end
+			end
+		end
+	end
+
+	-- 5秒後にフェードアウト
+	task.wait(5)
+
+	-- アニメーション：フェードアウト
+	local fadeOut = TweenService:Create(frame, TweenInfo.new(1), {
+		BackgroundTransparency = 1
+	})
+
+	TweenService:Create(title, TweenInfo.new(1), {
+		TextTransparency = 1
+	}):Play()
+
+	for _, child in ipairs(listContainer:GetChildren()) do
+		if child:IsA("Frame") then
+			TweenService:Create(child, TweenInfo.new(1), {
+				BackgroundTransparency = 1
+			}):Play()
+
+			for _, label in ipairs(child:GetChildren()) do
+				if label:IsA("TextLabel") then
+					TweenService:Create(label, TweenInfo.new(1), {
+						TextTransparency = 1
+					}):Play()
+				end
+			end
+		end
+	end
+
+	fadeOut:Play()
+	fadeOut.Completed:Connect(function()
+		frame:Destroy()
+		print("[RewardPopup] ポップアップを削除しました")
+	end)
+end
+
+-- サーバーからの報酬情報を受信
+InteractionResponseEvent.OnClientEvent:Connect(function(data)
+	if data.success and data.type == "chest" and data.rewards then
+		local duration = data.displayDuration or 3
+		showRewardPopup(data.rewards, duration)
+	end
+end)
+
+print("[RewardPopup] 初期化完了")
+===== ./StartPlayerScripts/FastTravelUI.client.lua =====
+-- StarterPlayer/StarterPlayerScripts/FastTravelUI.client.lua
+-- ファストトラベルUIシステム
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+print("[FastTravelUI] 初期化開始")
+
+-- RemoteEvent取得
+local FastTravelEvent = ReplicatedStorage:WaitForChild("FastTravelEvent", 10)
+local GetContinentsEvent = ReplicatedStorage:WaitForChild("GetContinentsEvent", 10)
+
+if not FastTravelEvent or not GetContinentsEvent then
+	warn("[FastTravelUI] RemoteEventが見つかりません")
+	return
+end
+
+-- UIコンテナ
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FastTravelUI"
+screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
+-- screenGui.ZIndex = 100
+screenGui.Parent = playerGui
+
+-- ワープボタン（ミニマップの上）
+local warpButton = Instance.new("TextButton")
+warpButton.Name = "WarpButton"
+warpButton.Size = UDim2.new(0, 200, 0, 35) -- ミニマップと同じ横幅200、高さ35
+warpButton.Position = UDim2.new(0, 20, 1, -300) -- ミニマップの上に配置
+warpButton.BackgroundColor3 = Color3.fromRGB(50, 120, 200)
+warpButton.BackgroundTransparency = 0.2
+warpButton.BorderSizePixel = 2
+warpButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
+warpButton.Text = "ワープ"
+warpButton.TextColor3 = Color3.new(1, 1, 1)
+warpButton.TextSize = 18
+warpButton.Font = Enum.Font.SourceSansBold
+warpButton.Parent = screenGui
+
+local warpButtonCorner = Instance.new("UICorner")
+warpButtonCorner.CornerRadius = UDim.new(0, 6)
+warpButtonCorner.Parent = warpButton
+
+-- モーダル背景
+local modalBackground = Instance.new("Frame")
+modalBackground.Name = "ModalBackground"
+modalBackground.Size = UDim2.fromScale(1, 1)
+modalBackground.Position = UDim2.fromScale(0, 0)
+modalBackground.BackgroundColor3 = Color3.new(0, 0, 0)
+modalBackground.BackgroundTransparency = 1
+modalBackground.Visible = false
+modalBackground.ZIndex = 101
+modalBackground.Parent = screenGui
+
+-- モーダルウィンドウ
+local modalWindow = Instance.new("Frame")
+modalWindow.Name = "ModalWindow"
+modalWindow.Size = UDim2.new(0, 400, 0, 500)
+modalWindow.Position = UDim2.new(0.5, -200, 0.5, -250)
+modalWindow.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+modalWindow.BackgroundTransparency = 0.1
+modalWindow.BorderSizePixel = 3
+modalWindow.BorderColor3 = Color3.fromRGB(100, 150, 255)
+modalWindow.ZIndex = 102
+modalWindow.Parent = modalBackground
+
+local modalCorner = Instance.new("UICorner")
+modalCorner.CornerRadius = UDim.new(0, 12)
+modalCorner.Parent = modalWindow
+
+-- タイトル
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Name = "Title"
+titleLabel.Size = UDim2.new(1, 0, 0, 50)
+titleLabel.Position = UDim2.new(0, 0, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "ワープ先を選択"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextSize = 24
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.ZIndex = 103
+titleLabel.Parent = modalWindow
+
+-- 閉じるボタン
+local closeButton = Instance.new("TextButton")
+closeButton.Name = "CloseButton"
+closeButton.Size = UDim2.new(0, 40, 0, 40)
+closeButton.Position = UDim2.new(1, -50, 0, 5)
+closeButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+closeButton.BackgroundTransparency = 0.3
+closeButton.BorderSizePixel = 0
+closeButton.Text = "✕"
+closeButton.TextColor3 = Color3.new(1, 1, 1)
+closeButton.TextSize = 24
+closeButton.Font = Enum.Font.SourceSansBold
+closeButton.ZIndex = 103
+closeButton.Parent = modalWindow
+
+local closeButtonCorner = Instance.new("UICorner")
+closeButtonCorner.CornerRadius = UDim.new(0, 8)
+closeButtonCorner.Parent = closeButton
+
+-- スクロールフレーム（大陸一覧）
+local scrollFrame = Instance.new("ScrollingFrame")
+scrollFrame.Name = "ContinentsList"
+scrollFrame.Size = UDim2.new(1, -40, 1, -100)
+scrollFrame.Position = UDim2.new(0, 20, 0, 70)
+scrollFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+scrollFrame.BackgroundTransparency = 0.5
+scrollFrame.BorderSizePixel = 0
+scrollFrame.ScrollBarThickness = 8
+scrollFrame.ZIndex = 102
+scrollFrame.Parent = modalWindow
+
+local scrollCorner = Instance.new("UICorner")
+scrollCorner.CornerRadius = UDim.new(0, 8)
+scrollCorner.Parent = scrollFrame
+
+local listLayout = Instance.new("UIListLayout")
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Padding = UDim.new(0, 10)
+listLayout.Parent = scrollFrame
+
+local listPadding = Instance.new("UIPadding")
+listPadding.PaddingTop = UDim.new(0, 10)
+listPadding.PaddingBottom = UDim.new(0, 10)
+listPadding.PaddingLeft = UDim.new(0, 10)
+listPadding.PaddingRight = UDim.new(0, 10)
+listPadding.Parent = scrollFrame
+
+-- モーダルを開く
+local function openModal()
+	print("[FastTravelUI] モーダルを開く")
+
+	-- 大陸一覧を取得
+	local success, continents = pcall(function()
+		return GetContinentsEvent:InvokeServer()
+	end)
+
+	if not success or not continents then
+		warn("[FastTravelUI] 大陸一覧の取得に失敗しました")
+		return
+	end
+
+	-- 既存のボタンをクリア
+	for _, child in ipairs(scrollFrame:GetChildren()) do
+		if child:IsA("TextButton") then
+			child:Destroy()
+		end
+	end
+
+	-- 大陸ボタンを作成
+	for i, continent in ipairs(continents) do
+		local button = Instance.new("TextButton")
+		button.Name = continent.name
+		button.Size = UDim2.new(1, -20, 0, 60)
+		button.BackgroundColor3 = Color3.fromRGB(60, 100, 180)
+		button.BackgroundTransparency = 0.2
+		button.BorderSizePixel = 0
+		button.Text = continent.displayName
+		button.TextColor3 = Color3.new(1, 1, 1)
+		button.TextSize = 20
+		button.Font = Enum.Font.SourceSansBold
+		button.LayoutOrder = i
+		button.ZIndex = 103
+		button.Parent = scrollFrame
+
+		local buttonCorner = Instance.new("UICorner")
+		buttonCorner.CornerRadius = UDim.new(0, 8)
+		buttonCorner.Parent = button
+
+		-- ホバーエフェクト
+		button.MouseEnter:Connect(function()
+			TweenService:Create(button, TweenInfo.new(0.2), {
+				BackgroundTransparency = 0
+			}):Play()
+		end)
+
+		button.MouseLeave:Connect(function()
+			TweenService:Create(button, TweenInfo.new(0.2), {
+				BackgroundTransparency = 0.2
+			}):Play()
+		end)
+
+		-- クリックイベント
+		button.MouseButton1Click:Connect(function()
+			print(("[FastTravelUI] %s へワープ要求"):format(continent.name))
+			FastTravelEvent:FireServer(continent.name)
+			closeModal()
+		end)
+	end
+
+	-- スクロールフレームのサイズ調整
+	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 20)
+
+	-- モーダル表示
+	modalBackground.Visible = true
+	modalBackground.BackgroundTransparency = 0.5
+
+	-- フェードイン
+	TweenService:Create(modalBackground, TweenInfo.new(0.3), {
+		BackgroundTransparency = 0.3
+	}):Play()
+end
+
+-- モーダルを閉じる
+function closeModal()
+	print("[FastTravelUI] モーダルを閉じる")
+
+	TweenService:Create(modalBackground, TweenInfo.new(0.3), {
+		BackgroundTransparency = 1
+	}):Play()
+
+	task.wait(0.3)
+	modalBackground.Visible = false
+end
+
+-- イベント接続
+warpButton.MouseButton1Click:Connect(openModal)
+closeButton.MouseButton1Click:Connect(closeModal)
+
+-- 背景クリックで閉じる
+modalBackground.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		-- モーダルウィンドウ外をクリックした場合
+		local mousePos = input.Position
+		local windowPos = modalWindow.AbsolutePosition
+		local windowSize = modalWindow.AbsoluteSize
+
+		if mousePos.X < windowPos.X or mousePos.X > windowPos.X + windowSize.X or
+		   mousePos.Y < windowPos.Y or mousePos.Y > windowPos.Y + windowSize.Y then
+			closeModal()
+		end
+	end
+end)
+
+print("[FastTravelUI] 初期化完了")
 ===== ./StartPlayerScripts/LoadingScreen.client.lua =====
 -- StarterPlayer/StarterPlayerScripts/LoadingScreen.client.lua
 -- 初回ロード時のローディング画面
@@ -3589,6 +4071,208 @@ task.spawn(function()
 end)
 
 print("[BGMManager] 初期化完了")
+===== ./StartPlayerScripts/InteractionUI.client.lua =====
+-- StarterPlayer/StarterPlayerScripts/InteractionUI.client.lua
+-- インタラクション検出とUIボタン表示
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+print("[InteractionUI] 初期化開始")
+
+-- RemoteEvent取得
+local InteractEvent = ReplicatedStorage:WaitForChild("InteractEvent", 10)
+if not InteractEvent then
+	warn("[InteractionUI] InteractEventが見つかりません")
+	return
+end
+
+-- RemoteFunctionで取得済みリストを取得
+local GetCollectedItemsFunc = ReplicatedStorage:FindFirstChild("GetCollectedItems")
+if not GetCollectedItemsFunc then
+	GetCollectedItemsFunc = Instance.new("RemoteFunction")
+	GetCollectedItemsFunc.Name = "GetCollectedItems"
+	GetCollectedItemsFunc.Parent = ReplicatedStorage
+end
+
+-- 現在のインタラクション対象
+local currentTarget = nil
+local currentButton = nil
+
+-- インタラクション済みのオブジェクトを記録
+local interactedObjects = {}
+
+-- インタラクションボタンUI作成
+local function createInteractionButton(targetObject, actionText, key)
+	-- 既存のボタンを削除
+	if currentButton then
+		currentButton:Destroy()
+		currentButton = nil
+	end
+
+	-- ScreenGuiに配置（画面中央下部）
+	local screenGui = playerGui:FindFirstChild("InteractionButtonGui")
+	if not screenGui then
+		screenGui = Instance.new("ScreenGui")
+		screenGui.Name = "InteractionButtonGui"
+		screenGui.ResetOnSpawn = false
+		screenGui.DisplayOrder = 150
+		screenGui.Parent = playerGui
+	end
+
+	-- 背景フレーム
+	local frame = Instance.new("Frame")
+	frame.Name = "InteractionFrame"
+	frame.Size = UDim2.new(0, 250, 0, 60)
+	frame.Position = UDim2.new(0.5, -125, 0.85, 0) -- 画面下部中央
+	frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	frame.BackgroundTransparency = 0.3
+	frame.BorderSizePixel = 0
+	frame.Parent = screenGui
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 12)
+	corner.Parent = frame
+
+	-- ボタン
+	local button = Instance.new("TextButton")
+	button.Size = UDim2.new(0.9, 0, 0.7, 0)
+	button.Position = UDim2.new(0.05, 0, 0.15, 0)
+	button.BackgroundColor3 = Color3.fromRGB(255, 200, 100)
+	button.BackgroundTransparency = 0.2
+	button.BorderSizePixel = 2
+	button.BorderColor3 = Color3.new(1, 1, 1)
+	button.Text = string.format("%s [%s]", actionText, key)
+	button.TextColor3 = Color3.new(0, 0, 0)
+	button.TextSize = 20
+	button.Font = Enum.Font.SourceSansBold
+	button.AutoButtonColor = true
+	button.Parent = frame
+
+	local buttonCorner = Instance.new("UICorner")
+	buttonCorner.CornerRadius = UDim.new(0, 8)
+	buttonCorner.Parent = button
+
+	-- ボタンクリック
+	button.MouseButton1Click:Connect(function()
+		print("[InteractionUI DEBUG] ===== ボタンクリックイベント発火 =====")
+		print(("[InteractionUI] ボタンクリック: %s"):format(targetObject.Name))
+
+		-- インタラクション済みに記録
+		interactedObjects[targetObject] = true
+
+		-- サーバーに送信
+		InteractEvent:FireServer(targetObject)
+
+		-- 即座にボタンを削除
+		if currentButton then
+			currentButton:Destroy()
+			currentButton = nil
+		end
+		currentTarget = nil
+	end)
+
+	-- デバッグ：ホバー検出
+	button.MouseEnter:Connect(function()
+		print("[InteractionUI DEBUG] マウスがボタンに入った")
+		button.BackgroundTransparency = 0 -- ハイライト
+	end)
+
+	button.MouseLeave:Connect(function()
+		print("[InteractionUI DEBUG] マウスがボタンから出た")
+		button.BackgroundTransparency = 0.2
+	end)
+
+	currentButton = frame
+	return frame
+end
+
+-- インタラクション可能なオブジェクトを検出
+local function findNearestInteractable()
+	local character = player.Character
+	if not character then return nil end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return nil end
+
+	local nearestObject = nil
+	local nearestDistance = math.huge
+
+	-- workspace内の全オブジェクトをチェック
+	for _, obj in ipairs(workspace:GetDescendants()) do
+		if obj:IsA("BasePart") and obj:GetAttribute("HasInteraction") then
+			-- インタラクション済みならスキップ
+			if interactedObjects[obj] then
+				continue
+			end
+
+			local distance = (hrp.Position - obj.Position).Magnitude
+			local range = obj:GetAttribute("InteractionRange") or 8
+
+			if distance <= range and distance < nearestDistance then
+				nearestObject = obj
+				nearestDistance = distance
+			end
+		end
+	end
+
+	return nearestObject
+end
+
+-- メインループ
+RunService.Heartbeat:Connect(function()
+	local nearest = findNearestInteractable()
+
+	-- 対象が変わった場合
+	if nearest ~= currentTarget then
+		-- 古いボタンを削除
+		if currentButton then
+			currentButton:Destroy()
+			currentButton = nil
+		end
+
+		currentTarget = nearest
+
+		-- 新しいボタンを作成
+		if nearest then
+			local action = nearest:GetAttribute("InteractionAction") or "調べる"
+			local key = nearest:GetAttribute("InteractionKey") or "E"
+			createInteractionButton(nearest, action, key)
+
+			print(("[InteractionUI] インタラクション可能: %s"):format(action))
+		end
+	end
+end)
+
+-- キー入力
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+
+	if currentTarget and input.KeyCode == Enum.KeyCode.E then
+		local action = currentTarget:GetAttribute("InteractionAction") or "調べる"
+		print(("[InteractionUI] Eキー押下: %s"):format(action))
+
+		-- インタラクション済みに記録
+		interactedObjects[currentTarget] = true
+
+		-- サーバーに送信
+		InteractEvent:FireServer(currentTarget)
+
+		-- 即座にボタンを削除
+		if currentButton then
+			currentButton:Destroy()
+			currentButton = nil
+		end
+		currentTarget = nil
+	end
+end)
+
+
 ===== ./ServerScriptService/ZoneManager.lua =====
 -- ServerScriptService/ZoneManager.lua (IslandとContinentの両方に対応した安定版)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -3705,9 +4389,26 @@ local function loadContinent(continentName)
         loadedAt = os.time(),
     }
 
-    print(("[ZoneManager] 大陸生成完了: %s"):format(continentName))
-    return true
-end
+    local RS = game:GetService("ReplicatedStorage")
+    local FieldGen = require(RS:WaitForChild("FieldGen"))
+
+    if continent.fieldObjects and #continent.fieldObjects > 0 then
+        print(("[ZoneManager] 追加オブジェクトを配置: %d 個"):format(#continent.fieldObjects))
+        FieldGen.placeFieldObjects(continent.name, continent.fieldObjects)  -- player引数なし
+    end
+
+    local RS = game:GetService("ReplicatedStorage")
+    local FieldGen = require(RS:WaitForChild("FieldGen"))
+
+    -- …大陸・島を生成し終わったあと
+    if continent.paths and #continent.paths > 0 then
+        FieldGen.buildPaths(continent.name, continent.paths)
+    end
+
+        print(("[ZoneManager] 大陸生成完了: %s"):format(continentName))
+        return true
+    end
+
 
 -- ゾーンをロード（島または大陸をロード）
 function ZoneManager.LoadZone(zoneName)
@@ -3715,7 +4416,7 @@ function ZoneManager.LoadZone(zoneName)
         print(("[ZoneManager] %s は既に生成済みです"):format(zoneName))
         return true
     end
-print(("[ZoneManager] cska: %s"):format(zoneName))
+
     if isContinent(zoneName) then
         return loadContinent(zoneName)
     else
@@ -3858,6 +4559,137 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 return ZoneManager
+===== ./ServerScriptService/FastTravelSystem.server.lua =====
+-- ServerScriptService/FastTravelSystem.server.lua
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+print("[FastTravel] 初期化開始")
+
+-- 依存モジュール
+local ContinentsRegistry = require(ReplicatedStorage:WaitForChild("Continents"):WaitForChild("Registry"))
+local IslandsRegistry = require(ReplicatedStorage:WaitForChild("Islands"):WaitForChild("Registry"))
+local ZoneManager = require(ServerScriptService:WaitForChild("ZoneManager"))
+
+-- 【追加】IslandsRegistryを辞書形式に変換
+local Islands = {}
+for _, island in ipairs(IslandsRegistry) do
+	if island and island.name then
+		Islands[island.name] = island
+	end
+end
+
+-- RemoteEvent作成
+local FastTravelEvent = ReplicatedStorage:FindFirstChild("FastTravelEvent")
+if not FastTravelEvent then
+	FastTravelEvent = Instance.new("RemoteEvent")
+	FastTravelEvent.Name = "FastTravelEvent"
+	FastTravelEvent.Parent = ReplicatedStorage
+end
+
+local GetContinentsEvent = ReplicatedStorage:FindFirstChild("GetContinentsEvent")
+if not GetContinentsEvent then
+	GetContinentsEvent = Instance.new("RemoteFunction")
+	GetContinentsEvent.Name = "GetContinentsEvent"
+	GetContinentsEvent.Parent = ReplicatedStorage
+end
+
+-- 大陸一覧を取得
+local function getContinentsList()
+	local continents = {}
+
+	for _, continent in ipairs(ContinentsRegistry) do
+		table.insert(continents, {
+			name = continent.name,
+			displayName = continent.displayName or continent.name
+		})
+	end
+
+	return continents
+end
+
+-- ワープ処理
+local function handleFastTravel(player, continentName)
+	print(("[FastTravel] %s が %s へのワープを要求"):format(player.Name, continentName))
+
+	-- 大陸情報を取得
+	local continent = nil
+	for _, cont in ipairs(ContinentsRegistry) do
+		if cont.name == continentName then
+			continent = cont
+			break
+		end
+	end
+
+	if not continent then
+		warn(("[FastTravel] 大陸 '%s' が見つかりません"):format(continentName))
+		return false
+	end
+
+	-- 最初の島を取得
+	local firstIslandName = continent.islands[1]
+	if not firstIslandName then
+		warn(("[FastTravel] 大陸 '%s' に島がありません"):format(continentName))
+		return false
+	end
+
+	-- 辞書から島を取得
+	local island = Islands[firstIslandName]
+	if not island then
+		warn(("[FastTravel] 島 '%s' が見つかりません"):format(firstIslandName))
+		return false
+	end
+
+	-- ワープ実行
+	local success = ZoneManager.WarpPlayerToZone(
+		player,
+		continentName,
+		island.centerX,
+		island.baseY + 25,
+		island.centerZ,
+		true
+	)
+
+	if success then
+		print(("[FastTravel] %s を %s にワープしました"):format(player.Name, continentName))
+
+		-- 【追加】モンスターとポータルを生成
+		task.spawn(function()
+			task.wait(1) -- ゾーンロード完了を待つ
+
+			-- モンスター生成
+			if _G.SpawnMonstersForZone then
+				_G.SpawnMonstersForZone(continentName)
+				print(("[FastTravel] %s のモンスターを生成しました"):format(continentName))
+			else
+				warn("[FastTravel] SpawnMonstersForZone が見つかりません")
+			end
+
+			-- ポータル生成
+			if _G.CreatePortalsForZone then
+				_G.CreatePortalsForZone(continentName)
+				print(("[FastTravel] %s のポータルを生成しました"):format(continentName))
+			else
+				warn("[FastTravel] CreatePortalsForZone が見つかりません")
+			end
+		end)
+	else
+		warn(("[FastTravel] %s のワープに失敗しました"):format(player.Name))
+	end
+
+	return success
+end
+
+-- イベント接続
+GetContinentsEvent.OnServerInvoke = function(player)
+	return getContinentsList()
+end
+
+FastTravelEvent.OnServerEvent:Connect(function(player, continentName)
+	handleFastTravel(player, continentName)
+end)
+
+print("[FastTravel] 初期化完了")
 ===== ./ServerScriptService/PlayerStats.lua =====
 -- ServerScriptService/PlayerStats.lua
 -- プレイヤーのステータスを管理するModuleScript
@@ -3894,8 +4726,9 @@ local DEFAULT_STATS = {
 	Defense = 10,    -- 守備力
 	MonstersDefeated = 0,
 
-	-- 【ステップ2】モンスターカウント追加
-	MonsterCounts = {},  -- {[zoneName] = {[monsterName] = count}}
+
+	MonsterCounts = {}, 	-- モンスターカウント追加
+	CollectedItems = {},	-- 取得済みアイテム
 }
 
 -- レベルアップに必要な経験値（レベル * 100)
@@ -3949,6 +4782,13 @@ function PlayerStats.initPlayer(player: Player)
 				loadedLocation.Z
 			))
 		end
+
+		 stats.CollectedItems = loadedData.CollectedItems or {}
+
+		print(("[PlayerStats] %s の取得済みアイテム数: %d"):format(
+			player.Name,
+			next(stats.CollectedItems) and #stats.CollectedItems or 0
+		))
 	else
 		print(("[PlayerStats] %s の新規データ、またはロード失敗（デフォルト値使用）"):format(player.Name))
 	end
@@ -3958,7 +4798,6 @@ function PlayerStats.initPlayer(player: Player)
 
 	-- 【ステップ2】SharedStateにプレイヤーゾーンを初期化
 	SharedState.PlayerZones[player] = nil
-
 	-- ★ロードされたLocation情報を返す
 	return loadedLocation
 end
@@ -4397,6 +5236,7 @@ local function setupPlayerSpawn(player)
             loadedLocation.Z
         ))
 
+        player:SetAttribute("ContinentName", loadedLocation.ZoneName)
         return LastLoadedData[player]
     end
 
@@ -5107,6 +5947,338 @@ _G.CreatePortalsForZone = createPortalsForZone
 _G.DestroyPortalsForZone = destroyPortalsForZone
 
 print("[WarpPortal] 初期化完了")
+===== ./ServerScriptService/InteractionSystem.server.lua =====
+-- ServerScriptService/InteractionSystem.server.lua
+-- インタラクションシステム（宝箱、NPC等）
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
+local HttpService = game:GetService("HttpService")
+
+print("[InteractionSystem] 初期化開始")
+
+-- 依存モジュール
+local PlayerStatsModule = require(ServerScriptService:WaitForChild("PlayerStats"))
+
+-- RemoteEvent作成
+local InteractEvent = ReplicatedStorage:FindFirstChild("InteractEvent")
+if not InteractEvent then
+	InteractEvent = Instance.new("RemoteEvent")
+	InteractEvent.Name = "InteractEvent"
+	InteractEvent.Parent = ReplicatedStorage
+end
+
+local InteractionResponseEvent = ReplicatedStorage:FindFirstChild("InteractionResponse")
+if not InteractionResponseEvent then
+	InteractionResponseEvent = Instance.new("RemoteEvent")
+	InteractionResponseEvent.Name = "InteractionResponse"
+	InteractionResponseEvent.Parent = ReplicatedStorage
+end
+
+-- 宝箱を開ける処理
+local function handleChestInteraction(player, chestObject)
+	print("[InteractionSystem DEBUG] ステップ1: 開始")
+
+	local chestId = chestObject:GetAttribute("ChestId")
+	if not chestId then
+		warn("[InteractionSystem] ChestIdが設定されていません")
+		return false
+	end
+
+	print("[InteractionSystem DEBUG] ステップ2: ChestId取得 =", chestId)
+
+	-- プレイヤーのステータスを取得
+	local stats = PlayerStatsModule.getStats(player)
+	if not stats then
+		warn(("[InteractionSystem] %s のステータスが見つかりません"):format(player.Name))
+		return false
+	end
+
+	print("[InteractionSystem DEBUG] ステップ3: ステータス取得完了")
+
+	-- 既に取得済みかチェック
+	if stats.CollectedItems[chestId] then
+		print(("[InteractionSystem] %s は既に %s を取得済み"):format(player.Name, chestId))
+		return false
+	end
+
+	print("[InteractionSystem DEBUG] ステップ4: 未取得確認完了")
+
+	-- 距離チェック（不正防止）
+	local character = player.Character
+	if not character then
+		warn("[InteractionSystem DEBUG] キャラクターなし")
+		return false
+	end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then
+		warn("[InteractionSystem DEBUG] HRPなし")
+		return false
+	end
+
+	print("[InteractionSystem DEBUG] ステップ5: キャラクター確認完了")
+
+	local distance = (hrp.Position - chestObject.Position).Magnitude
+	local range = chestObject:GetAttribute("InteractionRange") or 8
+
+	if distance > range + 5 then
+		warn(("[InteractionSystem] %s が遠すぎます: %.1f > %d"):format(player.Name, distance, range))
+		return false
+	end
+
+	print("[InteractionSystem DEBUG] ステップ6: 距離チェック完了")
+	print(("[InteractionSystem] %s が %s を開けます"):format(player.Name, chestId))
+
+	-- 報酬データを取得
+	local rewardsJson = chestObject:GetAttribute("RewardsData")
+	print("[InteractionSystem DEBUG] ステップ7: RewardsData =", rewardsJson)
+
+	local rewards = {}
+	if rewardsJson then
+		local success, decoded = pcall(function()
+			return HttpService:JSONDecode(rewardsJson)
+		end)
+		if success then
+			rewards = decoded
+			print("[InteractionSystem DEBUG] ステップ8: 報酬デコード成功")
+		else
+			warn("[InteractionSystem DEBUG] ステップ8: 報酬デコード失敗")
+		end
+	end
+
+	-- 報酬を付与
+	for _, reward in ipairs(rewards) do
+		if reward.item == "ゴールド" then
+			stats.Gold = stats.Gold + reward.count
+			print(("[InteractionSystem] %s にゴールド %d を付与"):format(player.Name, reward.count))
+		else
+			-- 将来的にアイテムシステムと連携
+			print(("[InteractionSystem] %s に %s x%d を付与（未実装）"):format(
+				player.Name, reward.item, reward.count
+			))
+		end
+	end
+
+	print("[InteractionSystem DEBUG] ステップ9: 報酬付与完了")
+
+	-- 取得済みに設定
+	stats.CollectedItems[chestId] = true
+
+	-- セーブ（即座に保存）
+	if _G.AutoSavePlayer then
+		_G.AutoSavePlayer(player, "宝箱取得")
+	end
+
+	print("[InteractionSystem DEBUG] ステップ10: セーブ完了")
+
+	-- モデルを開いた状態に切り替え
+	local openedModelName = chestObject:GetAttribute("OpenedModel")
+	if openedModelName then
+		print("[InteractionSystem DEBUG] ステップ11: モデル切り替え開始")
+		task.spawn(function()
+			local ServerStorage = game:GetService("ServerStorage")
+			local fieldObjectsFolder = ServerStorage:FindFirstChild("FieldObjects")
+			if fieldObjectsFolder then
+				local openedTemplate = fieldObjectsFolder:FindFirstChild(openedModelName)
+				if openedTemplate then
+					-- 閉じた宝箱を非表示
+					chestObject.Transparency = 1
+					for _, child in ipairs(chestObject:GetDescendants()) do
+						if child:IsA("BasePart") then
+							child.Transparency = 1
+						end
+					end
+
+					-- 開いた宝箱を配置
+					local openedChest = openedTemplate:Clone()
+					openedChest.CFrame = chestObject.CFrame
+					openedChest.Anchored = true
+					openedChest.CanCollide = false
+					openedChest.Parent = chestObject.Parent
+
+					print("[InteractionSystem DEBUG] 開いた宝箱を配置")
+
+					-- 表示時間後に削除
+					local duration = chestObject:GetAttribute("DisplayDuration") or 3
+					task.wait(duration)
+
+					openedChest:Destroy()
+					chestObject:Destroy()
+
+					print(("[InteractionSystem] %s を削除しました"):format(chestId))
+				else
+					warn("[InteractionSystem DEBUG] 開いたモデルが見つかりません:", openedModelName)
+				end
+			else
+				warn("[InteractionSystem DEBUG] FieldObjectsフォルダが見つかりません")
+			end
+		end)
+	end
+
+	print("[InteractionSystem DEBUG] ステップ12: クライアント送信準備")
+
+	-- クライアントに報酬情報を送信
+	local responseData = {
+		success = true,
+		type = "chest",
+		rewards = rewards,
+		displayDuration = chestObject:GetAttribute("DisplayDuration") or 3,
+	}
+
+	print(("[InteractionSystem DEBUG] 送信データ: %s"):format(HttpService:JSONEncode(responseData)))
+
+	InteractionResponseEvent:FireClient(player, responseData)
+
+	print("[InteractionSystem DEBUG] ステップ13: 送信完了")
+
+	return true
+end
+
+-- インタラクション処理のルーティング
+local function handleInteraction(player, object)
+	print("[InteractionSystem DEBUG] handleInteraction呼び出し")
+
+	if not object or not object:IsA("BasePart") then
+		warn("[InteractionSystem DEBUG] オブジェクトが無効")
+		return
+	end
+
+	print("[InteractionSystem DEBUG] オブジェクト:", object.Name)
+
+	local interactionType = object:GetAttribute("InteractionType")
+	print("[InteractionSystem DEBUG] InteractionType:", interactionType)
+
+	if interactionType == "chest" then
+		handleChestInteraction(player, object)
+	elseif interactionType == "npc" then
+		-- 将来的にNPC処理
+		print("[InteractionSystem] NPC処理は未実装")
+	else
+		warn(("[InteractionSystem] 未知のインタラクションタイプ: %s"):format(tostring(interactionType)))
+	end
+end
+
+-- イベント接続
+InteractEvent.OnServerEvent:Connect(function(player, object)
+	print("[InteractionSystem DEBUG] InteractEvent受信")
+	handleInteraction(player, object)
+end)
+
+-- 取得済みアイテムリストを返すRemoteFunction
+local GetCollectedItemsFunc = ReplicatedStorage:FindFirstChild("GetCollectedItems")
+if not GetCollectedItemsFunc then
+	GetCollectedItemsFunc = Instance.new("RemoteFunction")
+	GetCollectedItemsFunc.Name = "GetCollectedItems"
+	GetCollectedItemsFunc.Parent = ReplicatedStorage
+end
+
+GetCollectedItemsFunc.OnServerInvoke = function(player)
+	local stats = PlayerStatsModule.getStats(player)
+	if stats and stats.CollectedItems then
+		print(("[InteractionSystem] %s の取得済みリストを送信: %d個"):format(
+			player.Name,
+			next(stats.CollectedItems) and #stats.CollectedItems or 0
+		))
+		return stats.CollectedItems
+	end
+	return {}
+end
+
+print("[InteractionSystem] 初期化完了")
+===== ./ServerScriptService/DebugCommands.server.lua =====
+-- ServerScriptService/DebugCommands.server.lua
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+print("[DebugCommands] 初期化開始")
+
+-- デバッグモード（本番環境ではfalseに）
+local DEBUG_MODE = true
+
+if not DEBUG_MODE then
+	print("[DebugCommands] デバッグモードOFF")
+	return
+end
+
+-- 【修正】RemoteEventを必ず作成
+local DebugCommandEvent = Instance.new("RemoteEvent")
+DebugCommandEvent.Name = "DebugCommand"
+DebugCommandEvent.Parent = ReplicatedStorage
+print("[DebugCommands] RemoteEventを作成しました")
+
+-- 依存モジュール
+local PlayerStatsModule = require(ServerScriptService:WaitForChild("PlayerStats"))
+
+-- コマンド処理
+DebugCommandEvent.OnServerEvent:Connect(function(player, command, ...)
+	print(("[DebugCommands] %s が実行: %s"):format(player.Name, command))
+
+	if command == "reset_chests" then
+		-- 宝箱リセット
+		print("[DebugCommands DEBUG] リセット開始")
+
+		local stats = PlayerStatsModule.getStats(player)
+		if stats then
+			print("[DebugCommands DEBUG] ステータス取得成功")
+
+			-- リセット前の状態
+			local beforeCount = 0
+			for _ in pairs(stats.CollectedItems) do beforeCount = beforeCount + 1 end
+			print(("[DebugCommands DEBUG] リセット前: %d個"):format(beforeCount))
+
+			-- CollectedItemsを空にする
+			stats.CollectedItems = {}
+
+			-- リセット後の状態
+			local afterCount = 0
+			for _ in pairs(stats.CollectedItems) do afterCount = afterCount + 1 end
+			print(("[DebugCommands DEBUG] リセット後: %d個"):format(afterCount))
+
+			print(("[DebugCommands] %s の取得済みアイテムをリセットしました"):format(player.Name))
+
+			-- 即座にセーブ
+			if _G.AutoSavePlayer then
+				print("[DebugCommands DEBUG] セーブ開始")
+				_G.AutoSavePlayer(player, "デバッグリセット")
+				task.wait(2)
+				print("[DebugCommands DEBUG] セーブ完了")
+			else
+				warn("[DebugCommands DEBUG] AutoSavePlayer が見つかりません - 手動セーブを試行")
+
+				-- 【修正】手動セーブ
+				local success, err = pcall(function()
+					local DataStoreManager = require(ServerScriptService:WaitForChild("DataStoreManager"))
+					local DataCollectors = require(ServerScriptService:WaitForChild("DataCollectors"))
+
+					-- statsを使ってセーブデータを作成
+					local saveData = DataCollectors.createSaveData(player, stats)
+
+					if saveData then
+						print(("[DebugCommands DEBUG] セーブデータ作成成功: CollectedItems = %s"):format(
+							game:GetService("HttpService"):JSONEncode(saveData.CollectedItems or {})
+						))
+
+						DataStoreManager.SavePlayerData(player, saveData)
+						print("[DebugCommands DEBUG] 手動セーブ完了")
+					else
+						warn("[DebugCommands DEBUG] セーブデータ作成失敗")
+					end
+				end)
+
+				if not success then
+					warn(("[DebugCommands DEBUG] 手動セーブエラー: %s"):format(tostring(err)))
+				end
+			end
+		else
+			warn(("[DebugCommands] %s のステータスが見つかりません"):format(player.Name))
+		end
+	else
+		warn(("[DebugCommands] 未知のコマンド: %s"):format(command))
+	end
+end)
+
+print("[DebugCommands] 初期化完了")
 ===== ./ServerScriptService/DataStoreManager.lua =====
 -- ServerScriptService/DataStoreManager.lua
 -- DataStoreの基本操作を管理するモジュール
@@ -5124,6 +6296,23 @@ local PLAYER_DATA_STORE = DataStoreService:GetDataStore("TypingQuestPlayerSaveDa
 local SAVE_SUCCESS_EVENT = ReplicatedStorage:FindFirstChild("SaveSuccess")
 local LOAD_GAME_EVENT = ReplicatedStorage:FindFirstChild("LoadGame")
 
+-- DataStoreサービス取得
+local success, DataStoreService = pcall(function()
+	return game:GetService("DataStoreService")
+end)
+
+if not success then
+	warn("[DataStoreManager] DataStoreが無効です。Studio設定で有効化してください。")
+	-- ダミーのDataStoreを返す
+	return {
+		SavePlayerData = function() warn("[DataStore] 保存スキップ（無効）") end,
+		LoadPlayerData = function() warn("[DataStore] 読込スキップ（無効）") return nil end,
+	}
+else
+	print("[DataStoreManager] ✅ DataStore設定: 有効")
+end
+
+local PlayerDataStore = DataStoreService:GetDataStore("PlayerData_v1")
 
 -- データの保存 (非同期)
 function DataStoreManager.SaveData(player: Player, data: table)
@@ -7008,10 +8197,9 @@ function DataCollectors.createSaveData(player: Player, playerStats)
 
     local saveData = {
         PlayerState = DataCollectors.collectPlayerState(player, playerStats),
-        -- 【修正】CurrentZoneを追加し、FieldStateの構造を変更
         CurrentZone = currentZone,
-        -- Townはセーブ対象外（モンスターがいないため）
         FieldState = (currentZone ~= "ContinentTown") and DataCollectors.collectFieldState(currentZone) or nil,
+        CollectedItems = playerStats.CollectedItems or {},
         SaveTime = os.time(),
     }
 
@@ -7172,6 +8360,57 @@ print("[TowerPlacement] タワー配置をスキップ")
 -- end
 
 -- print("[TowerPlacement] 配置完了")
+===== ./ReplicatedStorage/Continents/Greenland.lua =====
+return {
+name = "VerdantPlateau",
+displayName = "緑の大陸",
+islands = {
+"VerdantPlateau_C1",
+"VerdantPlateau_C2",
+"VerdantPlateau_C3",
+"VerdantPlateau_C4",
+},
+paths = {
+{
+name = "MainRoad01",
+points = {
+{2720, 10, -220},
+{2850, 10, -120},
+{3000, 10, 0},
+{3150, 10, 40},
+{3280, 10, 60},
+},
+width = 20,
+method = "terrain",
+material = Enum.Material.Ground,
+step = 3,
+alignToSlope = false,
+groundOffset = 0.05
+},
+},
+		{
+			model = "Tree1",
+			position = {2783.8, 25.5, -62.1},
+			size = 1.8,
+			rotation = {0, 180, 0},
+			stickToGround = true,   -- 省略可（trueが既定）
+			groundOffset  = 0.15,   -- 芝生で少し浮かせたい時
+			alignToSlope  = true,  -- 斜面に木を傾けたくないならfalse
+		},
+        {
+			model = "Chest",
+			position = {2799.3, 25.2, -99.8},
+			size = 1.8,
+			rotation = {0, 180, 0},
+			stickToGround = true,   -- 省略可（trueが既定）
+			groundOffset  = 0.15,   -- 芝生で少し浮かせたい時
+			alignToSlope  = true,  -- 斜面に木を傾けたくないならfalse
+		},
+
+fieldObjects = {},
+BGM = "",
+BGMVolume = 0.2
+}
 ===== ./ReplicatedStorage/Continents/Registry.lua =====
 -- ReplicatedStorage/Continents/Registry.lua
 local RS = game:GetService("ReplicatedStorage")
@@ -7182,6 +8421,54 @@ return {
     require(ContinentsFolder.ContinentHokkaido),
     require(ContinentsFolder.ContinentShikoku),
     require(ContinentsFolder.ContinentKyushu),
+    require(ContinentsFolder.Snowland),
+    require(ContinentsFolder.Greenland),
+}
+===== ./ReplicatedStorage/Continents/Snowland.lua =====
+return {
+name = "SnowCrescent",
+displayName = "雪の三日月",
+islands = {
+"SnowCrescent_C1",
+"SnowCrescent_C2",
+"SnowCrescent_C3",
+"SnowCrescent_C4",
+"SnowCrescent_C5",
+"SnowCrescent_C6",
+"SnowCrescent_C7",
+"SnowCrescent_C8",
+"SnowCrescent_C9",
+"SnowCrescent_C10",
+"SnowCrescent_C11",
+"SnowCrescent_C12",
+"SnowCrescent_C13",
+"SnowCrescent_C14",
+"SnowCrescent_C15",
+},
+paths = {
+{
+name = "MainRoad_NS",
+points = {
+{2850, 14, -560},
+{2855, 15, -420},
+{2850, 15, -260},
+{2845, 16, -120},
+{2850, 16, 0},
+{2855, 17, 140},
+{2850, 18, 300},
+{2850, 19, 460},
+},
+width = 20,
+method = "terrain",
+material = Enum.Material.Ground,
+step = 3,
+alignToSlope = false,
+groundOffset = 0.05
+},
+},
+fieldObjects = {},
+BGM = "",
+BGMVolume = 0.2
 }
 ===== ./ReplicatedStorage/Continents/ContinentHokkaido.lua =====
 return {
@@ -7211,6 +8498,192 @@ return {
 			},
 		},
 
+	fieldObjects = {
+		{
+			model = "Tree1",
+			position = {3237.0, 22.0, -10.8},
+			size = 1.5,
+			rotation = {0, 0, 0},
+			stickToGround = true,   -- 省略可（trueが既定）
+			groundOffset  = 0.15,   -- 芝生で少し浮かせたい時
+			alignToSlope  = true,  -- 斜面に木を傾けたくないならfalse
+		},
+		{
+			model = "Tree1",
+			position = {3092.5, 9.1, -175.5},
+			size = 1.0,
+			rotation = {0, 0, 0},
+			stickToGround = true,   -- 省略可（trueが既定）
+			groundOffset  = 0.15,   -- 芝生で少し浮かせたい時
+			alignToSlope  = true,  -- 斜面に木を傾けたくないならfalse
+		},
+
+		{
+			model = "Tree1",
+			position = {3118.2, 7.3, -182.6},
+			size = 1.0,
+			rotation = {0, 30, 0},
+			stickToGround = true,   -- 省略可（trueが既定）
+			groundOffset  = 0.15,   -- 芝生で少し浮かせたい時
+			alignToSlope  = true,  -- 斜面に木を傾けたくないならfalse
+		},
+
+		{
+			model = "Small House",
+			position = {3080.8, 32.0, -162.8},
+			size = 1.8,
+			rotation = {0, 180, 0},
+			stickToGround = false,   -- 省略可（trueが既定）
+			groundOffset  = 0.15,   -- 芝生で少し浮かせたい時
+			alignToSlope  = false,  -- 斜面に木を傾けたくないならfalse
+		},
+
+		{
+			-- model = "Chest",
+			model = "koki3D",
+			position = {-0.0, 56.3, -12.0},
+			size = 1.0,
+			rotation = {0, 0, 0},
+			stickToGround = true,   -- 省略可（trueが既定）
+			groundOffset  = 0,   -- 芝生で少し浮かせたい時
+			alignToSlope  = true,  -- 斜面に木を傾けたくないならfalse
+		},
+
+		{
+			model = "box_closed",
+			position = {3152.0, 59.5, -75.2},
+            mode = "ground",
+			size = 1,
+			rotation = {0, 0, 0},
+			stickToGround = false,   -- 省略可（trueが既定）
+			groundOffset  = 0,   -- 芝生で少し浮かせたい時
+			alignToSlope  = false,  -- 斜面に木を傾けたくないならfalse
+
+            interaction = {
+                type = "chest",           -- インタラクションタイプ
+                action = "開ける",         -- ボタンに表示されるテキスト
+                key = "E",                -- キーバインド
+                range = 8,                -- インタラクション可能距離（スタッド）
+
+                -- 宝箱固有の情報
+                chestId = "hokkaido_chest_01",          -- ユニークID
+                openedModel = "box_opened",         -- 開いた状態のモデル名
+                rewards = {
+                    {item = "ポーション", count = 2},
+					{item = "ゴールド", count = 45},
+                },
+                displayDuration = 3,      -- 報酬表示時間（秒）
+            },
+		},
+
+				{
+			model = "box_closed",
+			position = {2997.1, 26.9, 10.8},
+            mode = "ground",
+			size = 1,
+			rotation = {0, 0, 0},
+			stickToGround = false,   -- 省略可（trueが既定）
+			groundOffset  = 0,   -- 芝生で少し浮かせたい時
+			alignToSlope  = false,  -- 斜面に木を傾けたくないならfalse
+
+            interaction = {
+                type = "chest",           -- インタラクションタイプ
+                action = "開ける",         -- ボタンに表示されるテキスト
+                key = "E",                -- キーバインド
+                range = 8,                -- インタラクション可能距離（スタッド）
+
+                -- 宝箱固有の情報
+                chestId = "hokkaido_chest_02",          -- ユニークID
+                openedModel = "box_opened",         -- 開いた状態のモデル名
+                rewards = {
+                    {item = "ポーション", count = 2}
+                },
+                displayDuration = 10,      -- 報酬表示時間（秒）
+            },
+		},
+
+				{
+			model = "box_closed",
+			position = {3125.8, 47.2, -60.7},
+            mode = "ground",
+			size = 1,
+			rotation = {0, 0, 0},
+			stickToGround = false,   -- 省略可（trueが既定）
+			groundOffset  = 0,   -- 芝生で少し浮かせたい時
+			alignToSlope  = false,  -- 斜面に木を傾けたくないならfalse
+
+            interaction = {
+                type = "chest",           -- インタラクションタイプ
+                action = "開ける",         -- ボタンに表示されるテキスト
+                key = "E",                -- キーバインド
+                range = 8,                -- インタラクション可能距離（スタッド）
+
+                -- 宝箱固有の情報
+                chestId = "hokkaido_chest_03",          -- ユニークID
+                openedModel = "box_opened",         -- 開いた状態のモデル名
+                rewards = {
+					{item = "ゴールド", count = 120},
+                },
+                displayDuration = 3,      -- 報酬表示時間（秒）
+            },
+		},
+	},
+
+	paths = {
+		{
+			name = "MainRoad01",
+			points = {                 -- 制御点：ワールド座標（YはだいたいでOK）
+				{92826.4, 19.0, -298.5},
+				{92936.1, 26.6, -285.1},
+				{92989.4, 26.8, -184.7},
+				{93105.4, 23.2, -127.4},
+				{93156.3, 19.7, -74.9},
+				{93221.8, 30.4, -4.7},
+				{93265.4, 24.1, 38.0},
+				{93303.9, 20.1, 70.1},
+				{93371.1, 20.4, 99.7},
+				{93431.9, 20.1, 112.4},
+				{93470.7, 19.7, 151.1},
+				{93471.7, 18.8, 204.7},
+				{93402.1, 19.2, 225.3},
+			},
+			width = 24,                -- 道の幅（stud）
+			method = "terrain",        -- "terrain"（地形を塗る） or "parts"（パーツ敷き）
+			material = Enum.Material.Ground,  -- method="terrain"時の塗り材質
+			step = 3,                  -- サンプリング間隔（小さいほど滑らか＆重い）
+			alignToSlope = false,      -- 斜面に道面を傾けるか（見た目：true、歩きやすさ：false）
+			groundOffset = 2.8,       -- めり込み回避の微小オフセット
+		},
+
+	},
+	fieldObjects = {
+		{
+			model = "box_closed",
+			position = {92895.2, 46.2, -205.6},
+			mode = "ground",
+			size = 1,
+			rotation = {0, 0, 0},
+			stickToGround = false,   -- 省略可（trueが既定）
+			groundOffset  = 0,   -- 芝生で少し浮かせたい時
+			alignToSlope  = false,  -- 斜面に木を傾けたくないならfalse
+
+			interaction = {
+				type = "chest",           -- インタラクションタイプ
+				action = "開ける",         -- ボタンに表示されるテキスト
+				key = "E",                -- キーバインド
+				range = 8,                -- インタラクション可能距離（スタッド）
+
+				-- 宝箱固有の情報
+				chestId = "kyushu_chest_01",          -- ユニークID
+				openedModel = "box_opened",         -- 開いた状態のモデル名
+				rewards = {
+					{item = "ポーション", count = 1},
+				},
+				displayDuration = 2,      -- 報酬表示時間（秒）
+			},
+		},
+	},
+
 	BGM = "rbxassetid://115666507179769",  -- 後でアセットIDに変更
 	BGMVolume = 0.2,  -- 音量（0.0-1.0）
 }
@@ -7228,47 +8701,125 @@ return {
 	bridges = {},
 
 	portals = {
-			{
-				name = "Shikoku_to_Town",
-				toZone = "ContinentTown",
-				islandName = "Shikoku_C1", -- 中央の島からポータル
-				offsetX = 0,
-				offsetZ = 0,
-				label = "→ Town",
-				color = Color3.fromRGB(150, 255, 150), -- 緑色のポータル
-			},
-		},
+		{
+			name = "Shikoku_to_Town",
+			toZone = "ContinentTown",
+			islandName = "Shikoku_C1", -- 中央の島からポータル
+			offsetX = 0,
+			offsetZ = 0,
+			label = "→ Town",
+			color = Color3.fromRGB(150, 255, 150), -- 緑色のポータル
+		}
+	},
 
 	BGM = "rbxassetid://139951867631287", -- 後でアセットIDに変更
 	BGMVolume = 0.3,
 }
 ===== ./ReplicatedStorage/Continents/ContinentKyushu.lua =====
--- ===== ./ReplicatedStorage/Continents/ContinentKyushu.lua (新規) =====
+--- Continents ---
 return {
-	name = "ContinentKyushu",
-	displayName = "Kyushu Region",
-
-	islands = {
-		"Kyushu_N1", "Kyushu_C1", "Kyushu_S1",
-		"Kyushu_NE1", "Kyushu_SW1", "Kyushu_W1",
+name = "ContinentKyushu",
+displayName = "ContinentKyushu",
+islands = {
+"ContinentKyushu_C1",
+"ContinentKyushu_C2",
+"ContinentKyushu_C3",
+"ContinentKyushu_C4",
+"ContinentKyushu_C5",
+"ContinentKyushu_C6",
+"ContinentKyushu_C7",
+"ContinentKyushu_C8",
+"ContinentKyushu_C9",
+"ContinentKyushu_C10",
+"ContinentKyushu_C11",
+"ContinentKyushu_C12",
+"ContinentKyushu_C13",
+"ContinentKyushu_C14",
+"ContinentKyushu_C15",
+"ContinentKyushu_C16",
+"ContinentKyushu_C17",
+"ContinentKyushu_C18",
+"ContinentKyushu_C19",
+"ContinentKyushu_C20",
+"ContinentKyushu_C21",
+"ContinentKyushu_C22",
+"ContinentKyushu_C23",
+"ContinentKyushu_C24",
+},
+paths = {
+	points = {
+			{93300, 10, -560},
+			{93320, 10, -460},
+			{93340, 10, -360},
+			{93360, 10, -240},
+			{93380, 10, -120},
+			{93390, 10, 0},
+			{93380, 10, 120},
+			{93360, 10, 240},
+			{93340, 10, 360},
+			{93300, 10, 480},
 	},
+	width = 24,                -- 道の幅（stud）
+	method = "terrain",        -- "terrain"（地形を塗る） or "parts"（パーツ敷き）
+	material = Enum.Material.Ground,  -- method="terrain"時の塗り材質
+	step = 3,                  -- サンプリング間隔（小さいほど滑らか＆重い）
+	alignToSlope = false,      -- 斜面に道面を傾けるか（見た目：true、歩きやすさ：false）
+	groundOffset = 4.8,       -- めり込み回避の微小オフセット
+},
 
-	bridges = {},
+--93080.8, 38.0, 166.2
+portals = {
+		{
+			name = "Kyushu_to_Town",
+			toZone = "ContinentTown",
+			islandName = "ContinentKyushu_C20",
+			offsetX = 100,
+			offsetZ = 100,
+			label = "→ Town",
+			color = Color3.fromRGB(255, 255, 255),
+		},
+		{
+			name = "Kyushu_to_Town",
+			toZone = "Hokkaido_SW2",
+			islandName = "ContinentKyushu_C22",
+			offsetX = 100,
+			offsetZ = 100,
+			label = "→ Hokkaido",
+			color = Color3.fromRGB(255, 255, 255),
+		}
+},
 
-	portals = {
-			{
-				name = "Kyushu_to_Town",
-				toZone = "ContinentTown",
-				islandName = "Kyushu_C1", -- 中央の島からポータル
-				offsetX = 0,
-				offsetZ = 0,
-				label = "→ Town",
-				color = Color3.fromRGB(255, 100, 100), -- 赤色のポータル
+
+fieldObjects = {
+		{
+			model = "box_closed",
+			position = {92895.2, 46.2, -205.6},
+			mode = "ground",
+			size = 1,
+			rotation = {0, -90, 0},
+			stickToGround = false,   -- 省略可（trueが既定）
+			groundOffset  = 0,   -- 芝生で少し浮かせたい時
+			alignToSlope  = false,  -- 斜面に木を傾けたくないならfalse
+
+			interaction = {
+				type = "chest",           -- インタラクションタイプ
+				action = "開ける",         -- ボタンに表示されるテキスト
+				key = "E",                -- キーバインド
+				range = 18,                -- インタラクション可能距離（スタッド）
+
+				-- 宝箱固有の情報
+				chestId = "kyushu_chest_01",          -- ユニークID
+				openedModel = "box_opened",         -- 開いた状態のモデル名
+				rewards = {
+					{item = "ポーション", count = 1},
+				},
+				displayDuration = 2,      -- 報酬表示時間（秒）
 			},
 		},
+	},
 
-	BGM = "rbxassetid://115666507179769", -- 後でアセットIDに変更
-	BGMVolume = 0.3,
+BGM = "",
+BGMVolume = 0.2
 }
 ===== ./ReplicatedStorage/Continents/ContientTown.lua =====
 -- ===== ./ReplicatedStorage/Continents/ContientTown.lua =====
@@ -7319,6 +8870,116 @@ return {
         },
 	},
 
+    fieldObjects = {
+		{
+			model = "Chest",
+			position = {55, 78, -5.8},
+             mode = "ground",
+			size = 1.5,
+			rotation = {0, 0, 0},
+			groundOffset  = 0,   -- 芝生で少し浮かせたい時
+			alignToSlope  = true,  -- 斜面に木を傾けたくないならfalse
+		},
+		{
+			model = "koki3D",
+			position = {58.7, 78, -5.8},
+            mode = "ground",
+			size = 1,
+			rotation = {0, 0, 0},
+			stickToGround = false,   -- 省略可（trueが既定）
+			groundOffset  = 0,   -- 芝生で少し浮かせたい時
+			alignToSlope  = true,  -- 斜面に木を傾けたくないならfalse
+		},
+
+		{
+			model = "koki3D",
+			position = {26.1, 57.6, -9.5},
+            mode = "ground",
+			size = 0.2,
+			rotation = {0, 0, 0},
+			stickToGround = false,   -- 省略可（trueが既定）
+			groundOffset  = 0,   -- 芝生で少し浮かせたい時
+			alignToSlope  = true,  -- 斜面に木を傾けたくないならfalse
+		},
+
+        {
+			model = "muichiro",
+			position = {23.2, 57.5, -15.2},
+            mode = "fixed",
+			size = 0.2,
+			rotation = {0, 0, 0},
+			stickToGround = false,   -- 省略可（trueが既定）
+			groundOffset  = 10,   -- 芝生で少し浮かせたい時
+			alignToSlope  = true,  -- 斜面に木を傾けたくないならfalse
+            -- upAxis = "",
+		}, --
+
+         {
+			model = "box_closed",
+			position = {42.4, 56.5, 10.9},
+            mode = "ground",
+			size = 1,
+			rotation = {0, 0, 0},
+			stickToGround = false,   -- 省略可（trueが既定）
+			groundOffset  = 0,   -- 芝生で少し浮かせたい時
+			alignToSlope  = false,  -- 斜面に木を傾けたくないならfalse
+
+            interaction = {
+                type = "chest",           -- インタラクションタイプ
+                action = "開ける",         -- ボタンに表示されるテキスト
+                key = "E",                -- キーバインド
+                range = 8,                -- インタラクション可能距離（スタッド）
+
+                -- 宝箱固有の情報
+                chestId = "town_chest_01",          -- ユニークID
+                openedModel = "box_opened",         -- 開いた状態のモデル名
+                rewards = {
+                    {item = "ポーション", count = 3},
+                    {item = "ゴールド", count = 50},
+                },
+                displayDuration = 3,      -- 報酬表示時間（秒）
+            },
+		},
+
+		{
+			model = "box_closed",
+			position = {42.4, 56.5, 20.9},
+            mode = "ground",
+			size = 1,
+			rotation = {0, 0, 0},
+			stickToGround = false,   -- 省略可（trueが既定）
+			groundOffset  = 0,   -- 芝生で少し浮かせたい時
+			alignToSlope  = false,  -- 斜面に木を傾けたくないならfalse
+
+            interaction = {
+                type = "chest",           -- インタラクションタイプ
+                action = "開ける",         -- ボタンに表示されるテキスト
+                key = "E",                -- キーバインド
+                range = 8,                -- インタラクション可能距離（スタッド）
+
+                -- 宝箱固有の情報
+                chestId = "town_chest_02",          -- ユニークID
+                openedModel = "box_opened",         -- 開いた状態のモデル名
+                rewards = {
+                    {item = "ポーション", count = 1},
+					{item = "ゴールド", count = 25},
+                },
+                displayDuration = 3,      -- 報酬表示時間（秒）
+            },
+		},
+
+        {
+			model = "box_closed",
+			position = {31.9, 56.5, 10.9},
+            mode = "ground",
+			size = 1,
+			rotation = {0, 0, 0},
+			stickToGround = false,   -- 省略可（trueが既定）
+			alignToSlope  = false,  -- 斜面に木を傾けたくないならfalse
+		},
+	},
+--m
+
 	BGM = "rbxassetid://139951867631287",  -- 後でアセットIDに変更
 	BGMVolume = 0.2,
 }
@@ -7331,6 +8992,65 @@ return {
 		width = 15,  -- 20から15に変更（橋も少し細く）
 		height = 5,
 	},
+}
+===== ./ReplicatedStorage/Islands/Greenland.lua =====
+return {
+{
+name = "VerdantPlateau_C1",
+centerX = 3000,
+centerZ = 0,
+sizeXZ = 300,
+baseY = 8,
+thickness = 14,
+grid = 14,
+hillAmplitude = 6,
+hillScale = 160,
+seed = 41021,
+generateOcean = false,
+baseMaterial = Enum.Material.Grass,
+},
+{
+name = "VerdantPlateau_C2",
+centerX = 3280,
+centerZ = -120,
+sizeXZ = 290,
+baseY = 8,
+thickness = 14,
+grid = 14,
+hillAmplitude = 6,
+hillScale = 160,
+seed = 51239,
+generateOcean = false,
+baseMaterial = Enum.Material.Grass,
+},
+{
+name = "VerdantPlateau_C3",
+centerX = 2720,
+centerZ = -100,
+sizeXZ = 280,
+baseY = 8,
+thickness = 14,
+grid = 14,
+hillAmplitude = 6,
+hillScale = 160,
+seed = 63917,
+generateOcean = false,
+baseMaterial = Enum.Material.Grass,
+},
+{
+name = "VerdantPlateau_C4",
+centerX = 3000,
+centerZ = 260,
+sizeXZ = 270,
+baseY = 8,
+thickness = 14,
+grid = 14,
+hillAmplitude = 6,
+hillScale = 160,
+seed = 74288,
+generateOcean = false,
+baseMaterial = Enum.Material.Grass,
+},
 }
 ===== ./ReplicatedStorage/Islands/Town.lua =====
 -- ReplicatedStorage/Islands/Town.lua (4つの島で構成されるTownエリア - 重複版)
@@ -7408,31 +9128,31 @@ return {
 -- ReplicatedStorage/Islands/HokkaidoIslands
 return {
 	-- 中央部
-	{name = "Hokkaido_W1", centerX = 3000, centerZ = 0, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
-	{name = "Hokkaido_C1", centerX = 3080, centerZ = 0, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
-	{name = "Hokkaido_C2", centerX = 3160, centerZ = 0, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
-	{name = "Hokkaido_C3", centerX = 3240, centerZ = 0, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
-	{name = "Hokkaido_C4", centerX = 3320, centerZ = 0, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
-	{name = "Hokkaido_C5", centerX = 3400, centerZ = 0, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
-	{name = "Hokkaido_E1", centerX = 3480, centerZ = 0, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
+	{name = "Hokkaido_W1", centerX = 3000, centerZ = 0, sizeXZ = 160, baseY = 10, thickness = 40, grid = 10, hillAmplitude = 15, hillScale = 1, seed = 0, generateOcean = false, baseMaterial = Enum.Material.LeafyGrass, },
+	{name = "Hokkaido_C1", centerX = 3080, centerZ = 0, sizeXZ = 160, baseY = 10, thickness = 40, grid = 10, hillAmplitude = 15, hillScale = 1, seed = 0, generateOcean = false, baseMaterial = Enum.Material.LeafyGrass, },
+	{name = "Hokkaido_C2", centerX = 3160, centerZ = 0, sizeXZ = 160, baseY = 10, thickness = 40, grid = 10, hillAmplitude = 15, hillScale = 1, seed = 0, generateOcean = false, baseMaterial = Enum.Material.LeafyGrass, },
+	{name = "Hokkaido_C3", centerX = 3240, centerZ = 0, sizeXZ = 160, baseY = 10, thickness = 40, grid = 10, hillAmplitude = 15, hillScale = 1, seed = 0, generateOcean = false, baseMaterial = Enum.Material.LeafyGrass, },
+	{name = "Hokkaido_C4", centerX = 3320, centerZ = 0, sizeXZ = 160, baseY = 10, thickness = 40, grid = 10, hillAmplitude = 15, hillScale = 1, seed = 0, generateOcean = false, baseMaterial = Enum.Material.LeafyGrass, },
+	{name = "Hokkaido_C5", centerX = 3400, centerZ = 0, sizeXZ = 160, baseY = 10, thickness = 40, grid = 10, hillAmplitude = 15, hillScale = 1, seed = 0, generateOcean = false, baseMaterial = Enum.Material.LeafyGrass, },
+	{name = "Hokkaido_E1", centerX = 3480, centerZ = 0, sizeXZ = 160, baseY = 10, thickness = 40, grid = 2, hillAmplitude = 160, hillScale = 160, seed = 0, generateOcean = false, baseMaterial = Enum.Material.LeafyGrass, },
 
 	-- 北部
-	{name = "Hokkaido_N1", centerX = 3080, centerZ = 80, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
-	{name = "Hokkaido_N2", centerX = 3160, centerZ = 80, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
-	{name = "Hokkaido_N3", centerX = 3240, centerZ = 80, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
-	{name = "Hokkaido_N4", centerX = 3320, centerZ = 80, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
+	{name = "Hokkaido_N1", centerX = 3080, centerZ = 80, sizeXZ = 160, baseY = 10, thickness = 10, grid = 10, hillAmplitude = 1, hillScale = 500, seed = 0, generateOcean = false, baseMaterial = Enum.Material.LeafyGrass, },
+	{name = "Hokkaido_N2", centerX = 3160, centerZ = 80, sizeXZ = 160, baseY = 10, thickness = 10, grid = 10, hillAmplitude = 1, hillScale = 500, seed = 0, generateOcean = false, baseMaterial = Enum.Material.LeafyGrass, },
+	{name = "Hokkaido_N3", centerX = 3240, centerZ = 80, sizeXZ = 160, baseY = 10, thickness = 10, grid = 10, hillAmplitude = 1, hillScale = 500, seed = 0, generateOcean = false, baseMaterial = Enum.Material.LeafyGrass, },
+	{name = "Hokkaido_N4", centerX = 3320, centerZ = 80, sizeXZ = 160, baseY = 10, thickness = 10, grid = 10, hillAmplitude = 1, hillScale = 500, seed = 0, generateOcean = false, baseMaterial = Enum.Material.LeafyGrass, },
 
 	-- 北東部（知床）
-	{name = "Hokkaido_NE1", centerX = 3320, centerZ = 160, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 30, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
-	{name = "Hokkaido_NE2", centerX = 3400, centerZ = 160, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 30, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
+	{name = "Hokkaido_NE1", centerX = 3320, centerZ = 160, sizeXZ = 160, baseY = 10, thickness = 10, grid = 10, hillAmplitude = 10, hillScale = 500, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.LeafyGrass, },
+	{name = "Hokkaido_NE2", centerX = 3400, centerZ = 160, sizeXZ = 160, baseY = 10, thickness = 10, grid = 10, hillAmplitude = 10, hillScale = 500, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.LeafyGrass, },
 
 	-- 南部
-	{name = "Hokkaido_S1", centerX = 3160, centerZ = -80, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
-	{name = "Hokkaido_S2", centerX = 3240, centerZ = -80, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 25, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
+	{name = "Hokkaido_S1", centerX = 3160, centerZ = -80, sizeXZ = 200, baseY = 10, thickness = 10, grid = 2, hillAmplitude = 120, hillScale = 100, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.LeafyGrass, },
+	{name = "Hokkaido_S2", centerX = 3240, centerZ = -80, sizeXZ = 200, baseY = 10, thickness = 10, grid = 1, hillAmplitude = 200, hillScale = 200, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.LeafyGrass, },
 
 	-- 南西部（渡島）
-	{name = "Hokkaido_SW1", centerX = 3080, centerZ = -160, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 20, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.Grass, },
-	{name = "Hokkaido_SW2", centerX = 3160, centerZ = -160, sizeXZ = 160, baseY = 0, thickness = 10, grid = 10, hillAmplitude = 20, hillScale = 160, seed = 50000, generateOcean = true, baseMaterial = Enum.Material.Grass, oceanRadius = 2000},
+	{name = "Hokkaido_SW1", centerX = 3080, centerZ = -160, sizeXZ = 160, baseY = 10, thickness = 10, grid = 1, hillAmplitude = 300, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.LeafyGrass, },
+	{name = "Hokkaido_SW2", centerX = 3160, centerZ = -160, sizeXZ = 160, baseY = 10, thickness = 10, grid = 1, hillAmplitude = 400, hillScale = 20, seed = 50000, generateOcean = true, baseMaterial = Enum.Material.LeafyGrass, oceanRadius = 2000},
 }
 ===== ./ReplicatedStorage/Islands/Registry.lua =====
 -- ===== ./ReplicatedStorage/Islands/Registry.lua =====
@@ -7446,8 +9166,10 @@ local allIslands = {}
 local islandModules = {
     IslandsFolder:WaitForChild("Town"),           -- 【修正】Town.lua を参照
     IslandsFolder:WaitForChild("HokkaidoIslands"),
-    IslandsFolder:WaitForChild("ShikokuIslands"),  -- ★新規追加
-    IslandsFolder:WaitForChild("KyushuIslands"),   -- ★新規追加
+    IslandsFolder:WaitForChild("ShikokuIslands"),
+    IslandsFolder:WaitForChild("KyushuIslands"),
+    IslandsFolder:WaitForChild("Snowland"),
+     IslandsFolder:WaitForChild("Greenland"),
 }
 
 -- 各モジュールを読み込み
@@ -7475,6 +9197,234 @@ end
 print(("[Islands/Registry] 合計 %d 個の島を読み込みました"):format(#allIslands))
 
 return allIslands
+===== ./ReplicatedStorage/Islands/Snowland.lua =====
+return {
+{
+name = "SnowCrescent_C1",
+centerX = 2880,
+centerZ = -550,
+sizeXZ = 200,
+baseY = 400,
+thickness = 60,
+grid = 12,
+hillAmplitude = 8,
+hillScale = 150,
+seed = 18431,
+generateOcean = true,
+oceanRadius = 1000,
+baseMaterial = Enum.Material.Snow,
+},
+{
+name = "SnowCrescent_C2",
+centerX = 2860,
+centerZ = -480,
+sizeXZ = 210,
+baseY = 400,
+thickness = 60,
+grid = 12,
+hillAmplitude = 7,
+hillScale = 150,
+seed = 29455,
+generateOcean = true,
+oceanRadius = 1000,
+baseMaterial = Enum.Material.Snow,
+},
+{
+name = "SnowCrescent_C3",
+centerX = 2850,
+centerZ = -420,
+sizeXZ = 220,
+baseY = 400,
+thickness = 62,
+grid = 12,
+hillAmplitude = 9,
+hillScale = 150,
+seed = 37512,
+generateOcean = true,
+oceanRadius = 1000,
+baseMaterial = Enum.Material.Snow,
+},
+{
+name = "SnowCrescent_C4",
+centerX = 2840,
+centerZ = -360,
+sizeXZ = 220,
+baseY = 400,
+thickness = 62,
+grid = 12,
+hillAmplitude = 8,
+hillScale = 150,
+seed = 51234,
+generateOcean = true,
+oceanRadius = 1000,
+baseMaterial = Enum.Material.Snow,
+},
+{
+name = "SnowCrescent_C5",
+centerX = 2830,
+centerZ = -300,
+sizeXZ = 210,
+baseY = 400,
+thickness = 62,
+grid = 12,
+hillAmplitude = 7,
+hillScale = 150,
+seed = 63821,
+generateOcean = true,
+oceanRadius = 1000,
+baseMaterial = Enum.Material.Snow,
+},
+{
+name = "SnowCrescent_C6",
+centerX = 2825,
+centerZ = -230,
+sizeXZ = 200,
+baseY = 400,
+thickness = 64,
+grid = 12,
+hillAmplitude = 6,
+hillScale = 150,
+seed = 74092,
+generateOcean = true,
+oceanRadius = 1000,
+baseMaterial = Enum.Material.Snow,
+},
+{
+name = "SnowCrescent_C7",
+centerX = 2815,
+centerZ = -170,
+sizeXZ = 190,
+baseY = 400,
+thickness = 64,
+grid = 12,
+hillAmplitude = 6,
+hillScale = 150,
+seed = 81937,
+generateOcean = true,
+oceanRadius = 1000,
+baseMaterial = Enum.Material.Snow,
+},
+{
+name = "SnowCrescent_C8",
+centerX = 2805,
+centerZ = -110,
+sizeXZ = 190,
+baseY = 400,
+thickness = 64,
+grid = 12,
+hillAmplitude = 6,
+hillScale = 150,
+seed = 92741,
+generateOcean = true,
+oceanRadius = 1000,
+baseMaterial = Enum.Material.Snow,
+},
+{
+name = "SnowCrescent_C9",
+centerX = 2800,
+centerZ = -50,
+sizeXZ = 190,
+baseY = 400,
+thickness = 66,
+grid = 12,
+hillAmplitude = 6,
+hillScale = 150,
+seed = 103885,
+generateOcean = true,
+oceanRadius = 1000,
+baseMaterial = Enum.Material.Snow,
+},
+{
+name = "SnowCrescent_C10",
+centerX = 2805,
+centerZ = 10,
+sizeXZ = 190,
+baseY = 400,
+thickness = 66,
+grid = 12,
+hillAmplitude = 7,
+hillScale = 150,
+seed = 118234,
+generateOcean = true,
+oceanRadius = 1000,
+baseMaterial = Enum.Material.Snow,
+},
+{
+name = "SnowCrescent_C11",
+centerX = 2815,
+centerZ = 70,
+sizeXZ = 200,
+baseY = 400,
+thickness = 70,
+grid = 12,
+hillAmplitude = 32,
+hillScale = 160,
+seed = 129776,
+generateOcean = true,
+oceanRadius = 1000,
+baseMaterial = Enum.Material.Snow,
+},
+{
+name = "SnowCrescent_C12",
+centerX = 2825,
+centerZ = 140,
+sizeXZ = 210,
+baseY = 400,
+thickness = 72,
+grid = 12,
+hillAmplitude = 36,
+hillScale = 165,
+seed = 130992,
+generateOcean = true,
+oceanRadius = 1000,
+baseMaterial = Enum.Material.Snow,
+},
+{
+name = "SnowCrescent_C13",
+centerX = 2835,
+centerZ = 220,
+sizeXZ = 220,
+baseY = 400,
+thickness = 74,
+grid = 12,
+hillAmplitude = 38,
+hillScale = 170,
+seed = 145332,
+generateOcean = true,
+oceanRadius = 1000,
+baseMaterial = Enum.Material.Snow,
+},
+{
+name = "SnowCrescent_C14",
+centerX = 2850,
+centerZ = 320,
+sizeXZ = 220,
+baseY = 400,
+thickness = 76,
+grid = 12,
+hillAmplitude = 40,
+hillScale = 170,
+seed = 158221,
+generateOcean = true,
+oceanRadius = 1000,
+baseMaterial = Enum.Material.Snow,
+},
+{
+name = "SnowCrescent_C15",
+centerX = 2870,
+centerZ = 440,
+sizeXZ = 220,
+baseY = 400,
+thickness = 78,
+grid = 12,
+hillAmplitude = 40,
+hillScale = 175,
+seed = 169554,
+generateOcean = true,
+oceanRadius = 1000,
+baseMaterial = Enum.Material.Snow,
+},
+}
 ===== ./ReplicatedStorage/Islands/ShikokuIslands.lua =====
 -- ===== ./ReplicatedStorage/Islands/ShikokuIslands.lua (新規) =====
 return {
@@ -7505,38 +9455,368 @@ return {
     },
 }
 ===== ./ReplicatedStorage/Islands/KyushuIslands.lua =====
--- ===== ./ReplicatedStorage/Islands/KyushuIslands.lua (新規) =====
+--- Islands ---
 return {
-	-- 北部
-	{
-        name = "Kyushu_N1", centerX = 750, centerZ = 50, sizeXZ = 150, baseY = 20, thickness = 10, grid = 10,
-        hillAmplitude = 25, hillScale = 120, seed = 80001, generateOcean = false, baseMaterial = Enum.Material.Basalt,
-    },
-    -- 中央
-	{
-        name = "Kyushu_C1", centerX = 800, centerZ = 0, sizeXZ = 180, baseY = 20, thickness = 10, grid = 10,
-        hillAmplitude = 30, hillScale = 140, seed = 80002, generateOcean = false, baseMaterial = Enum.Material.Basalt,
-    },
-    -- 南部
-	{
-        name = "Kyushu_S1", centerX = 850, centerZ = -50, sizeXZ = 150, baseY = 20, thickness = 10, grid = 10,
-        hillAmplitude = 25, hillScale = 120, seed = 80003, generateOcean = false, baseMaterial = Enum.Material.Basalt,
-    },
-    -- 北東部
-	{
-        name = "Kyushu_NE1", centerX = 850, centerZ = 50, sizeXZ = 100, baseY = 20, thickness = 10, grid = 10,
-        hillAmplitude = 20, hillScale = 100, seed = 80004, generateOcean = false, baseMaterial = Enum.Material.Basalt,
-    },
-    -- 南西部
-	{
-        name = "Kyushu_SW1", centerX = 750, centerZ = -50, sizeXZ = 100, baseY = 20, thickness = 10, grid = 10,
-        hillAmplitude = 20, hillScale = 100, seed = 80005, generateOcean = false, baseMaterial = Enum.Material.Basalt,
-    },
-    -- 西部 (海あり)
-	{
-        name = "Kyushu_W1", centerX = 700, centerZ = 0, sizeXZ = 100, baseY = 20, thickness = 10, grid = 10,
-        hillAmplitude = 15, hillScale = 80, seed = 80006, generateOcean = true, oceanRadius = 1000, baseMaterial = Enum.Material.Basalt,
-    },
+{
+name = "ContinentKyushu_C1",
+centerX = 92900,
+centerZ = -520,
+sizeXZ = 320,
+baseY = 10,
+thickness = 30,
+grid = 5,
+hillAmplitude = 64,
+hillScale = 260,
+seed = 0,
+generateOcean = true,
+oceanRadius = 2000,
+baseMaterial = Enum.Material.LeafyGrass,
+},
+{
+name = "ContinentKyushu_C2",
+centerX = 93050,
+centerZ = -520,
+sizeXZ = 340,
+baseY = 10,
+thickness = 30,
+grid = 5,
+hillAmplitude = 68,
+hillScale = 260,
+seed = 0,
+generateOcean = true,
+oceanRadius = 2000,
+baseMaterial = Enum.Material.LeafyGrass,
+},
+{
+name = "ContinentKyushu_C3",
+centerX = 93200,
+centerZ = -480,
+sizeXZ = 300,
+baseY = 10,
+thickness = 30,
+grid = 5,
+hillAmplitude = 60,
+hillScale = 270,
+seed = 0,
+generateOcean = true,
+oceanRadius = 2000,
+baseMaterial = Enum.Material.LeafyGrass,
+},
+{
+name = "ContinentKyushu_C4",
+centerX = 93000,
+centerZ = -420,
+sizeXZ = 360,
+baseY = 10,
+thickness = 30,
+grid = 5,
+hillAmplitude = 72,
+hillScale = 250,
+seed = 0,
+generateOcean = true,
+oceanRadius = 2000,
+baseMaterial = Enum.Material.LeafyGrass,
+},
+{
+name = "ContinentKyushu_C5",
+centerX = 92800,
+centerZ = -420,
+sizeXZ = 300,
+baseY = 9,
+thickness = 30,
+grid = 5,
+hillAmplitude = 60,
+hillScale = 260,
+seed = 0,
+generateOcean = true,
+oceanRadius = 2000,
+baseMaterial = Enum.Material.LeafyGrass,
+},
+{
+name = "ContinentKyushu_C6",
+centerX = 93150,
+centerZ = -360,
+sizeXZ = 320,
+baseY = 10,
+thickness = 30,
+grid = 5,
+hillAmplitude = 64,
+hillScale = 260,
+seed = 0,
+generateOcean = true,
+oceanRadius = 2000,
+baseMaterial = Enum.Material.LeafyGrass,
+},
+{
+name = "ContinentKyushu_C7",
+centerX = 92920,
+centerZ = -340,
+sizeXZ = 280,
+baseY = 10,
+thickness = 30,
+grid = 5,
+hillAmplitude = 56,
+hillScale = 270,
+seed = 0,
+generateOcean = true,
+oceanRadius = 2000,
+baseMaterial = Enum.Material.LeafyGrass,
+},
+{
+name = "ContinentKyushu_C8",
+centerX = 93050,
+centerZ = -240,
+sizeXZ = 380,
+baseY = 11,
+thickness = 30,
+grid = 2,
+hillAmplitude = 80,
+hillScale = 180,
+seed = 0,
+generateOcean = true,
+oceanRadius = 2000,
+baseMaterial = Enum.Material.LeafyGrass,
+},
+{
+name = "ContinentKyushu_C9",
+centerX = 93200,
+centerZ = -200,
+sizeXZ = 320,
+baseY = 11,
+thickness = 30,
+grid = 5,
+hillAmplitude = 60,
+hillScale = 200,
+seed = 0,
+generateOcean = true,
+oceanRadius = 2000,
+baseMaterial = Enum.Material.LeafyGrass,
+},
+{
+name = "ContinentKyushu_C10",
+centerX = 92900,
+centerZ = -200,
+sizeXZ = 300,
+baseY = 11,
+thickness = 30,
+grid = 6,
+hillAmplitude = 50,
+hillScale = 210,
+seed = 0,
+generateOcean = true,
+oceanRadius = 2000,
+baseMaterial = Enum.Material.LeafyGrass,
+},
+{
+name = "ContinentKyushu_C11",
+centerX = 93300,
+centerZ = -80,
+sizeXZ = 340,
+baseY = 11,
+thickness = 30,
+grid = 5,
+hillAmplitude = 70,
+hillScale = 210,
+seed = 0,
+generateOcean = true,
+oceanRadius = 2000,
+baseMaterial = Enum.Material.LeafyGrass,
+},
+{
+name = "ContinentKyushu_C12",
+centerX = 93000,
+centerZ = -40,
+sizeXZ = 360,
+baseY = 12,
+thickness = 30,
+grid = 6,
+hillAmplitude = 80,
+hillScale = 190,
+seed = 0,
+generateOcean = true,
+oceanRadius = 2000,
+baseMaterial = Enum.Material.LeafyGrass,
+},
+{
+name = "ContinentKyushu_C13",
+centerX = 93150,
+centerZ = 60,
+sizeXZ = 340,
+baseY = 12,
+thickness = 30,
+grid = 6,
+hillAmplitude = 70,
+hillScale = 190,
+seed = 0,
+generateOcean = true,
+oceanRadius = 2000,
+baseMaterial = Enum.Material.LeafyGrass,
+},
+{
+name = "ContinentKyushu_C14",
+centerX = 93000,
+centerZ = 160,
+sizeXZ = 360,
+baseY = 12,
+thickness = 30,
+grid = 8,
+hillAmplitude = 80,
+hillScale = 180,
+seed = 0,
+generateOcean = true,
+oceanRadius = 2000,
+baseMaterial = Enum.Material.LeafyGrass,
+},
+{
+name = "ContinentKyushu_C15",
+centerX = 92850,
+centerZ = 220,
+sizeXZ = 300,
+baseY = 11,
+thickness = 30,
+grid = 5,
+hillAmplitude = 50,
+hillScale = 190,
+seed = 0,
+generateOcean = true,
+oceanRadius = 2000,
+baseMaterial = Enum.Material.LeafyGrass,
+},
+{
+name = "ContinentKyushu_C16",
+centerX = 93120,
+centerZ = 300,
+sizeXZ = 320,
+baseY = 11,
+thickness = 30,
+grid = 5,
+hillAmplitude = 60,
+hillScale = 190,
+seed = 0,
+generateOcean = true,
+oceanRadius = 2000,
+baseMaterial = Enum.Material.LeafyGrass,
+},
+{
+name = "ContinentKyushu_C17",
+centerX = 93000,
+centerZ = 380,
+sizeXZ = 300,
+baseY = 11,
+thickness = 30,
+grid = 8,
+hillAmplitude = 50,
+hillScale = 180,
+seed = 0,
+generateOcean = true,
+oceanRadius = 2000,
+baseMaterial = Enum.Material.LeafyGrass,
+},
+{
+name = "ContinentKyushu_C18",
+centerX = 93180,
+centerZ = 470,
+sizeXZ = 240,
+baseY = 12,
+thickness = 30,
+grid = 2,
+hillAmplitude = 140,
+hillScale = 160,
+seed = 0,
+generateOcean = true,
+oceanRadius = 2000,
+baseMaterial = Enum.Material.Basalt,
+},
+{
+name = "ContinentKyushu_C19",
+centerX = 92760,
+centerZ = -60,
+sizeXZ = 220,
+baseY = 10,
+thickness = 30,
+grid = 5,
+hillAmplitude = 70,
+hillScale = 220,
+seed = 0,
+generateOcean = true,
+oceanRadius = 2000,
+baseMaterial = Enum.Material.LeafyGrass,
+},
+{
+name = "ContinentKyushu_C20",
+centerX = 92700,
+centerZ = 40,
+sizeXZ = 200,
+baseY = 10,
+thickness = 30,
+grid = 5,
+hillAmplitude = 15,
+hillScale = 220,
+seed = 0,
+generateOcean = true,
+oceanRadius = 2000,
+baseMaterial = Enum.Material.LeafyGrass,
+},
+{
+name = "ContinentKyushu_C21",
+centerX = 92680,
+centerZ = 140,
+sizeXZ = 180,
+baseY = 10,
+thickness = 30,
+grid = 5,
+hillAmplitude = 15,
+hillScale = 220,
+seed = 0,
+generateOcean = true,
+oceanRadius = 2000,
+baseMaterial = Enum.Material.LeafyGrass,
+},
+{
+name = "ContinentKyushu_C22",
+centerX = 92750,
+centerZ = 220,
+sizeXZ = 200,
+baseY = 10,
+thickness = 30,
+grid = 5,
+hillAmplitude = 15,
+hillScale = 220,
+seed = 0,
+generateOcean = true,
+oceanRadius = 2000,
+baseMaterial = Enum.Material.LeafyGrass,
+},
+{
+name = "ContinentKyushu_C23",
+centerX = 93350,
+centerZ = 40,
+sizeXZ = 320,
+baseY = 10,
+thickness = 30,
+grid = 5,
+hillAmplitude = 15,
+hillScale = 260,
+seed = 0,
+generateOcean = true,
+oceanRadius = 2000,
+baseMaterial = Enum.Material.LeafyGrass,
+},
+{
+name = "ContinentKyushu_C24",
+centerX = 93420,
+centerZ = 160,
+sizeXZ = 300,
+baseY = 9,
+thickness = 30,
+grid = 5,
+hillAmplitude = 15,
+hillScale = 270,
+seed = 0,
+generateOcean = true,
+oceanRadius = 2000,
+baseMaterial = Enum.Material.LeafyGrass,
+},
 }
 ===== ./ReplicatedStorage/TypingWords.lua =====
 -- ReplicatedStorage/TypingWords
@@ -7697,8 +9977,7 @@ print("[GameEvents] Module initialized")
 
 return GameEvents
 ===== ./ReplicatedStorage/FieldGen.lua =====
--- ReplicatedStorage/FieldGen (最適化版)
--- パフォーマンスを大幅に改善した地形生成エンジン
+-- ReplicatedStorage/FieldGen
 
 local FieldGen = {}
 
@@ -7850,7 +10129,58 @@ function FieldGen.generateIsland(config)
 	marker.BrickColor = BrickColor.new("Bright blue")
 	marker.Parent = worldFolder
 
+print("[FieldGen] 木や岩を載せる")
+		-- マーカー作成（ここまで既存）
+	local marker = Instance.new("Part")
+	marker.Name = cfg.name .. "_Center"
+	marker.Size = Vector3.new(10, 1, 10)
+	marker.Position = Vector3.new(cfg.centerX, cfg.baseY + 5, cfg.centerZ)
+	marker.Anchored = true
+	marker.CanCollide = false
+	marker.Transparency = 0.5
+	marker.BrickColor = BrickColor.new("Bright blue")
+	marker.Parent = worldFolder
+
+	-- 🌳【追加】FieldObjects（木や岩など）を配置する
+	if config.fieldObjects then
+		print("[FieldGen]config.fieldObjetsに入りました")
+		local templateFolder = game:GetService("ServerStorage"):FindFirstChild("FieldObjectTemplates")
+		if not templateFolder then
+			warn("[FieldGen] FieldObjectTemplates フォルダが ServerStorage に存在しません")
+			return
+		end
+
+		local fieldFolder = workspace:FindFirstChild("FieldObjects")
+		if not fieldFolder then
+			fieldFolder = Instance.new("Folder")
+			fieldFolder.Name = "FieldObjects"
+			fieldFolder.Parent = workspace
+		end
+
+		for _, obj in ipairs(config.fieldObjects) do
+			local template = templateFolder:FindFirstChild(obj.model)
+			if template then
+				local instance = template:Clone()
+				instance.Anchored = true
+				instance.Position = Vector3.new(unpack(obj.position))
+
+				if obj.size then
+					instance.Size = instance.Size * obj.size
+				end
+
+				if obj.rotationY then
+					instance.Orientation = Vector3.new(0, obj.rotationY, 0)
+				end
+
+				instance.Parent = fieldFolder
+			else
+				warn(("[FieldGen] モデルが見つかりません: %s"):format(obj.model))
+			end
+		end
+	end
+
 	-- print(("[FieldGen] 完了: %s"):format(cfg.name))
+
 end
 
 -- レイキャスト（変更なし）
@@ -7918,6 +10248,453 @@ function FieldGen.generateBridge(fromIsland, toIsland, config)
 	print(("[FieldGen] 橋生成完了: %s (距離: %.1f)"):format(cfg.name, distance))
 end
 
+-- ===== Field Objects Placement =====
+local ServerStorage = game:GetService("ServerStorage")
+
+local function ensureFolder(parent: Instance, name: string): Instance
+	local f = parent:FindFirstChild(name)
+	if not f then
+		f = Instance.new("Folder")
+		f.Name = name
+		f.Parent = parent
+	end
+	return f
+end
+
+local function setAnchoredAll(inst: Instance, anchored: boolean)
+	for _, d in ipairs(inst:GetDescendants()) do
+		if d:IsA("BasePart") then
+			d.Anchored = anchored
+		end
+	end
+end
+
+local function ensurePrimaryPart(model: Model)
+	if model.PrimaryPart then return end
+	local pp = model:FindFirstChild("HumanoidRootPart") or model:FindFirstChildWhichIsA("BasePart")
+	if pp then
+		model.PrimaryPart = pp
+	end
+end
+
+local function pivotModel(model: Model, cf: CFrame)
+	ensurePrimaryPart(model)
+	if model.PrimaryPart then
+		model:PivotTo(cf)
+	else
+		-- どうしてもPrimaryPartが無い場合のフォールバック
+		for _, d in ipairs(model:GetDescendants()) do
+			if d:IsA("BasePart") then
+				d.CFrame = cf
+			end
+		end
+	end
+end
+
+function FieldGen.placeFieldObjects(continentName: string?, objects: {any}, player: Player?)
+	if not objects or #objects == 0 then return end
+
+	task.wait(1)
+
+	-- 【修正】全プレイヤーの取得済みアイテムを収集
+	local allCollectedItems = {}
+	local Players = game:GetService("Players")
+	local ServerScriptService = game:GetService("ServerScriptService")
+
+	local success, PlayerStatsModule = pcall(function()
+		return require(ServerScriptService:WaitForChild("PlayerStats"))
+	end)
+
+	if success then
+		-- 全プレイヤーをループ
+		for _, plr in ipairs(Players:GetPlayers()) do
+			local stats = PlayerStatsModule.getStats(plr)
+			if stats and stats.CollectedItems then
+				-- 全プレイヤーの取得済みアイテムをマージ
+				for chestId, _ in pairs(stats.CollectedItems) do
+					allCollectedItems[chestId] = true
+				end
+
+				print(("[FieldGen] %s の取得済みアイテムを読み込み"):format(plr.Name))
+			end
+		end
+
+		-- 【デバッグ】取得済みアイテム総数を表示
+		local count = 0
+		for _ in pairs(allCollectedItems) do count = count + 1 end
+		print(("[FieldGen] 全プレイヤーの取得済みアイテム総数: %d"):format(count))
+
+		-- 具体的なIDを表示
+		for chestId, _ in pairs(allCollectedItems) do
+			print(("[FieldGen] 取得済み: %s"):format(chestId))
+		end
+	else
+		warn("[FieldGen] PlayerStatsModuleの読み込みに失敗")
+	end
+
+	local ServerStorage = game:GetService("ServerStorage")
+	local templatesRoot = ServerStorage:FindFirstChild("FieldObjects")
+	if not templatesRoot then
+		warn("[FieldGen] ServerStorage/FieldObjects が見つかりません。配置スキップ")
+		return
+	end
+
+	local function ensureFolder(parent: Instance, name: string): Instance
+		local f = parent:FindFirstChild(name)
+		if not f then
+			f = Instance.new("Folder"); f.Name = name; f.Parent = parent
+		end
+		return f
+	end
+
+	local function setAnchoredAll(inst: Instance, anchored: boolean)
+		for _, d in ipairs(inst:GetDescendants()) do
+			if d:IsA("BasePart") then d.Anchored = anchored end
+		end
+	end
+
+	local function ensurePrimaryPart(model: Model)
+		if model.PrimaryPart then return end
+		local pp = model:FindFirstChild("HumanoidRootPart") or model:FindFirstChildWhichIsA("BasePart")
+		if pp then model.PrimaryPart = pp end
+	end
+
+	local function pivotModel(model: Model, cf: CFrame)
+		ensurePrimaryPart(model)
+		if model.PrimaryPart then model:PivotTo(cf)
+		else
+			for _, d in ipairs(model:GetDescendants()) do
+				if d:IsA("BasePart") then d.CFrame = cf end
+			end
+		end
+	end
+
+	local root = ensureFolder(workspace, "FieldObjects")
+	local parentFolder = continentName and ensureFolder(root, continentName) or root
+
+	-- 地面レイキャスト（法線も取得）
+	local function rayToTerrain(x: number, z: number, startY: number)
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Include
+		params.FilterDescendantsInstances = {workspace.Terrain}
+		params.IgnoreWater = false
+		local origin = Vector3.new(x, startY, z)
+		local result = workspace:Raycast(origin, Vector3.new(0, -startY - 1000, 0), params)
+		return result -- result.Position, result.Normal を持つ
+	end
+
+	for _, obj in ipairs(objects) do
+		-- 取得済みアイテムはスキップ
+		if obj.interaction and obj.interaction.chestId then
+			local chestId = obj.interaction.chestId
+
+			if allCollectedItems[chestId] then
+				print(("[FieldGen] ⏭️ 取得済みのため配置スキップ: %s"):format(chestId))
+				continue
+			else
+				print(("[FieldGen] ✅ 配置します: %s"):format(chestId))
+			end
+		end
+
+		local template = templatesRoot:FindFirstChild(tostring(obj.model or ""))
+		if not template then
+			warn(("[FieldGen] テンプレートが見つかりません: %s"):format(tostring(obj.model)))
+			continue
+		end
+
+		local p = obj.position or {0,0,0}
+		local x, y, z = p[1] or 0, p[2] or 0, p[3] or 0
+
+		local clone = template:Clone()
+		setAnchoredAll(clone, true) -- デフォでアンカー固定
+
+		-- スケール
+		local scale = tonumber(obj.size) or 1
+		if clone:IsA("Model") then
+			if scale ~= 1 then pcall(function() clone:ScaleTo(scale) end) end
+		elseif clone:IsA("BasePart") then
+			if scale ~= 1 then clone.Size = clone.Size * scale end
+		end
+
+		-- Up軸補正
+		local upAxis = tostring(obj.upAxis or "Y")
+		local baseRot = CFrame.new()
+		if upAxis == "Z" then
+			baseRot = CFrame.Angles(math.rad(-90), 0, 0)
+		elseif upAxis == "X" then
+			baseRot = CFrame.Angles(0, 0, math.rad(90))
+		end
+
+		-- 追加回転（rotation = {x,y,z} or 個別指定）
+		local rot = obj.rotation or {}
+		local rx = math.rad(rot[1] or obj.rotationX or 0)
+		local ry = math.rad(rot[2] or obj.rotationY or 0)
+		local rz = math.rad(rot[3] or obj.rotationZ or 0)
+		local userRot = CFrame.Angles(rx, ry, rz)
+
+		-- === 配置モード処理 ===
+		local mode = obj.mode or "ground"  -- 既定: ground
+		local offset = tonumber(obj.groundOffset) or 0
+		local align = (obj.alignToSlope == true)
+
+		if mode == "fixed" then
+			-- ===== 座標固定モード =====
+			-- 指定座標にそのまま配置（空中も可能）
+			local finalCF = CFrame.new(x, y, z) * baseRot * userRot
+
+			if clone:IsA("Model") then
+				pivotModel(clone, finalCF)
+			elseif clone:IsA("BasePart") then
+				clone.CFrame = finalCF
+			end
+
+			print(("[FieldGen] '%s' 固定配置 at (%.1f, %.1f, %.1f)"):format(
+				tostring(obj.model), x, y, z
+			))
+
+		else
+			-- ===== 地面接地モード（既定） =====
+			local startY = 3000
+			local hit = nil
+			do
+				local params = RaycastParams.new()
+				params.FilterType = Enum.RaycastFilterType.Include
+				params.FilterDescendantsInstances = {workspace.Terrain}
+				params.IgnoreWater = false
+				hit = workspace:Raycast(Vector3.new(x, startY, z), Vector3.new(0, -6000, 0), params)
+			end
+
+			if hit then
+				local groundY = hit.Position.Y
+				local up = align and hit.Normal or Vector3.yAxis
+
+				print(("[FieldGen] '%s' 接地 at (%.1f, _, %.1f), groundY=%.1f, offset=%.2f"):format(
+					tostring(obj.model), x, z, groundY, offset
+				))
+
+				if clone:IsA("Model") then
+					-- Step 1: 回転のみ適用して仮配置
+					local tempCF = CFrame.new(x, groundY + 100, z) * baseRot * userRot
+					pivotModel(clone, tempCF)
+
+					-- Step 2: バウンディングボックスの底面を取得
+					local bbCFrame, bbSize = clone:GetBoundingBox()
+					local bottomY = bbCFrame.Position.Y - (bbSize.Y * 0.5)
+
+					-- Step 3: 底面が地面に接するように調整
+					local deltaY = (groundY + offset) - bottomY
+
+					if align then
+						-- 斜面対応
+						local look = clone:GetPivot().LookVector
+						local tangent = (look - look:Dot(up) * up).Unit
+						local right = tangent:Cross(up).Unit
+						local pos = bbCFrame.Position + Vector3.new(0, deltaY, 0)
+						local newCF = CFrame.fromMatrix(pos, right, up)
+						pivotModel(clone, newCF)
+					else
+						-- 垂直配置
+						pivotModel(clone, clone:GetPivot() + Vector3.new(0, deltaY, 0))
+					end
+
+				elseif clone:IsA("BasePart") then
+					-- MeshPartの場合
+					local height = clone.Size.Y * 0.5
+
+					if align then
+						local right = clone.CFrame.RightVector
+						local forward = right:Cross(up).Unit
+						right = up:Cross(forward).Unit
+						clone.CFrame = CFrame.fromMatrix(
+							Vector3.new(x, groundY + height + offset, z),
+							right, up
+						)
+					else
+						clone.CFrame = CFrame.new(x, groundY + height + offset, z) * (baseRot * userRot)
+					end
+				end
+			else
+				warn(("[FieldGen] 地面検出失敗 at (%.1f, %.1f) for '%s'"):format(x, z, tostring(obj.model)))
+			end
+		end
+
+		-- インタラクション情報をAttributeに設定
+		if obj.interaction then
+			local interaction = obj.interaction
+
+			-- 基本情報
+			clone:SetAttribute("HasInteraction", true)
+			clone:SetAttribute("InteractionType", interaction.type or "unknown")
+			clone:SetAttribute("InteractionAction", interaction.action or "調べる")
+			clone:SetAttribute("InteractionKey", interaction.key or "E")
+			clone:SetAttribute("InteractionRange", interaction.range or 8)
+
+			-- タイプ別の情報
+			if interaction.type == "chest" then
+				clone:SetAttribute("ChestId", interaction.chestId)
+				clone:SetAttribute("OpenedModel", interaction.openedModel)
+				clone:SetAttribute("DisplayDuration", interaction.displayDuration or 5)
+
+				-- 報酬情報をJSON化して保存
+				local HttpService = game:GetService("HttpService")
+				local rewardsJson = HttpService:JSONEncode(interaction.rewards or {})
+				clone:SetAttribute("RewardsData", rewardsJson)
+
+				print(("[FieldGen] インタラクション設定: %s (ChestId: %s, Range: %d)"):format(
+					interaction.action,
+					interaction.chestId,
+					interaction.range
+				))
+
+				-- 設定後に確認
+				task.wait(0.1)
+				if not clone:GetAttribute("HasInteraction") then
+					warn(("[FieldGen] ⚠️ 属性が消えた: %s"):format(interaction.chestId))
+				end
+			end
+		end
+
+		clone.Parent = parentFolder
+	end
+end
+
+--=====================================================
+-- Paths (MVP): Catmull-Rom spline -> Terrain FillBlock
+--=====================================================
+
+-- {x,y,z} -> Vector3
+local function v3(arr)
+	return Vector3.new(arr[1] or 0, arr[2] or 0, arr[3] or 0)
+end
+
+-- Catmull-Rom 補間（MVP: 標準係数0.5）
+local function catmullRom(p0, p1, p2, p3, t: number)
+	local t2, t3 = t*t, t*t*t
+	-- 0.5 * (2P1 + (-P0+P2)t + (2P0-5P1+4P2-P3)t^2 + (-P0+3P1-3P2+P3)t^3)
+	return 0.5 * (
+		(2 * p1)
+		+ (-p0 + p2) * t
+		+ (2*p0 - 5*p1 + 4*p2 - p3) * t2
+		+ (-p0 + 3*p1 - 3*p2 + p3) * t3
+	)
+end
+
+-- 区間長に応じてサンプル数を決める（等間隔っぽく）
+local function sampleSegment(p1, p2, stepStuds)
+	local dist = (p2 - p1).Magnitude
+	local n = math.max(2, math.floor(dist / math.max(0.1, stepStuds)))
+	return n
+end
+
+-- points端のガード（p[-1]=p[0], p[n+1]=p[n]）
+local function getPoint(points, i)
+	if i < 1 then return points[1]
+	elseif i > #points then return points[#points]
+	else return points[i]
+	end
+end
+
+-- 道ブロック1枚をTerrainに塗る
+local function fillRoadSlice(terrain, centerPos: Vector3, forward: Vector3, up: Vector3, width: number, length: number, thickness: number, material)
+	-- 直交基底
+	local fwd = forward.Magnitude > 0 and forward.Unit or Vector3.zAxis
+	local upv = up.Magnitude > 0 and up.Unit or Vector3.yAxis
+	local right = fwd:Cross(upv)
+	if right.Magnitude < 1e-6 then
+		-- ほぼ平行なら右をX軸にフォールバック
+		right = Vector3.xAxis
+	end
+	right = right.Unit
+	upv = right:Cross(fwd).Unit
+
+	-- CFrame.fromMatrix(pos, right, up, back)
+	local cf = CFrame.fromMatrix(centerPos, right, upv, -fwd)
+	local size = Vector3.new(length, thickness, width)
+	terrain:FillBlock(cf, size, material)
+end
+
+-- 公開API：大陸名（ログ/親フォルダ名用）と paths 配列を受け取り、道をTerrainに塗る
+function FieldGen.buildPaths(continentName: string?, paths: {any})
+	if not paths or #paths == 0 then return end
+
+	local terrain = workspace.Terrain
+	local logPrefix = ("[FieldGen/Paths]%s "):format(continentName and ("["..continentName.."]") or "")
+
+	for _, path in ipairs(paths) do
+		local pts = path.points or {}
+		if #pts < 2 then
+			warn(logPrefix .. "points が不足（最低2点）: " .. tostring(path.name))
+			continue
+		end
+
+		-- 既定値
+		local width  = tonumber(path.width) or 12
+		local step   = tonumber(path.step) or 3        -- サンプリング間隔（目安）
+		local mat    = path.material or Enum.Material.Ground
+		local stick  = (path.stickToGround ~= false)   -- 既定true
+		local align  = (path.alignToSlope == true)     -- 既定false
+		local yOffset= tonumber(path.groundOffset) or 0.05
+		local thick  = 2                               -- 地形塗り厚み（埋め漏れ防止）
+
+		-- Vector3列に変換（Yは適当でもOK。下で吸着する）
+		local P = table.create(#pts)
+		for i=1, #pts do P[i] = v3(pts[i]) end
+
+		local slices = 0
+		for seg = 1, #P - 1 do
+			-- セグメント p1->p2 をCatmull-Romで補間
+			local p0 = getPoint(P, seg - 1)
+			local p1 = getPoint(P, seg)
+			local p2 = getPoint(P, seg + 1)
+			local p3 = getPoint(P, seg + 2)
+
+			local n = sampleSegment(p1, p2, step)
+			for j = 0, n-1 do
+				local t0 = j / n
+				local t1 = (j + 1) / n
+
+				local a = catmullRom(p0, p1, p2, p3, t0)
+				local b = catmullRom(p0, p1, p2, p3, t1)
+				local mid = (a + b) * 0.5
+				local dir = (b - a)
+				if dir.Magnitude < 1e-6 then
+					dir = Vector3.zAxis
+				end
+
+				-- 地面に吸着（サンプル区間の中心点）
+local useY = mid.Y
+local up = Vector3.yAxis
+if stick then
+	local startY = 1000
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = {workspace.Terrain}
+	params.IgnoreWater = false
+
+	local res = workspace:Raycast(Vector3.new(mid.X, startY, mid.Z), Vector3.new(0, -2000, 0), params)
+	if res then
+		useY = res.Position.Y + (yOffset or -3)
+		if align then up = res.Normal end
+	else
+		warn(("地面未検出: (%.1f, %.1f)"):format(mid.X, mid.Z))
+	end
+end
+
+-- ブロックの中心を半分沈めて設置
+local centerY = useY - (thick / 2) - 5
+fillRoadSlice(terrain, Vector3.new(mid.X, centerY, mid.Z), dir.Unit, up, width, (b - a).Magnitude, thick, mat)
+
+				slices += 1
+			end
+		end
+
+		print(("%sdraw path '%s': points=%d, slices=%d, width=%.1f, step=%.1f"):format(logPrefix, tostring(path.name or "?"), #P, slices, width, step))
+	end
+end
+
+
+
+
 return FieldGen
 ===== ./ReplicatedStorage/SharedState.lua =====
 -- ReplicatedStorage/SharedState.lua
@@ -7963,6 +10740,7 @@ local Monsters = RS:WaitForChild("Monsters")
 
 return {
 	require(Monsters.Slime),
+	require(Monsters.Slime_pink),
 	-- 将来追加するモンスター:
 	-- require(Monsters.Dragon),
 	-- require(Monsters.Goblin),
@@ -8025,28 +10803,26 @@ return {
 	UpdateFar = 1.0,
 }
 ===== ./ReplicatedStorage/Monsters/Slime_pink.lua =====
--- ReplicatedStorage/Monsters/[モンスター名]
-
 return {
 	Name = "Slime_pink",
 	TemplatePath = {"ServerStorage", "EnemyTemplates", "Slime_pink"},
-	WalkSpeed = 8,
-	RespawnTime = 20,
+	WalkSpeed = 5,
+	RespawnTime = 5,
 
 	-- 【新】バトルステータス
 	HP = 80,           -- ライフ
-	Speed = 10,         -- 素早さ
-	Attack = 30,        -- 攻撃力
-	Defense = 10,       -- 守備力
+	Speed = 8,         -- 素早さ
+	Attack = 40,        -- 攻撃力
+	Defense = 12,       -- 守備力
 
 	-- 【新】報酬
-	Experience = 50,   -- 倒した時に得られる経験値
-	Gold = 25,         -- 倒した時に得られるゴールド
+	Experience = 20,   -- 倒した時に得られる経験値
+	Gold = 10,         -- 倒した時に得られるゴールド
 
 	-- タイピングレベル（重み付き）
 	TypingLevels = {
-		{level = "level_2", weight = 70},  -- 70%の確率でレベル1
-		{level = "level_3", weight = 30},  -- 30%の確率でレベル2
+		{level = "level_1", weight = 30},  -- 70%の確率でレベル1
+		{level = "level_2", weight = 70},  -- 30%の確率でレベル2
 	},
 
 	-- 旧設定（互換性のため残す）
@@ -8056,20 +10832,45 @@ return {
 	SpawnLocations = {
 		{
 			islandName = "Hokkaido_N1",
-			count = 3,
-			radiusPercent = 80,
+			count = 7,
+			radiusPercent = 65,  -- 島のサイズの75%範囲内
 		},
 		{
 			islandName = "Hokkaido_N4",
-			count = 5,
-			radiusPercent = 80,
+			count = 15,
+			radiusPercent = 85,  -- 島のサイズの75%範囲内
 		},
-
+				{
+			islandName = "Kyushu_NE1",
+			count = 5,
+			radiusPercent = 55,  -- 島のサイズの75%範囲内
+		},
+		{
+			islandName = "Kyushu_C22",
+			count = 5,
+			radiusPercent = 55,  -- 島のサイズの75%範囲内
+		},
+		{
+			islandName = "ContinentKyushu_C20",
+			count = 5,
+			radiusPercent = 55,  -- 島のサイズの75%範囲内
+		},
+		{
+			islandName = "ContinentKyushu_C21",
+			count = 5,
+			radiusPercent = 55,  -- 島のサイズの75%範囲内
+		},
+		{
+			islandName = "ContinentKyushu_C22",
+			count = 5,
+			radiusPercent = 55,  -- 島のサイズの75%範囲内
+		},
+--
 	},
 
 	-- AI設定
 	ChaseDistance = 60,
-	EscapeDistance = 30,
+	EscapeDistance = 80,
 	WanderRadius = 30,
 	UpdateNearby = 0.2,
 	UpdateFar = 1.0,

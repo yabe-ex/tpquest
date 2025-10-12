@@ -21,7 +21,7 @@ return {
 
 	-- 南部
 	{name = "Hokkaido_S1", centerX = 3160, centerZ = -80, sizeXZ = 200, baseY = 10, thickness = 10, grid = 2, hillAmplitude = 120, hillScale = 100, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.LeafyGrass, },
-	{name = "Hokkaido_S2", centerX = 3240, centerZ = -80, sizeXZ = 200, baseY = 10, thickness = 10, grid = 10, hillAmplitude = 200, hillScale = 200, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.LeafyGrass, },
+	{name = "Hokkaido_S2", centerX = 3240, centerZ = -80, sizeXZ = 200, baseY = 10, thickness = 10, grid = 1, hillAmplitude = 200, hillScale = 200, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.LeafyGrass, },
 
 	-- 南西部（渡島）
 	{name = "Hokkaido_SW1", centerX = 3080, centerZ = -160, sizeXZ = 160, baseY = 10, thickness = 10, grid = 1, hillAmplitude = 300, hillScale = 160, seed = 50000, generateOcean = false, baseMaterial = Enum.Material.LeafyGrass, },
