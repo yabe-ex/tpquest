@@ -9,8 +9,52 @@ local StarterGui = game:GetService("StarterGui")
 local ContextActionService = game:GetService("ContextActionService")
 local LocalizationService = game:GetService("LocalizationService")
 
+local function runCountdown(seconds: number)
+	if not countdownFrame or not countdownLabel then return end
+	countdownFrame.Visible = true
+	for n = seconds, 1, -1 do
+		countdownLabel.Text = tostring(n)
+		-- 簡単な演出
+		countdownLabel.TextTransparency = 0
+		game:GetService("TweenService")
+			:Create(countdownLabel, TweenInfo.new(0.25), { TextTransparency = 0 })
+			:Play()
+		task.wait(1)
+	end
+	countdownFrame.Visible = false
+end
+
+
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+local enemyProgContainer = nil
+local enemyProgFill = nil
+local enemyProgConn = nil
+
+-- === 攻撃プログレスの起動挙動 ===
+local PROGRESS_COUNTDOWN_ON_START = false   -- trueで3,2,1のカウントダウン後に開始
+local COUNTDOWN_SECONDS = 3
+local DEFAULT_FIRST_INTERVAL = 4            -- サーバーが来るまでの仮インターバル(秒)
+local countdownFrame: Frame? = nil
+local countdownLabel: TextLabel? = nil
+
+-- 進行アニメ（プログレスバーを 0→満了 で伸ばす）
+local function startEnemyProgress(durationSec: number)
+	if not enemyProgContainer or not enemyProgFill then return end
+	enemyProgContainer.Visible = true
+	enemyProgFill.Size = UDim2.new(0, 0, 1, 0)
+
+	if enemyProgConn then enemyProgConn:Disconnect() enemyProgConn = nil end
+	local start = os.clock()
+	enemyProgConn = game:GetService("RunService").RenderStepped:Connect(function()
+		local t = math.clamp((os.clock() - start) / durationSec, 0, 1)
+		enemyProgFill.Size = UDim2.new(t, 0, 1, 0)
+		if t >= 1 then enemyProgConn:Disconnect(); enemyProgConn = nil end
+	end)
+end
+
+-- 入力制御（カウントダウン中はタイピング無効）
+local TypingEnabled = true
 
 print("[BattleUI] クライアント起動中...")
 
@@ -31,6 +75,11 @@ print(("[BattleUI] ユーザーロケール: %s → 表示言語: %s"):format(us
 local BattleStartEvent = ReplicatedStorage:WaitForChild("BattleStart", 30)
 local BattleEndEvent = ReplicatedStorage:WaitForChild("BattleEnd", 30)
 local BattleDamageEvent = ReplicatedStorage:WaitForChild("BattleDamage", 30)
+local EnemyAttackCycleStartEvent = ReplicatedStorage:WaitForChild("EnemyAttackCycleStart", 30)
+if not BattleStartEvent or not BattleEndEvent or not BattleDamageEvent then
+    warn("[BattleUI] RemoteEventの取得に失敗しました")
+    return
+end
 
 if not BattleStartEvent or not BattleEndEvent or not BattleDamageEvent then
 	warn("[BattleUI] RemoteEventの取得に失敗しました")
@@ -365,6 +414,54 @@ local function createBattleUI()
 
 	print("[BattleUI DEBUG] translationLabel 作成完了")
 
+	-- === Enemy Attack Progress ===
+	enemyProgContainer = Instance.new("Frame")
+	enemyProgContainer.Name = "EnemyAttackProgress"
+	enemyProgContainer.AnchorPoint = Vector2.new(0.5, 1)
+	enemyProgContainer.Size = UDim2.new(0.6, 0, 0, 14)
+	enemyProgContainer.Position = UDim2.new(0.5, 0, 0.98, 0)
+	enemyProgContainer.BackgroundColor3 = Color3.fromRGB(40, 40, 48)
+	enemyProgContainer.BorderSizePixel = 0
+	enemyProgContainer.Visible = false
+	enemyProgContainer.ZIndex = 5
+	enemyProgContainer.Parent = battleGui
+
+	local enemyProgCorner = Instance.new("UICorner")
+	enemyProgCorner.CornerRadius = UDim.new(0, 7)
+	enemyProgCorner.Parent = enemyProgContainer
+
+	enemyProgFill = Instance.new("Frame")
+	enemyProgFill.Name = "Fill"
+	enemyProgFill.Size = UDim2.new(0, 0, 1, 0)
+	enemyProgFill.Position = UDim2.new(0, 0, 0, 0)
+	enemyProgFill.BackgroundColor3 = Color3.fromRGB(120, 200, 255)
+	enemyProgFill.BorderSizePixel = 0
+	enemyProgFill.ZIndex = 6
+	enemyProgFill.Parent = enemyProgContainer
+
+	local enemyProgFillCorner = Instance.new("UICorner")
+	enemyProgFillCorner.CornerRadius = UDim.new(0, 7)
+	enemyProgFillCorner.Parent = enemyProgFill
+
+	-- === Countdown overlay ===
+	countdownFrame = Instance.new("Frame")
+	countdownFrame.Name = "Countdown"
+	countdownFrame.BackgroundTransparency = 1
+	countdownFrame.Size = UDim2.new(1, 0, 1, 0)
+	countdownFrame.Visible = false
+	countdownFrame.ZIndex = 20
+	countdownFrame.Parent = battleGui
+
+	countdownLabel = Instance.new("TextLabel")
+	countdownLabel.Size = UDim2.new(1, 0, 1, 0)
+	countdownLabel.BackgroundTransparency = 1
+	countdownLabel.Font = Enum.Font.GothamBlack
+	countdownLabel.TextScaled = true
+	countdownLabel.TextColor3 = Color3.fromRGB(255,255,255)
+	countdownLabel.TextStrokeTransparency = 0.2
+	countdownLabel.ZIndex = 21
+	countdownLabel.Parent = countdownFrame
+
 	print("[BattleUI] UI作成完了")
 end
 
@@ -438,6 +535,44 @@ local function onBattleStart(monsterName, hp, maxHP, damage, levels, pHP, pMaxHP
 	print("[BattleUI] UIを表示")
 
 	battleGui.Enabled = true
+
+	-- 入力は一旦禁止（カウントダウンありなら）
+	TypingEnabled = not PROGRESS_COUNTDOWN_ON_START
+
+	-- ★開始直後にプログレスを“仮で”回す or カウントダウン後に回す
+	if enemyProgContainer and enemyProgFill then
+		if PROGRESS_COUNTDOWN_ON_START then
+			enemyProgContainer.Visible = false
+			-- ★ カウントダウン（ここでもし nil なら何もしないように）
+			if type(runCountdown) == "function" then
+				runCountdown(COUNTDOWN_SECONDS)
+			end
+			-- カウントダウン後にプログレス開始＆入力解禁
+			startEnemyProgress(DEFAULT_FIRST_INTERVAL)
+			TypingEnabled = true
+		else
+			-- 即時に仮プログレス開始
+			startEnemyProgress(DEFAULT_FIRST_INTERVAL)
+		end
+	else
+		warn("[BattleUI] enemy progress UI not initialized; fallback skipped")
+	end
+
+
+	-- ここから追加：プログレスバーの表示＆リセット（nilガード付き）
+	if enemyProgContainer and enemyProgFill then
+		enemyProgContainer.Visible = true
+		enemyProgFill.Size = UDim2.new(0, 0, 1, 0)
+	else
+		warn("[BattleUI] enemy progress UI not initialized; creating fallback...")
+		-- フォールバック：万一 createBattleUI 実行前だった場合に備えて再生成
+		-- （通常は通らない想定）
+		-- ※ ここで上記 ② と同じ生成ブロックを呼ぶヘルパー関数を用意してもOK
+	end
+
+	-- ★ 敵攻撃プログレスバーを表示＆リセット
+	enemyProgContainer.Visible = true
+	enemyProgFill.Size = UDim2.new(0, 0, 1, 0)
 
 	-- 【重要】RichTextを確実に有効化、全ラベルをリセット
 	print("[BattleUI] UI要素をリセット")
@@ -629,6 +764,20 @@ onBattleEnd = function(victory)
 			task.wait(0.6)  -- アニメーション完了を待つ
 			if not inBattle then  -- まだ次のバトルが始まっていないことを確認
 				battleGui.Enabled = false
+
+				-- プログレスバーを隠す＆進行ループ停止
+				if enemyProgConn then
+					enemyProgConn:Disconnect()
+					enemyProgConn = nil
+				end
+				if enemyProgContainer then
+					enemyProgContainer.Visible = false
+				end
+
+				-- 敵攻撃プログレスバーを非表示
+				if enemyProgContainer then
+					enemyProgContainer.Visible = false
+				end
 			end
 		end)
 	else
@@ -721,6 +870,7 @@ end)
 -- キー入力処理
 local function onKeyPress(input, gameProcessed)
 	if not inBattle then return end
+	if not TypingEnabled then return end
 
 	if input.UserInputType == Enum.UserInputType.Keyboard then
 		local keyCode = input.KeyCode
@@ -798,6 +948,25 @@ createBattleUI()
 print("[BattleUI] イベント接続中...")
 BattleStartEvent.OnClientEvent:Connect(onBattleStart)
 BattleEndEvent.OnClientEvent:Connect(onBattleEnd)
+
+-- ★ 敵攻撃サイクル開始（プログレス用）: nil ガード付き
+local EnemyAttackCycleStartEvent = ReplicatedStorage:WaitForChild("EnemyAttackCycleStart", 30)
+EnemyAttackCycleStartEvent.OnClientEvent:Connect(function(payload)
+	if not inBattle or not payload then return end
+	if not enemyProgContainer or not enemyProgFill then
+		warn("[BattleUI] progress UI not ready; ignoring this cycle once")
+		return
+	end
+
+	-- サーバー権威で再同期：仮プログレスが回っていても一旦止めて上書き
+	local duration = tonumber(payload.intervalSec) or DEFAULT_FIRST_INTERVAL
+	if enemyProgConn then enemyProgConn:Disconnect() enemyProgConn = nil end
+
+	-- 受信と同時に0→満了で回し直す（= ここからは本サイクル）
+	startEnemyProgress(duration)
+end)
+
+
 
 -- HP更新イベント（敵）
 local HPUpdateEvent = ReplicatedStorage:FindFirstChild("BattleHPUpdate")

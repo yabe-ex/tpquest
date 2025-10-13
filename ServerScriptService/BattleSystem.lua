@@ -36,6 +36,31 @@ end
 local LastBattleEndTime = 0
 local BATTLE_COOLDOWN = 0.5
 
+-- ★ 攻撃間隔の基準（拮抗=4s、+100→8s、-100→1s）
+local function computeBaseEnemyInterval(playerSpeed: number, enemySpeed: number): number
+	local diff = (playerSpeed or 0) - (enemySpeed or 0)
+	if diff <= 0 then
+		-- diff: -100→0 を 1s→4s に線形マップ
+		return 1 + 0.03 * math.clamp(diff + 100, 0, 100) -- 1～4
+	else
+		-- diff: 0→+100 を 4s→8s に線形マップ
+		return 4 + 0.04 * math.clamp(diff, 0, 100) -- 4～8
+	end
+end
+
+-- ★ 将来のバフ/デバフ倍率を掛ける（逸脱許容のため緩い最終クランプ）
+local MIN_INTERVAL, MAX_INTERVAL = 0.5, 12
+local function applyIntervalModifiers(baseInterval: number, multiplier: number?): number
+	return math.clamp(baseInterval * (multiplier or 1), MIN_INTERVAL, MAX_INTERVAL)
+end
+
+-- ★（任意拡張）状態から倍率を集計する入口。現状は1固定。
+local function getIntervalMultiplierFor(player: Player, monsterDef): number
+	-- 例：SharedStateや一時的なStatusからスロウ/ヘイストを読む
+	-- return (SharedState.IntervalMult[player] or 1)
+	return 1
+end
+
 -- RemoteEvent の作成/取得
 local function getOrCreateRemoteEvent(name)
 	local event = ReplicatedStorage:FindFirstChild(name)
@@ -61,6 +86,7 @@ local LevelUpEvent = getOrCreateRemoteEvent("LevelUp")
 local ShowDeathUIEvent = getOrCreateRemoteEvent("ShowDeathUI")
 local DeathChoiceEvent = getOrCreateRemoteEvent("DeathChoice")
 local TypingMistakeEvent = getOrCreateRemoteEvent("TypingMistake")
+local EnemyAttackCycleStartEvent = getOrCreateRemoteEvent("EnemyAttackCycleStart")
 
 print("[BattleSystem] RemoteEvents準備完了")
 
@@ -119,10 +145,10 @@ local function calculateDamage(attackerAttack: number, defenderDefense: number):
 end
 
 -- 攻撃間隔を計算
-local function calculateAttackInterval(playerSpeed: number, enemySpeed: number): number
-	-- 攻撃間隔 = 1 + (プレイヤー素早さ / 敵素早さ - 1) * 0.5
-	local interval = 1 + (playerSpeed / enemySpeed - 1) * 0.5
-	return math.max(0.5, interval)  -- 最低0.5秒
+local function calculateAttackInterval(playerSpeed: number, enemySpeed: number, player: Player, monsterDef): number
+	local base = computeBaseEnemyInterval(playerSpeed, enemySpeed)
+	local mult = getIntervalMultiplierFor(player, monsterDef) -- 将来拡張
+	return applyIntervalModifiers(base, mult)
 end
 
 -- 敵の攻撃処理
@@ -159,9 +185,16 @@ local function enemyAttack(player: Player, battleData)
 		return
 	end
 
-	-- 次の攻撃をスケジュール
-	local attackInterval = calculateAttackInterval(playerStats.Speed, monsterDef.Speed)
-	battleData.nextAttackTime = tick() + attackInterval
+	local attackInterval = calculateAttackInterval(playerStats.Speed, monsterDef.Speed, player, monsterDef)
+	local nowTick = tick()
+	battleData.nextAttackTime = nowTick + attackInterval
+
+	-- ★ 次サイクル開始を通知
+	EnemyAttackCycleStartEvent:FireClient(player, {
+		intervalSec = attackInterval,
+		startedAt = nowTick,
+	})
+
 
 	print(("[BattleSystem] 次の攻撃まで %.1f 秒"):format(attackInterval))
 end
@@ -272,8 +305,16 @@ function BattleSystem.startBattle(player: Player, monster: Model)
 	damagePerKey = math.max(1, damagePerKey)  -- 最低1ダメージ
 
 	-- 敵の最初の攻撃タイミングを計算
-	local attackInterval = calculateAttackInterval(playerStats.Speed, monsterDef.Speed)
-	local nextAttackTime = tick() + attackInterval
+	local attackInterval = calculateAttackInterval(playerStats.Speed, monsterDef.Speed, player, monsterDef)
+	local nowTick = tick()
+	local nextAttackTime = nowTick + attackInterval
+
+	-- ★ 初回サイクルをクライアントへ通知
+	EnemyAttackCycleStartEvent:FireClient(player, {
+		intervalSec = attackInterval,
+		startedAt = nowTick,
+	})
+
 
 	-- 戦闘データを記録
 	SharedState.ActiveBattles[player] = {
