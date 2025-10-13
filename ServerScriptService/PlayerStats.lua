@@ -38,10 +38,11 @@ local DEFAULT_STATS = {
 	CollectedItems = {},	-- 取得済みアイテム
 }
 
--- レベルアップに必要な経験値（レベル * 100)
+-- レベルアップに必要な経験値（緩やか逓増: 50 * level^1.7）
 local function getRequiredExp(level)
-	return level * 100
+	return math.floor(50 * (level ^ 1.7) + 0.5)
 end
+
 
 -- 各プレイヤーのステータスを保存
 local PlayerData = {}
