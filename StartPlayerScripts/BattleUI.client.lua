@@ -86,6 +86,20 @@ local HP_BAR_H    = 40
 local PROG_H      = 14
 local STACK_PAD   = 10       -- 縦の隙間
 
+-- ========= 予知（次単語の先行描画）設定 =========
+local PRECOGNITION_ENABLED = false  -- デフォはOFF（手動スイッチ）
+local function hasPrecog()
+	-- 手動スイッチ or 指輪装備で付与される属性（サーバ側からSetAttribute想定）
+	return PRECOGNITION_ENABLED or (Players.LocalPlayer:GetAttribute("HasPrecognition") == true)
+end
+
+-- 予知UI／データ（他の関数から参照するので先に宣言）
+local wordLabelNext = nil
+local precogNextWordData = nil  -- 次に来る“予約”単語
+local function hasPrecog()
+	return  -- 予知ワード表示フラグ
+end
+
 local enemyProgConn = nil
 
 local function stopEnemyProgress()
@@ -99,16 +113,15 @@ local function stopEnemyProgress()
 	if enemyProgContainer then
 		enemyProgContainer.Visible = false
 	end
-	print("[BattleUI] stopEnemyProgress: disconnected & hidden")
+	log.debug("[BattleUI] stopEnemyProgress: disconnected & hidden")
 end
 
 local function startEnemyProgress(durationSec: number, startedAtServer: number?)
-	-- ここで必ずログ（早期returnの前に）
-	print(("[BattleUI] startEnemyProgress ENTER (dur=%.2f, startedAtServer=%s)"):
+	log.debugf(("[BattleUI] startEnemyProgress ENTER (dur=%.2f, startedAtServer=%s)"):
 		format(tonumber(durationSec) or -1, tostring(startedAtServer)))
 
 	if not enemyProgContainer or not enemyProgFill then
-		warn("[BattleUI] progress UI not ready; skip startEnemyProgress")
+		log.warn("[BattleUI] progress UI not ready; skip startEnemyProgress")
 		return
 	end
 
@@ -121,19 +134,12 @@ local function startEnemyProgress(durationSec: number, startedAtServer: number?)
 	end
 
 	local startedAt = tonumber(startedAtServer) or tick()
-	log.debugf("[BattleUI] startEnemyProgress invoked dur=%.2f startedAt=%.3f now=%.3f",
-		durationSec, startedAt, tick())
-	print(("[BattleUI] startEnemyProgress invoked dur=%.2f startedAt=%.3f now=%.3f"):
-		format(durationSec, startedAt, tick()))
 	enemyProgConn = game:GetService("RunService").RenderStepped:Connect(function()
 		local estT = math.clamp((tick() - startedAt) / durationSec, 0, 1)
 		enemyProgFill.Size = UDim2.new(estT, 0, 1, 0)
-		-- デバッグ
-		-- print(("[BattleUI] estT=%.3f (elapsed=%.3f)"):format(estT, tick()-startedAt))
 		if estT >= 1 then
 			enemyProgConn:Disconnect()
 			enemyProgConn = nil
-			print("[BattleUI] startEnemyProgress: completed and disconnected")
 		end
 	end)
 end
@@ -143,7 +149,7 @@ local function applyEnemyCycle(payload)
 	local duration = tonumber(payload.intervalSec) or DEFAULT_FIRST_INTERVAL
 	local startedAt = tonumber(payload.startedAt)
 
-	print(("[BattleUI] sync interval=%.2f startedAt=%.3f"):format(duration, startedAt or -1))
+	log.debugf(("[BattleUI] sync interval=%.2f startedAt=%.3f"):format(duration, startedAt or -1))
 	startEnemyProgress(duration, startedAt)
 end
 
@@ -152,7 +158,7 @@ end
 -- 入力制御（カウントダウン中はタイピング無効）
 local TypingEnabled = true
 
-print("[BattleUI] クライアント起動中...")
+log.debug("[BattleUI] クライアント起動中...")
 
 -- ユーザーのロケールを取得
 local userLocale = string.lower(LocalizationService.RobloxLocaleId)
@@ -162,10 +168,10 @@ local localeCode = string.match(userLocale, "^(%a+)") or "en"  -- "ja-jp" → "j
 local FORCE_LOCALE = "ja"  -- ここを変更すると表示言語が変わる（nil で自動検出）
 if FORCE_LOCALE then
 	localeCode = FORCE_LOCALE
-	print(("[BattleUI] 言語を強制設定: %s"):format(localeCode))
+	log.debugf(("[BattleUI] 言語を強制設定: %s"):format(localeCode))
 end
 
-print(("[BattleUI] ユーザーロケール: %s → 表示言語: %s"):format(userLocale, localeCode))
+log.debugf(("[BattleUI] ユーザーロケール: %s → 表示言語: %s"):format(userLocale, localeCode))
 
 
 local RunService = game:GetService("RunService")
@@ -180,8 +186,6 @@ local lastCycleAt = 0
 local function requestEnemyCycleSync(reason: string?)
 	if not inBattle then return end
 	if not RequestEnemyCycleSyncEvent then return end
-	-- デバッグ（必要なら）
-	-- print(("[BattleUI] request sync (%s)"):format(reason or ""))
 	RequestEnemyCycleSyncEvent:FireServer()
 end
 
@@ -199,19 +203,19 @@ end
 local TypingWords = require(ReplicatedStorage:WaitForChild("TypingWords"))
 
 -- デバッグ：単語リストの内容を確認
-print("[BattleUI DEBUG] TypingWords.level_1[1]:")
+log.debug("[BattleUI DEBUG] TypingWords.level_1[1]:")
 if TypingWords.level_1 and TypingWords.level_1[1] then
 	local firstWord = TypingWords.level_1[1]
-	print("  Type:", type(firstWord))
+	log.debug("  Type:", type(firstWord))
 	if type(firstWord) == "table" then
-		print("  word:", firstWord.word)
-		print("  ja:", firstWord.ja)
+		log.debug("  word:", firstWord.word)
+		log.debug("  ja:", firstWord.ja)
 	else
-		print("  Value:", firstWord)
+		log.debug("  Value:", firstWord)
 	end
 end
 
-print("[BattleUI] RemoteEvents取得完了")
+log.debug("[BattleUI] RemoteEvents取得完了")
 
 -- 状態
 local inBattle = false
@@ -252,8 +256,6 @@ local function blockSystemKeys()
 	local currentZoom = (camera.CFrame.Position - player.Character.HumanoidRootPart.Position).Magnitude
 	player.CameraMaxZoomDistance = currentZoom
 	player.CameraMinZoomDistance = currentZoom
-
-	print(("[BattleUI] カメラを固定しました (距離: %.1f)"):format(currentZoom))
 end
 
 -- ブロック解除
@@ -262,7 +264,6 @@ local function unblockSystemKeys()
 	if originalCameraMaxZoom and originalCameraMinZoom then
 		player.CameraMaxZoomDistance = originalCameraMaxZoom
 		player.CameraMinZoomDistance = originalCameraMinZoom
-		print("[BattleUI] カメラ設定を復元しました")
 	end
 end
 
@@ -374,38 +375,78 @@ local function selectWord()
 	end
 end
 
--- 次の単語を設定
-setNextWord = function()
-	currentWordData = selectWord()
-	currentWord = currentWordData.word
-	currentIndex = 1
+-- 予知UIの更新
+local function refreshPrecogUI()
+	if not wordLabelNext then return end
+	if hasPrecog() and precogNextWordData and precogNextWordData.word then
+		wordLabelNext.Text = "次: " .. tostring(precogNextWordData.word)
+		wordLabelNext.Visible = true
+	else
+		wordLabelNext.Visible = false
+		wordLabelNext.Text = ""
+	end
+end
 
-	-- 今回の単語を記憶（次回の連続回避用）
-	lastWord = currentWord
+-- “currentWordData”とは別に、次の予約単語を用意（連続回避も考慮）
+local function rollNextPrecogWord()
+	local tries = 0
+	local candidate
+	repeat
+		candidate = selectWord()
+		tries += 1
+		-- 直前と同じは避ける（最大5回まで）
+	until (not currentWordData or candidate.word ~= currentWordData.word) or tries >= 5
+	precogNextWordData = candidate
+	refreshPrecogUI()
+end
 
-	print(("[BattleUI DEBUG] currentWordData:"):format())
-	print(currentWordData)
-	print(("[BattleUI DEBUG] localeCode: %s"):format(localeCode))
 
-	-- 翻訳を表示（フォールバック付き）
+-- 次の単語を設定（予知に対応）
+-- 引数 nextData は任意。与えなければ従来どおりランダム選択。
+setNextWord = function(nextData)
+	-- 1) 今回出す単語を決定（外部指定が無ければ従来の selectWord()）
+	currentWordData = nextData or selectWord()
+	currentWord     = currentWordData.word
+	currentIndex    = 1
+	lastWord        = currentWord
+
+	-- 2) 翻訳表示（従来どおり）
 	if translationLabel then
-		-- 優先順位：指定言語 → 日本語 → スペイン語 → フランス語 → 空
 		local translation = currentWordData[localeCode]
-			or currentWordData.ja
-			or currentWordData.es
-			or currentWordData.fr
-			or ""
-
+			or currentWordData.ja or currentWordData.es or currentWordData.fr or ""
 		translationLabel.Text = translation
 		translationLabel.Visible = translation ~= ""
-		print(("[BattleUI DEBUG] translation: %s"):format(translation))
-	else
-		warn("[BattleUI DEBUG] translationLabel が nil です！")
 	end
 
+	-- 3) 表示更新（従来どおり）
 	updateDisplay()
-	print(("[BattleUI] 次の単語: %s (%s)"):format(currentWord, currentWordData[localeCode] or currentWordData.ja or ""))
+
+	-- 4) 予知（先行描画）
+	if hasPrecog() then
+		-- まだ予約が無い/古い場合は新しく引いておく
+		if not precogNextWordData then
+			-- 連続同一単語を避けて1回引く（必要なら再抽選ロジックを足してOK）
+			local candidate = selectWord()
+			if candidate and candidate.word == currentWord and #typingLevels > 0 then
+				-- 同一回避の簡易リトライ
+				candidate = selectWord()
+			end
+			precogNextWordData = candidate
+		end
+
+		-- 先行UIを出す
+		if wordLabelNext then
+			local previewWord = precogNextWordData and precogNextWordData.word or ""
+			wordLabelNext.Visible = previewWord ~= ""
+			wordLabelNext.Text = ("Next: %s"):format(previewWord)
+		end
+	else
+		-- OFF：非表示＆予約クリア（好みで残しても良い）
+		precogNextWordData = nil
+		if wordLabelNext then wordLabelNext.Visible = false end
+	end
 end
+
 
 -- UI作成
 local function createBattleUI()
@@ -511,6 +552,24 @@ local function createBattleUI()
 	wordFrameStroke.Transparency = 0
 	wordFrameStroke.Parent = wordFrame
 
+	-- ★ 予知用のゴーストラベル（WordFrameの右下／小さめ）
+	wordLabelNext = Instance.new("TextLabel")
+	wordLabelNext.Name = "NextWordHint"
+	wordLabelNext.BackgroundTransparency = 1
+	wordLabelNext.Size = UDim2.new(1, -40, 0, 24)   -- 枠内いっぱい、左右20px余白
+	wordLabelNext.Position = UDim2.new(0, 20, 0, 6) -- 枠の上側に小さく表示
+	wordLabelNext.Font = Enum.Font.Gotham
+	wordLabelNext.TextSize = 22
+	wordLabelNext.TextColor3 = Color3.fromRGB(180, 190, 220)
+	wordLabelNext.TextStrokeTransparency = 0.8
+	wordLabelNext.TextXAlignment = Enum.TextXAlignment.Right
+	wordLabelNext.ZIndex = (wordLabel and wordLabel.ZIndex or 3) + 1
+	wordLabelNext.Text = ""
+	wordLabelNext.Visible = false
+	wordLabelNext.Parent = wordFrame
+
+
+
 	-- 単語表示（RichText対応）
 	wordLabel = Instance.new("TextLabel")
 	wordLabel.Name = "WordLabel"
@@ -542,7 +601,7 @@ local function createBattleUI()
 	translationLabel.ZIndex = 3
 	translationLabel.Parent = wordFrame
 
-	print("[BattleUI DEBUG] translationLabel 作成完了")
+	log.debug("[BattleUI DEBUG] translationLabel 作成完了")
 
 	-- === Enemy Attack Progress ===
 	enemyProgContainer = Instance.new("Frame")
@@ -592,7 +651,7 @@ local function createBattleUI()
 	countdownLabel.ZIndex = 21
 	countdownLabel.Parent = countdownFrame
 
-	print("[BattleUI] UI作成完了")
+	log.debug("[BattleUI] UI作成完了")
 end
 
 -- === 攻撃プログレス開始（0→満了）===
@@ -673,7 +732,7 @@ end
 
 -- バトル開始処理（省略なし・整備版）
 local function onBattleStart(monsterName, hp, maxHP, damage, levels, pHP, pMaxHP)
-	print("[BattleUI] === onBattleStart呼び出し ===")
+	log.debug("[BattleUI] === onBattleStart呼び出し ===")
 
 	-- nil チェックとデフォルト値
 	monsterName = monsterName or "Unknown"
@@ -684,13 +743,13 @@ local function onBattleStart(monsterName, hp, maxHP, damage, levels, pHP, pMaxHP
 	pHP = pHP or 100
 	pMaxHP = pMaxHP or 100
 
-	print(("[BattleUI] バトル開始: vs %s (敵HP: %d, プレイヤーHP: %d/%d, Damage: %d)"):format(
+	log.debugf(("[BattleUI] バトル開始: vs %s (敵HP: %d, プレイヤーHP: %d/%d, Damage: %d)"):format(
 		monsterName, hp, pHP, pMaxHP, damage
 	))
 
 	-- すでに戦闘中なら無視
 	if inBattle then
-		print("[BattleUI DEBUG] すでに戦闘中")
+		log.debug("[BattleUI DEBUG] すでに戦闘中")
 		return
 	end
 
@@ -724,8 +783,15 @@ local function onBattleStart(monsterName, hp, maxHP, damage, levels, pHP, pMaxHP
 	end)
 
 	-- UI表示
-	print("[BattleUI] UIを表示")
 	battleGui.Enabled = true
+
+	-- バトル開始時点で予知パネルをリセット
+	precogNextWordData = nil
+	if wordLabelNext then
+		wordLabelNext.Text = ""
+		wordLabelNext.Visible = hasPrecog() and false or false
+		-- ↑ true/false は開始時に出すかどうかの好み（開始時は false 推奨）
+	end
 
 	-- ★ 単語ボックスを開始時に必ず再表示＆初期状態へ
 	if wordFrame then
@@ -876,18 +942,16 @@ local function onBattleStart(monsterName, hp, maxHP, damage, levels, pHP, pMaxHP
 			requestEnemyCycleSync("first-cycle watchdog")
 		end
 	end)
-
-	print("[BattleUI] === バトル開始処理完了 ===")
 end
 
 
 -- バトル終了処理
 onBattleEnd = function(victory, summary)
-	print("[BattleUI] === バトル終了開始: " .. tostring(victory) .. " ===")
+	log.debugf("=== バトル終了開始: " .. tostring(victory) .. " ===")
 
 	-- 既にバトルが終了している場合はスキップ
 	if not inBattle and not battleGui.Enabled then
-		print("[BattleUI] 既にバトル終了済み")
+		log.debug("既にバトル終了済み")
 		return
 	end
 
@@ -938,8 +1002,6 @@ onBattleEnd = function(victory, summary)
 	if victory then
 		-- システムキーのブロックを解除
 		unblockSystemKeys()
-
-		print("[BattleUI] Roblox UI再有効化")
 
 		-- Roblox UIを再有効化
 		pcall(function()
@@ -1070,7 +1132,7 @@ onBattleEnd = function(victory, summary)
 		end)
 	else
 		-- 敗北時：UIを維持したまま死亡選択UIを待つ
-		print("[BattleUI] 敗北 - UIを維持します")
+		log.debug("[BattleUI] 敗北 - UIを維持します")
 
 		-- 敗北メッセージ
 		if wordLabel then
@@ -1097,25 +1159,17 @@ onBattleEnd = function(victory, summary)
 		-- 死亡選択UIで選んだ後に解除する
 	end
 
-	print("[BattleUI] === バトル終了完了 ===")
+	log.debug("[BattleUI] === バトル終了完了 ===")
 end
 
 -- HP更新処理（敵）
 local function onHPUpdate(newHP)
 	monsterHP = newHP
-
-	print(("[BattleUI] ========================================"):format())
-	print(("[BattleUI] 敵HP更新"):format())
-	print(("  新HP: %d"):format(newHP))
-	print(("  最大HP: %d"):format(monsterMaxHP))
-	print(("  HP割合: %.1f%%"):format((newHP / monsterMaxHP) * 100))
-	print(("[BattleUI] ========================================"):format())
-
 	updateDisplay()
 
 	-- HPが0になったら勝利（サーバーからの通知も来るが念のため）
 	if monsterHP <= 0 then
-		print("[BattleUI] ⚠️ 敵HPが0になりました（クライアント側で検出）")
+		log.debug("[BattleUI] ⚠️ 敵HPが0になりました（クライアント側で検出）")
 	end
 end
 
@@ -1124,13 +1178,6 @@ local function onPlayerHPUpdate(newHP, newMaxHP)
 	playerHP = newHP
 	playerMaxHP = newMaxHP or playerMaxHP
 	updateDisplay()
-
-	print(("[BattleUI] プレイヤーHP更新: %d / %d"):format(playerHP, playerMaxHP))
-
-	-- HPが0になったら敗北（サーバーからの通知も来るが念のため）
-	if playerHP <= 0 then
-		print("[BattleUI] プレイヤーHPが0になりました")
-	end
 end
 
 -- システムキーをブロックする入力処理（最優先）
@@ -1208,11 +1255,34 @@ local function onKeyPress(input, gameProcessed)
 				if currentIndex > #currentWord then
 					task.wait(0.3)
 					if inBattle then
-						setNextWord()
+						-- 予知ONなら予約を使う
+						local useNext = (hasPrecog and hasPrecog()) and precogNextWordData or nil
+
+						if type(setNextWord) == "function" then
+							setNextWord(useNext)
+						else
+							warn("[BattleUI] setNextWord is nil; fallback to direct update")
+							-- フォールバック（万一のため）
+							currentWordData = useNext or selectWord()
+							currentWord = currentWordData.word
+							currentIndex = 1
+							lastWord = currentWord
+							if translationLabel then
+								local translation = currentWordData[localeCode]
+									or currentWordData.ja or currentWordData.es or currentWordData.fr or ""
+								translationLabel.Text = translation
+								translationLabel.Visible = translation ~= ""
+							end
+							updateDisplay()
+						end
+
+						-- 予約は使い切ったのでクリア
+						precogNextWordData = nil
 					end
 				else
 					updateDisplay()
 				end
+
 			else
 				-- タイプミス
 				if TypingErrorSound then
@@ -1234,7 +1304,7 @@ end
 -- 初期化
 createBattleUI()
 
-print("[BattleUI] イベント接続中...")
+log.debug("イベント接続中...")
 BattleStartEvent.OnClientEvent:Connect(onBattleStart)
 BattleEndEvent.OnClientEvent:Connect(onBattleEnd)
 
@@ -1253,13 +1323,9 @@ EnemyDamageEvent.OnClientEvent:Connect(function(payload)
 end)
 
 EnemyAttackCycleStartEvent.OnClientEvent:Connect(function(payload)
-	-- まずは受信ログ（ここが出ないならサーバー送信側かイベント名ミス）
-	print("[BattleUI] EnemyAttackCycleStart received")
-
 	-- UI がまだなら一旦保存（inBattle判定で落とさない）
 	if not battleGui or not battleGui.Enabled then
 		pendingEnemyCycle = payload
-		print("[BattleUI] stashed first cycle payload (UI not ready yet)")
 		return
 	end
 
@@ -1328,5 +1394,3 @@ UserInputService.WindowFocused:Connect(function()
 		requestEnemyCycleSync("window focused")
 	end
 end)
-
-print("[BattleUI] クライアント初期化完了（タイピングモード）")
