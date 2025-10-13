@@ -727,6 +727,38 @@ local function onBattleStart(monsterName, hp, maxHP, damage, levels, pHP, pMaxHP
 	print("[BattleUI] UIを表示")
 	battleGui.Enabled = true
 
+	-- ★ 単語ボックスを開始時に必ず再表示＆初期状態へ
+	if wordFrame then
+		wordFrame.Visible = true
+		wordFrame.BackgroundTransparency = 0.2
+		local frameStroke = wordFrame:FindFirstChildOfClass("UIStroke")
+		if frameStroke then
+			frameStroke.Transparency = 0
+			frameStroke.Color = Color3.fromRGB(100, 200, 255)
+		end
+	end
+	if wordLabel then
+		wordLabel.Visible = true
+		wordLabel.RichText = true
+		wordLabel.Text = ""
+		wordLabel.TextTransparency = 0
+		wordLabel.TextStrokeTransparency = 0
+		wordLabel.TextColor3 = Color3.new(1,1,1)
+	end
+	if translationLabel then
+		translationLabel.Visible = true
+		translationLabel.Text = ""
+		translationLabel.TextTransparency = 0
+		translationLabel.TextStrokeTransparency = 0.3
+		translationLabel.TextColor3 = Color3.fromRGB(150, 200, 255)
+	end
+
+
+	-- ★ HPバーは開始時点で必ず表示に戻す
+	if hpBarBackground then
+		hpBarBackground.Visible = true
+	end
+
 	-- ★ プログレス初期化（確実に1本化）
 	if stopEnemyProgress then
 		stopEnemyProgress()
@@ -850,7 +882,7 @@ end
 
 
 -- バトル終了処理
-onBattleEnd = function(victory)
+onBattleEnd = function(victory, summary)
 	print("[BattleUI] === バトル終了開始: " .. tostring(victory) .. " ===")
 
 	-- 既にバトルが終了している場合はスキップ
@@ -876,6 +908,32 @@ onBattleEnd = function(victory)
 	-- 敵攻撃プログレスを停止＆隠す ← ココが「直後」
 	stopEnemyProgress()
 
+	-- 敵HP表示を即座に消す
+	if hpBarBackground then
+		hpBarBackground.Visible = false       -- 子の hpLabel / hpBarFill もまとめて非表示
+	end
+	if hpBarFill then
+		hpBarFill.Size = UDim2.new(0, 0, 1, 0) -- 念のためリセット
+	end
+	if hpLabel then
+		hpLabel.Text = ""                      -- 念のためリセット
+	end
+
+	-- 単語ボックスを即座に非表示
+	if wordFrame then
+		wordFrame.Visible = false
+	end
+	if wordLabel then
+		wordLabel.Text = ""
+		-- 念のため（残像対策）
+		wordLabel.TextTransparency = 0
+		wordLabel.TextStrokeTransparency = 0
+	end
+	if translationLabel then
+		translationLabel.Visible = false
+		translationLabel.Text = ""
+	end
+
 	-- 勝利時の処理
 	if victory then
 		-- システムキーのブロックを解除
@@ -892,60 +950,86 @@ onBattleEnd = function(victory)
 		end)
 
 		-- 勝利メッセージを表示
-		if wordLabel then
-			wordLabel.RichText = false
-			wordLabel.Text = "VICTORY!"
-			wordLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-			wordLabel.TextTransparency = 0
-			wordLabel.TextStrokeTransparency = 0
-
-			-- 0.5秒かけてフェードアウト
-			TweenService:Create(wordLabel, TweenInfo.new(0.5), {
-				TextTransparency = 1,
-				TextStrokeTransparency = 1
-			}):Play()
-		end
-
-		-- 翻訳ラベルを非表示
-		if translationLabel then
-			translationLabel.Visible = false
-		end
-
-		-- 枠を金色にしてフェードアウト
-		if wordFrame then
-			wordFrame.BorderColor3 = Color3.fromRGB(255, 215, 0)
-			local frameStroke = wordFrame:FindFirstChildOfClass("UIStroke")
-			if frameStroke then
-				frameStroke.Color = Color3.fromRGB(255, 215, 0)
-				TweenService:Create(frameStroke, TweenInfo.new(0.5), {
-					Transparency = 1
-				}):Play()
+		-- ★ 勝利サマリーを上部に表示（2秒後フェードアウト）
+		do
+			local exp = (summary and tonumber(summary.exp)) or 0
+			local gold = (summary and tonumber(summary.gold)) or 0
+			local dropsList = (summary and summary.drops) or {}
+			-- 表示テキスト（「なし」を含む）
+			local function formatDrops(drops)
+				if type(drops) ~= "table" or #drops == 0 then return "なし" end
+				local t = {}
+				for _, d in ipairs(drops) do
+					if typeof(d) == "string" then
+						table.insert(t, d)
+					elseif type(d) == "table" then
+						local name = d.name or d.item or "???"
+						local n = d.count or d.qty or 1
+						table.insert(t, string.format("%s×%d", name, n))
+					else
+						table.insert(t, tostring(d))
+					end
+				end
+				return table.concat(t, ", ")
 			end
 
-			TweenService:Create(wordFrame, TweenInfo.new(0.5), {
-				BackgroundTransparency = 1
-			}):Play()
+			local panel = Instance.new("Frame")
+			panel.Name = "ResultSummary"
+			panel.Size = UDim2.new(0, 520, 0, 110)
+			panel.Position = UDim2.new(0.5, -260, 0.10, 0) -- ← 上部に配置（中央寄せ）
+			panel.BackgroundColor3 = Color3.fromRGB(25,25,32)
+			panel.BackgroundTransparency = 0.1
+			panel.BorderSizePixel = 0
+			panel.ZIndex = 50
+			panel.Parent = battleGui
+
+			local corner = Instance.new("UICorner")
+			corner.CornerRadius = UDim.new(0, 10)
+			corner.Parent = panel
+
+			local stroke = Instance.new("UIStroke")
+			stroke.Thickness = 2
+			stroke.Color = Color3.fromRGB(100,200,255)
+			stroke.Transparency = 0.2
+			stroke.Parent = panel
+
+			local function addLine(text, order)
+				local label = Instance.new("TextLabel")
+				label.BackgroundTransparency = 1
+				label.Size = UDim2.new(1, -24, 0, 30)
+				label.Position = UDim2.new(0, 12, 0, 10 + (order-1)*32)
+				label.Font = Enum.Font.GothamBold
+				label.TextSize = 22
+				label.TextXAlignment = Enum.TextXAlignment.Left
+				label.TextColor3 = Color3.fromRGB(230,240,255)
+				label.Text = text
+				label.ZIndex = 51
+				label.Parent = panel
+				return label
+			end
+
+			addLine(("経験値: +%d"):format(exp), 1)
+			addLine(("ゴールド: +%d"):format(gold), 2)
+			addLine(("ドロップ: %s"):format(formatDrops(dropsList)), 3)
+
+			-- 2秒キープ → 0.6秒フェードアウト → 破棄
+			task.delay(2.0, function()
+				if panel then
+					TweenService:Create(panel, TweenInfo.new(0.6), {BackgroundTransparency = 1}):Play()
+					TweenService:Create(stroke, TweenInfo.new(0.6), {Transparency = 1}):Play()
+					for _, child in ipairs(panel:GetChildren()) do
+						if child:IsA("TextLabel") then
+							TweenService:Create(child, TweenInfo.new(0.6), {
+								TextTransparency = 1, TextStrokeTransparency = 1
+							}):Play()
+						end
+					end
+					task.wait(0.65)
+					if panel then panel:Destroy() end
+				end
+			end)
 		end
 
-		-- HPバーをフェードアウト
-		if hpBarBackground then
-			TweenService:Create(hpBarBackground, TweenInfo.new(0.5), {
-				BackgroundTransparency = 1
-			}):Play()
-		end
-
-		if hpBarFill then
-			TweenService:Create(hpBarFill, TweenInfo.new(0.5), {
-				BackgroundTransparency = 1
-			}):Play()
-		end
-
-		if hpLabel then
-			TweenService:Create(hpLabel, TweenInfo.new(0.5), {
-				TextTransparency = 1,
-				TextStrokeTransparency = 1
-			}):Play()
-		end
 
 		-- プレイヤーの入力ブロックを解除
 		local character = player.Character
@@ -965,7 +1049,7 @@ onBattleEnd = function(victory)
 
 		-- UIを非表示にするための遅延実行（別スレッドで）
 		task.spawn(function()
-			task.wait(0.6)  -- アニメーション完了を待つ
+			task.wait(2.6)  -- アニメーション完了を待つ
 			if not inBattle then  -- まだ次のバトルが始まっていないことを確認
 				battleGui.Enabled = false
 

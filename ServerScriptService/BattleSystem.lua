@@ -101,7 +101,13 @@ local function sendStatusUpdate(player: Player)
 	local stats = PlayerStats.getStats(player)
 	if not stats then return end
 
-	local expToNext = stats.Level * 100  -- レベルアップに必要な経験値
+	-- PlayerStats.getExpToNext を使う
+	local expToNext = 0
+	if PlayerStats.getExpToNext then
+		expToNext = PlayerStats.getExpToNext(stats.Level)
+	else
+		expToNext = math.floor(50 * (stats.Level ^ 1.7) + 0.5) -- 念のためのフォールバック
+	end
 
 	StatusUpdateEvent:FireClient(
 		player,
@@ -445,7 +451,9 @@ function BattleSystem.endBattle(player: Player, victory: boolean)
 			end
 		end
 
-		BattleEndEvent:FireClient(player, victory)
+		-- クライアントに通知
+		BattleEndEvent:FireClient(player, victory, nil)
+
 		SharedState.ActiveBattles[player] = nil
 
 		-- 終了処理完了後にフラグを解除
@@ -578,7 +586,16 @@ function BattleSystem.endBattle(player: Player, victory: boolean)
 	end
 
 	-- クライアントに通知
-	BattleEndEvent:FireClient(player, victory)
+	local summary = nil
+	if victory then
+		local exp = (monsterDef and monsterDef.Experience) or 0
+		local gold = (monsterDef and monsterDef.Gold) or 0
+		-- ドロップ定義があれば使う。なければ空配列でOK
+		local drops = (monsterDef and monsterDef.Drops) or {}
+		summary = { exp = exp, gold = gold, drops = drops }
+	end
+
+	BattleEndEvent:FireClient(player, victory, summary)
 
 	-- 勝利時は戦闘データをクリアして終了処理フラグも解除
 	if victory then

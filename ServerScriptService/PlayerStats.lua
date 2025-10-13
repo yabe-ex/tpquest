@@ -196,37 +196,59 @@ function PlayerStats.takeDamage(player: Player, damage: number): boolean
 end
 
 -- 経験値を追加
-function PlayerStats.addExperience(player: Player, exp: number)
-	local stats = PlayerData[player]
+function PlayerStats.addExperience(player, amount)
+	local stats = PlayerStats.getStats(player)
 	if not stats then return end
 
-	stats.Experience = stats.Experience + exp
-	print(("[PlayerStats] %s が経験値 %d を獲得（合計: %d)"):format(
-		player.Name, exp, stats.Experience
-		))
+	stats.Experience = (stats.Experience or 0) + (amount or 0)
 
-	-- レベルアップチェック
-	local requiredExp = getRequiredExp(stats.Level)
-	while stats.Experience >= requiredExp do
-		PlayerStats.levelUp(player)
-		requiredExp = getRequiredExp(stats.Level)
+	-- 複数レベルアップに対応
+	local leveledUp = false
+	local lastDeltas = nil
+
+	while true do
+		local need = PlayerStats.getExpToNext(stats.Level)
+		if (stats.Experience or 0) < need then
+			break
+		end
+
+		stats.Experience = stats.Experience - need
+		stats.Level = stats.Level + 1
+		leveledUp = true
+
+		-- 上昇量計算
+		local deltas = PlayerStats.calcLevelUpDeltas(stats.Level)
+		lastDeltas = deltas
+
+		-- 反映
+		stats.MaxHP = (stats.MaxHP or 100) + deltas.hp
+		stats.Speed  = (stats.Speed  or 10)  + deltas.speed
+		stats.Attack = (stats.Attack or 10)  + deltas.attack
+		stats.Defense= (stats.Defense or 10) + deltas.defense
+
+		-- HPは全回復（お好みで）
+		stats.CurrentHP = stats.MaxHP
+
+		-- レベルアップ演出（クライアントへ）
+		-- 既存：LevelUpEvent:FireClient(player, level, maxHP, speed, attack, defense)
+		-- 後方互換＋拡張：第7引数に deltas テーブルを追加
+		local LevelUpEvent = game.ReplicatedStorage:FindFirstChild("LevelUp")
+		if LevelUpEvent then
+			LevelUpEvent:FireClient(
+				player,
+				stats.Level,
+				stats.MaxHP,
+				stats.Speed,
+				stats.Attack,
+				stats.Defense,
+				deltas -- 追加（nilでもOKにしておく）
+			)
+		end
 	end
 
-	-- ステータス更新を送信
-	local StatusUpdateEvent = getRemoteEvent("StatusUpdate")
-	if StatusUpdateEvent then
-		local expToNext = getRequiredExp(stats.Level)
-		StatusUpdateEvent:FireClient(
-			player,
-			stats.CurrentHP,
-			stats.MaxHP,
-			stats.Level,
-			stats.Experience,
-			expToNext,
-			stats.Gold
-		)
-	end
+	-- ステータス保存や通知があればここで
 end
+
 
 -- ゴールドを追加
 function PlayerStats.addGold(player: Player, gold: number)
@@ -405,5 +427,49 @@ function PlayerStats.init()
 
 	print("[PlayerStats] 初期化完了（ステップ2: SharedState統合版）")
 end
+
+-- 例）PlayerStats.lua のトップレベル（return の前、ユーティリティの辺り）に追記
+local function pow(base, exp)
+	return base ^ exp
+end
+
+function PlayerStats.getExpToNext(level: number): number
+	-- 50 * level^1.7 を四捨五入
+	return math.floor(50 * pow(level, 1.7) + 0.5)
+end
+
+-- レベルアップ時の増分を計算
+-- 仕様：
+--  - 通常：HP +10、他 +2
+--  - レベルが5の倍数：1.5倍（HP+15、他+3）
+--  - さらにHPはレベル帯で上昇幅を増やす（例：Lv10~19:+15、Lv20~29:+20、…）
+function PlayerStats.calcLevelUpDeltas(newLevel: number)
+	-- 基本値
+	local hpInc = 10
+	local otherInc = 2
+
+	-- レベル帯でHP増加幅を加算（例示）
+	if newLevel >= 20 then
+		hpInc = 20
+	elseif newLevel >= 10 then
+		hpInc = 15
+	end
+	-- 必要ならさらに帯を増やせます
+	-- if newLevel >= 30 then hpInc = 25 end ... 等
+
+	-- 5の倍数は1.5倍
+	if newLevel % 5 == 0 then
+		hpInc = math.floor(hpInc * 1.5 + 0.5)     -- 10→15, 15→22, 20→30 など
+		otherInc = math.floor(otherInc * 1.5 + 0.5) -- 2→3
+	end
+
+	return {
+		hp = hpInc,
+		speed = otherInc,
+		attack = otherInc,
+		defense = otherInc,
+	}
+end
+
 
 return PlayerStats

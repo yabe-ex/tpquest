@@ -122,10 +122,20 @@ local function showLevelUp(level, maxHP, speed, attack, defense)
 	statsText.TextStrokeTransparency = 0.5
 	statsText.Font = Enum.Font.Gotham
 	statsText.TextSize = 20
-	statsText.Text = string.format(
-		"HP: %d (+10)\n素早さ: %d (+2)\n攻撃力: %d (+2)\n守備力: %d (+2)",
-		maxHP, speed, attack, defense
-	)
+
+	local hpPlus   = (deltas and deltas.hp) or 10
+    local spdPlus  = (deltas and deltas.speed) or 2
+    local atkPlus  = (deltas and deltas.attack) or 2
+    local defPlus  = (deltas and deltas.defense) or 2
+
+    statsText.Text = string.format(
+        "HP: %d (+%d)\n素早さ: %d (+%d)\n攻撃力: %d (+%d)\n守備力: %d (+%d)",
+        maxHP, hpPlus,
+        speed, spdPlus,
+        attack, atkPlus,
+        defense, defPlus
+    )
+
 	statsText.TextTransparency = 1
 	statsText.TextYAlignment = Enum.TextYAlignment.Top
 	statsText.ZIndex = 102

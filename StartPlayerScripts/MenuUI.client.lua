@@ -449,80 +449,121 @@ end
 local function showResetModal()
     createModal("データ初期化", function(content)
         local warningLabel = Instance.new("TextLabel")
-		warningLabel.Size = UDim2.new(1, 0, 0, 60)
-		warningLabel.Position = UDim2.new(0, 0, 0, 20)
-		warningLabel.BackgroundTransparency = 1
-		warningLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-		warningLabel.TextStrokeTransparency = 0.7
-		warningLabel.Font = Enum.Font.Gotham
-		warningLabel.TextSize = 18
-		warningLabel.Text = "!! 警告 !!\nすべての進行状況を失います。本当に初期化しますか？"
-		warningLabel.TextWrapped = true
-		warningLabel.TextTransparency = 1
-		warningLabel.ZIndex = 53
-		warningLabel.Parent = content
+        warningLabel.Size = UDim2.new(1, 0, 0, 60)
+        warningLabel.Position = UDim2.new(0, 0, 0, 20)
+        warningLabel.BackgroundTransparency = 1
+        warningLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        warningLabel.TextStrokeTransparency = 0.7
+        warningLabel.Font = Enum.Font.Gotham
+        warningLabel.TextSize = 18
+        warningLabel.Text = "!! 警告 !!\nすべての進行状況を失います。本当に初期化しますか？"
+        warningLabel.TextWrapped = true
+        warningLabel.TextTransparency = 1
+        warningLabel.ZIndex = 53
+        warningLabel.Parent = content
+        TweenService:Create(warningLabel, TweenInfo.new(0.2), {TextTransparency = 0, TextStrokeTransparency = 0.7}):Play()
 
-		TweenService:Create(warningLabel, TweenInfo.new(0.2), {
-			TextTransparency = 0,
-			TextStrokeTransparency = 0.7
-		}):Play()
+        -- 進捗/結果ラベル
+        local resultLabel = Instance.new("TextLabel")
+        resultLabel.Size = UDim2.new(1, 0, 0, 28)
+        resultLabel.Position = UDim2.new(0, 0, 1, -110)
+        resultLabel.BackgroundTransparency = 1
+        resultLabel.Font = Enum.Font.Gotham
+        resultLabel.TextSize = 18
+        resultLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        resultLabel.TextStrokeTransparency = 0.7
+        resultLabel.Text = ""
+        resultLabel.ZIndex = 53
+        resultLabel.Parent = content
 
-		local resetButton = Instance.new("TextButton")
-		resetButton.Size = UDim2.new(0, 150, 0, 50)
-		resetButton.Position = UDim2.new(0.5, -160, 1, -70)
-		resetButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-		resetButton.BackgroundTransparency = 0.2
+        local resetButton = Instance.new("TextButton")
+        resetButton.Size = UDim2.new(0, 150, 0, 50)
+        resetButton.Position = UDim2.new(0.5, -160, 1, -70)
+        resetButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        resetButton.BackgroundTransparency = 0.2
         resetButton.BorderSizePixel = 0
         resetButton.Font = Enum.Font.GothamBold
         resetButton.TextSize = 18
-		resetButton.Text = "初期化する"
-		resetButton.TextColor3 = Color3.new(1, 1, 1)
-		resetButton.TextTransparency = 1
-		resetButton.ZIndex = 53
-		resetButton.Parent = content
-
+        resetButton.Text = "初期化する"
+        resetButton.TextColor3 = Color3.new(1, 1, 1)
+        resetButton.TextTransparency = 1
+        resetButton.ZIndex = 53
+        resetButton.Parent = content
         local resetCorner = Instance.new("UICorner")
-		resetCorner.CornerRadius = UDim.new(0, 8)
-		resetCorner.Parent = resetButton
+        resetCorner.CornerRadius = UDim.new(0, 8)
+        resetCorner.Parent = resetButton
+        TweenService:Create(resetButton, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, false, 0.1), {
+            BackgroundTransparency = 0.2, TextTransparency = 0
+        }):Play()
 
-		TweenService:Create(resetButton, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, false, 0.1), {
-			BackgroundTransparency = 0.2,
-			TextTransparency = 0
-		}):Play()
+        local cancelButton = Instance.new("TextButton")
+        cancelButton.Size = UDim2.new(0, 150, 0, 50)
+        cancelButton.Position = UDim2.new(0.5, 10, 1, -70)
+        cancelButton.BackgroundColor3 = Color3.fromRGB(149, 165, 166)
+        cancelButton.BackgroundTransparency = 0.2
+        cancelButton.BorderSizePixel = 0
+        cancelButton.Font = Enum.Font.GothamBold
+        cancelButton.TextSize = 18
+        cancelButton.Text = "キャンセル"
+        cancelButton.TextColor3 = Color3.new(1, 1, 1)
+        cancelButton.TextTransparency = 1
+        cancelButton.ZIndex = 53
+        cancelButton.Parent = content
+        local cancelCorner = Instance.new("UICorner")
+        cancelCorner.CornerRadius = UDim.new(0, 8)
+        cancelCorner.Parent = cancelButton
+        TweenService:Create(cancelButton, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, false, 0.15), {
+            BackgroundTransparency = 0.2, TextTransparency = 0
+        }):Play()
+        cancelButton.MouseButton1Click:Connect(function()
+            closeModal()
+        end)
 
-		resetButton.MouseButton1Click:Connect(function()
-			-- TODO: FireServer Reset Event
-			player:Kick("データを初期化しました")
-		end)
+        -- RemoteEvents
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local ResetSaveRequest = ReplicatedStorage:FindFirstChild("ResetSaveRequest")
+        local ResetSaveResult  = ReplicatedStorage:FindFirstChild("ResetSaveResult")
 
-		local cancelButton = Instance.new("TextButton")
-		cancelButton.Size = UDim2.new(0, 150, 0, 50)
-		cancelButton.Position = UDim2.new(0.5, 10, 1, -70)
-		cancelButton.BackgroundColor3 = Color3.fromRGB(149, 165, 166)
-		cancelButton.BackgroundTransparency = 0.2
-		cancelButton.BorderSizePixel = 0
-		cancelButton.Font = Enum.Font.GothamBold
-		cancelButton.TextSize = 18
-		cancelButton.Text = "キャンセル"
-		cancelButton.TextColor3 = Color3.new(1, 1, 1)
-		cancelButton.TextTransparency = 1
-		cancelButton.ZIndex = 53
-		cancelButton.Parent = content
+        resetButton.MouseButton1Click:Connect(function()
+            if not ResetSaveRequest or not ResetSaveResult then
+                resultLabel.Text = "❌ サーバ側の初期化機能が見つかりません"
+                resultLabel.TextColor3 = Color3.fromRGB(231,76,60)
+                return
+            end
 
-		TweenService:Create(cancelButton, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, false, 0.15), {
-			BackgroundTransparency = 0.2,
-			TextTransparency = 0
-		}):Play()
+            -- 二度押し防止
+            resetButton.Active = false
+            resetButton.AutoButtonColor = false
+            resultLabel.Text = "🔄 初期化しています..."
+            resultLabel.TextColor3 = Color3.fromRGB(255,255,255)
 
-		local cancelCorner = Instance.new("UICorner")
-		cancelCorner.CornerRadius = UDim.new(0, 8)
-		cancelCorner.Parent = cancelButton
+            -- 結果待ちの接続（ワンショット）
+            local conn
+            conn = ResetSaveResult.OnClientEvent:Connect(function(success, message)
+                if conn and conn.Connected then conn:Disconnect() end
+                if success then
+                    resultLabel.Text = "✅ 初期化完了（レベル1へ）"
+                    resultLabel.TextColor3 = Color3.fromRGB(46,204,113)
+                    task.wait(1.2)
+                    closeModal()
+                    -- 実環境では再接続してクリーンに読み直し（Studioはキックしない）
+                    if not game:GetService("RunService"):IsStudio() then
+                        Players.LocalPlayer:Kick("データを初期化しました。再接続してください。")
+                    end
+                else
+                    resultLabel.Text = "❌ 初期化失敗: " .. (message or "不明なエラー")
+                    resultLabel.TextColor3 = Color3.fromRGB(231,76,60)
+                    resetButton.Active = true
+                    resetButton.AutoButtonColor = true
+                end
+            end)
 
-		cancelButton.MouseButton1Click:Connect(function()
-			closeModal()
-		end)
+            -- サーバへ要求
+            ResetSaveRequest:FireServer()
+        end)
     end)
 end
+
 
 
 -- ステータス画面 (既存ロジック)
