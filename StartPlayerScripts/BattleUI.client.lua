@@ -9,6 +9,32 @@ local StarterGui = game:GetService("StarterGui")
 local ContextActionService = game:GetService("ContextActionService")
 local LocalizationService = game:GetService("LocalizationService")
 
+local Sounds = ReplicatedStorage:WaitForChild("Sounds", 10)
+local TypingCorrectSound = Sounds and Sounds:WaitForChild("TypingCorrect", 5)
+local TypingErrorSound = Sounds and Sounds:WaitForChild("TypingError", 5)
+local EnemyHitSound = Sounds and Sounds:WaitForChild("EnemyHit", 5)
+if not EnemyHitSound then
+	warn("[BattleUI] EnemyHit 効果音が見つかりません (WaitForChild タイムアウト)")
+end
+
+-- 効果音の取りこぼしを戦闘開始時に再解決する保険
+if not resolveSoundsIfNeeded then
+	function resolveSoundsIfNeeded()
+		local s = ReplicatedStorage:FindFirstChild("Sounds")
+		if not s then return end
+		if not TypingCorrectSound or not TypingCorrectSound.Parent then
+			TypingCorrectSound = s:FindFirstChild("TypingCorrect")
+		end
+		if not TypingErrorSound or not TypingErrorSound.Parent then
+			TypingErrorSound = s:FindFirstChild("TypingError")
+		end
+		if not EnemyHitSound or not EnemyHitSound.Parent then
+			EnemyHitSound = s:FindFirstChild("EnemyHit")
+		end
+	end
+end
+
+
 local countdownFrame: Frame? = nil
 local countdownLabel: TextLabel? = nil
 
@@ -42,6 +68,13 @@ local progressStartedOnce = false     -- 一度でも startEnemyProgress を呼�
 local PROGRESS_COUNTDOWN_ON_START = false   -- trueで3,2,1のカウントダウン後に開始
 local COUNTDOWN_SECONDS = 3
 local DEFAULT_FIRST_INTERVAL = 4            -- サーバーが来るまでの仮インターバル(秒)
+
+-- === 共通レイアウト定数（横幅を揃える） ===
+local STACK_WIDTH = 700      -- 3つの横幅を統一（WordFrame の幅と同じ）
+local WORD_H      = 150
+local HP_BAR_H    = 40
+local PROG_H      = 14
+local STACK_PAD   = 10       -- 縦の隙間
 
 -- 進行アニメ（プログレスバーを 0→満了 で伸ばす）
 local function startEnemyProgress(durationSec: number)
@@ -308,6 +341,25 @@ local function createBattleUI()
 	battleGui.Enabled = false
 	battleGui.Parent = playerGui
 
+	-- 中央の縦スタック（幅を統一）
+	local centerStack = Instance.new("Frame")
+	centerStack.Name = "CenterStack"
+	centerStack.AnchorPoint = Vector2.new(0.5, 0.5)
+	centerStack.Position = UDim2.new(0.5, 0, 0.5, 0)
+	centerStack.Size = UDim2.new(0, STACK_WIDTH, 0, WORD_H + HP_BAR_H + PROG_H + (STACK_PAD * 2))
+	centerStack.BackgroundTransparency = 1
+	centerStack.BorderSizePixel = 0
+	centerStack.ZIndex = 1
+	centerStack.Parent = battleGui
+
+	local stackLayout = Instance.new("UIListLayout")
+	stackLayout.FillDirection = Enum.FillDirection.Vertical
+	stackLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	stackLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	stackLayout.Padding = UDim.new(0, STACK_PAD)
+	stackLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	stackLayout.Parent = centerStack
+
 	-- 暗転用フレーム
 	darkenFrame = Instance.new("Frame")
 	darkenFrame.Name = "DarkenFrame"
@@ -322,12 +374,12 @@ local function createBattleUI()
 	-- 敵HPバー背景
 	hpBarBackground = Instance.new("Frame")
 	hpBarBackground.Name = "HPBarBackground"
-	hpBarBackground.Size = UDim2.new(0, 500, 0, 40)
+	hpBarBackground.Size = UDim2.new(1, 0, 0, HP_BAR_H)
 	hpBarBackground.Position = UDim2.new(0.5, -250, 0.25, 0)
 	hpBarBackground.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 	hpBarBackground.BorderSizePixel = 0
 	hpBarBackground.ZIndex = 2
-	hpBarBackground.Parent = battleGui
+	hpBarBackground.Parent = centerStack
 
 	-- HPバー背景の角を丸くする
 	local hpBarCorner = Instance.new("UICorner")
@@ -366,13 +418,12 @@ local function createBattleUI()
 	-- 単語表示用フレーム（枠）
 	wordFrame = Instance.new("Frame")
 	wordFrame.Name = "WordFrame"
-	wordFrame.Size = UDim2.new(0, 700, 0, 150)
-	wordFrame.Position = UDim2.new(0.5, -350, 0.5, -75)
+	wordFrame.Size = UDim2.new(1, 0, 0, WORD_H)
 	wordFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 	wordFrame.BorderSizePixel = 3
 	wordFrame.BorderColor3 = Color3.fromRGB(100, 200, 255)
 	wordFrame.ZIndex = 2
-	wordFrame.Parent = battleGui
+	wordFrame.Parent = centerStack
 
 	-- 枠の角を丸くする
 	local wordFrameCorner = Instance.new("UICorner")
@@ -423,13 +474,13 @@ local function createBattleUI()
 	enemyProgContainer = Instance.new("Frame")
 	enemyProgContainer.Name = "EnemyAttackProgress"
 	enemyProgContainer.AnchorPoint = Vector2.new(0.5, 1)
-	enemyProgContainer.Size = UDim2.new(0.6, 0, 0, 14)
+	enemyProgContainer.Size = UDim2.new(1, 0, 0, PROG_H)
 	enemyProgContainer.Position = UDim2.new(0.5, 0, 0.98, 0)
 	enemyProgContainer.BackgroundColor3 = Color3.fromRGB(40, 40, 48)
 	enemyProgContainer.BorderSizePixel = 0
 	enemyProgContainer.Visible = false
 	enemyProgContainer.ZIndex = 5
-	enemyProgContainer.Parent = battleGui
+	enemyProgContainer.Parent = centerStack
 
 	local enemyProgCorner = Instance.new("UICorner")
 	enemyProgCorner.CornerRadius = UDim.new(0, 7)
@@ -470,9 +521,9 @@ local function createBattleUI()
 	print("[BattleUI] UI作成完了")
 end
 
-local Sounds = ReplicatedStorage:WaitForChild("Sounds", 10)
-local TypingCorrectSound = Sounds and Sounds:WaitForChild("TypingCorrect", 5)
-local TypingErrorSound = Sounds and Sounds:WaitForChild("TypingError", 5)
+-- local Sounds = ReplicatedStorage:WaitForChild("Sounds", 10)
+-- local TypingCorrectSound = Sounds and Sounds:WaitForChild("TypingCorrect", 5)
+-- local TypingErrorSound = Sounds and Sounds:WaitForChild("TypingError", 5)
 
 if not TypingCorrectSound then
 	warn("[BattleUI] TypingCorrect効果音が見つかりません (WaitForChild タイムアウト)")
@@ -540,6 +591,8 @@ local function onBattleStart(monsterName, hp, maxHP, damage, levels, pHP, pMaxHP
 	print("[BattleUI] UIを表示")
 
 	battleGui.Enabled = true
+	if resolveSoundsIfNeeded then resolveSoundsIfNeeded() end
+
 
 -- 入力は一旦禁止（カウントダウンOFFなので常に true）
 	ypingEnabled = true
@@ -873,6 +926,30 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
+playHitFlash = function()
+	if not wordFrame then return end
+	local frameStroke = wordFrame:FindFirstChildOfClass("UIStroke")
+
+	-- 赤く点滅
+	wordFrame.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+	wordFrame.BackgroundTransparency = 0.3
+	if frameStroke then
+		frameStroke.Color = Color3.fromRGB(255, 50, 50)
+	end
+
+	TweenService:Create(wordFrame, TweenInfo.new(0.3), {
+		BackgroundColor3 = Color3.fromRGB(30, 30, 40),
+		BackgroundTransparency = 0.2,
+	}):Play()
+
+	if frameStroke then
+		TweenService:Create(frameStroke, TweenInfo.new(0.3), {
+			Color = Color3.fromRGB(100, 200, 255),
+		}):Play()
+	end
+end
+
+
 -- キー入力処理
 local function onKeyPress(input, gameProcessed)
 	if not inBattle then return end
@@ -913,30 +990,7 @@ local function onKeyPress(input, gameProcessed)
 					TypingErrorSound:Play()
 				end
 
-				-- 枠を赤く光らせる（点滅エフェクト）
-				if wordFrame then
-					-- 背景を赤く
-					wordFrame.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-					wordFrame.BackgroundTransparency = 0.3  -- 少し濃く
-
-					-- 枠線も赤く
-					local frameStroke = wordFrame:FindFirstChildOfClass("UIStroke")
-					if frameStroke then
-						frameStroke.Color = Color3.fromRGB(255, 50, 50)
-					end
-
-					-- 0.3秒かけて元に戻す
-					TweenService:Create(wordFrame, TweenInfo.new(0.3), {
-						BackgroundColor3 = Color3.fromRGB(30, 30, 40),
-						BackgroundTransparency = 0.2
-					}):Play()
-
-					if frameStroke then
-						TweenService:Create(frameStroke, TweenInfo.new(0.3), {
-							Color = Color3.fromRGB(100, 200, 255)
-						}):Play()
-					end
-				end
+				if playHitFlash then playHitFlash() end
 
 				-- タイプミス時のダメージをサーバーに通知
 				local TypingMistakeEvent = ReplicatedStorage:FindFirstChild("TypingMistake")
@@ -954,6 +1008,20 @@ createBattleUI()
 print("[BattleUI] イベント接続中...")
 BattleStartEvent.OnClientEvent:Connect(onBattleStart)
 BattleEndEvent.OnClientEvent:Connect(onBattleEnd)
+
+local EnemyDamageEvent = ReplicatedStorage:WaitForChild("EnemyDamage", 30)
+EnemyDamageEvent.OnClientEvent:Connect(function(payload)
+	-- バトル中だけ反応
+	if not inBattle then return end
+
+	-- 敵ターンの被弾エフェクト
+	playHitFlash()
+
+	-- 敵被弾SE
+	if EnemyHitSound and EnemyHitSound.Play then
+		EnemyHitSound:Play()
+	end
+end)
 
 -- ★ 敵攻撃サイクル開始（プログレス用）: nil ガード付き
 local EnemyAttackCycleStartEvent = ReplicatedStorage:WaitForChild("EnemyAttackCycleStart", 30)

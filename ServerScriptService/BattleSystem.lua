@@ -87,6 +87,8 @@ local ShowDeathUIEvent = getOrCreateRemoteEvent("ShowDeathUI")
 local DeathChoiceEvent = getOrCreateRemoteEvent("DeathChoice")
 local TypingMistakeEvent = getOrCreateRemoteEvent("TypingMistake")
 local EnemyAttackCycleStartEvent = getOrCreateRemoteEvent("EnemyAttackCycleStart")
+local EnemyDamageEvent = getOrCreateRemoteEvent("EnemyDamage")
+
 
 print("[BattleSystem] RemoteEvents準備完了")
 
@@ -174,6 +176,7 @@ local function enemyAttack(player: Player, battleData)
 
 	-- プレイヤーにダメージ
 	local isDead = PlayerStats.takeDamage(player, damage)
+	EnemyDamageEvent:FireClient(player, { amount = damage })
 
 	-- HPをクライアントに通知
 	PlayerHPUpdateEvent:FireClient(player, playerStats.CurrentHP, playerStats.MaxHP)

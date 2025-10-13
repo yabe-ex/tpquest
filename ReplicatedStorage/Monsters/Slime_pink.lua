@@ -5,14 +5,14 @@ return {
 	RespawnTime = 5,
 
 	-- 【新】バトルステータス
-	HP = 80,           -- ライフ
+	HP = 120,           -- ライフ
 	Speed = 80,         -- 素早さ
 	Attack = 40,        -- 攻撃力
 	Defense = 12,       -- 守備力
 
 	-- 【新】報酬
-	Experience = 20,   -- 倒した時に得られる経験値
-	Gold = 10,         -- 倒した時に得られるゴールド
+	Experience = 30,   -- 倒した時に得られる経験値
+	Gold = 25,         -- 倒した時に得られるゴールド
 
 	-- タイピングレベル（重み付き）
 	TypingLevels = {

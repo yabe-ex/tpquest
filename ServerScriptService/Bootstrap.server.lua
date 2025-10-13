@@ -6,6 +6,67 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 print("[Bootstrap] === ゲーム初期化開始 (最終安定版) ===")
+-- ★ 効果音の初期化（早期）: 場所ズレ/種類ミスでも落ちないローダー
+do
+    local function findSoundRegistry()
+        -- 1) ServerScriptService 直下
+        local m = ServerScriptService:FindFirstChild("SoundRegistry")
+        -- 2) Modules フォルダ配下
+        if not m then
+            local modules = ServerScriptService:FindFirstChild("Modules")
+            if modules then
+                m = modules:FindFirstChild("SoundRegistry")
+            end
+        end
+        -- 3) ReplicatedStorage 側に置いた場合
+        if not m then
+            m = ReplicatedStorage:FindFirstChild("SoundRegistry")
+        end
+        return m
+    end
+
+    local m = findSoundRegistry()
+    print("[Bootstrap] (early) SoundRegistry =", m and m:GetFullName() or "nil", m and m.ClassName)
+
+    if m and m:IsA("ModuleScript") then
+        local okReq, modOrErr = pcall(require, m)
+        if okReq and type(modOrErr) == "table" and type(modOrErr.init) == "function" then
+            local okInit, errInit = pcall(modOrErr.init)
+            if okInit then
+                print("[Bootstrap] Sounds初期化完了（SoundRegistry・早期）")
+            else
+                warn("[Bootstrap] SoundRegistry.init エラー（早期）: ", errInit)
+            end
+        else
+            warn("[Bootstrap] SoundRegistry の戻り値が不正 or require 失敗（早期）: ", modOrErr)
+        end
+    else
+        -- フォールバック: とりあえず Sounds フォルダと最低限の音を用意（クライアントの WaitForChild 対策）
+        local folder = ReplicatedStorage:FindFirstChild("Sounds")
+        if not folder then
+            folder = Instance.new("Folder")
+            folder.Name = "Sounds"
+            folder.Parent = ReplicatedStorage
+        end
+
+        local function ensure(name, id, vol)
+            local s = folder:FindFirstChild(name)
+            if not s then
+                s = Instance.new("Sound")
+                s.Name = name
+                s.SoundId = id
+                s.Volume = vol
+                s.Parent = folder
+            end
+        end
+        ensure("TypingCorrect", "rbxassetid://159534615",        0.4)
+        ensure("TypingError",   "rbxassetid://113721818600044",  0.5)
+        ensure("EnemyHit",      "rbxassetid://155288625",        0.6)
+
+        warn("[Bootstrap] SoundRegistry が見つからない/ModuleScriptでないため、暫定で Sounds を用意（早期）")
+    end
+end
+
 
 -- ZoneManagerを読み込み（ServerScriptServiceの兄弟モジュール）
 local ZoneManager = require(script.Parent:WaitForChild("ZoneManager"))
@@ -280,33 +341,52 @@ Players.PlayerRemoving:Connect(function(player)
     LastLoadedLocation[player] = nil
 end)
 
--- 効果音の初期化
-task.spawn(function()
-    local soundsFolder = ReplicatedStorage:FindFirstChild("Sounds")
-    if not soundsFolder then
-        soundsFolder = Instance.new("Folder")
-        soundsFolder.Name = "Sounds"
-        soundsFolder.Parent = ReplicatedStorage
+-- 効果音の初期化（場所ズレ/種類ミスにも強いローダー）
+do
+    local function findSoundRegistry()
+        -- 1) まずは直下
+        local m = ServerScriptService:FindFirstChild("SoundRegistry")
+        -- 2) よくある Modules フォルダ配下
+        if not m then
+            local modules = ServerScriptService:FindFirstChild("Modules")
+            if modules then
+                m = modules:FindFirstChild("SoundRegistry")
+            end
+        end
+        -- 3) もし ReplicatedStorage に置いた場合
+        if not m then
+            m = ReplicatedStorage:FindFirstChild("SoundRegistry")
+        end
+        return m
     end
 
-    if not soundsFolder:FindFirstChild("TypingCorrect") then
-        local typingCorrect = Instance.new("Sound")
-        typingCorrect.Name = "TypingCorrect"
-        typingCorrect.SoundId = "rbxassetid://159534615"
-        typingCorrect.Volume = 0.4
-        typingCorrect.Parent = soundsFolder
-    end
+    local m = findSoundRegistry()
+    print("[Bootstrap] SoundRegistry child =", m, m and m.ClassName, m and m:GetFullName())
 
-    if not soundsFolder:FindFirstChild("TypingError") then
-        local typingError = Instance.new("Sound")
-        typingError.Name = "TypingError"
-        typingError.SoundId = "rbxassetid://113721818600044"
-        typingError.Volume = 0.5
-        typingError.Parent = soundsFolder
+    if not m then
+        warn("[Bootstrap] SoundRegistry が見つかりません。ServerScriptService 直下（または Modules 配下）に ModuleScript を作成してください。")
+    elseif not m:IsA("ModuleScript") then
+        warn(("[Bootstrap] SoundRegistry は %s です。ModuleScript に作り直してください。"):format(m.ClassName))
+    else
+        local ok, SoundRegistryOrErr = pcall(require, m)
+        if not ok then
+            warn("[Bootstrap] require に失敗: ", SoundRegistryOrErr)
+        else
+            local SoundRegistry = SoundRegistryOrErr
+            if type(SoundRegistry) == "table" and type(SoundRegistry.init) == "function" then
+                local okInit, errInit = pcall(SoundRegistry.init)
+                if okInit then
+                    print("[Bootstrap] Sounds初期化完了（SoundRegistry）")
+                else
+                    warn("[Bootstrap] SoundRegistry.init でエラー: ", errInit)
+                end
+            else
+                warn("[Bootstrap] SoundRegistry はテーブル+init関数ではありません。ModuleScriptの戻り値を確認してください。")
+            end
+        end
     end
+end
 
-    print("[Bootstrap] Soundsフォルダを初期化しました")
-end)
 
 -- 【追加】セーブイベントハンドラの登録
 local SaveGameEvent = ReplicatedStorage:FindFirstChild("SaveGame")
