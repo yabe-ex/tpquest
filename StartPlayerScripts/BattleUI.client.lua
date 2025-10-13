@@ -9,6 +9,9 @@ local StarterGui = game:GetService("StarterGui")
 local ContextActionService = game:GetService("ContextActionService")
 local LocalizationService = game:GetService("LocalizationService")
 
+local countdownFrame: Frame? = nil
+local countdownLabel: TextLabel? = nil
+
 local function runCountdown(seconds: number)
 	if not countdownFrame or not countdownLabel then return end
 	countdownFrame.Visible = true
@@ -31,12 +34,14 @@ local enemyProgContainer = nil
 local enemyProgFill = nil
 local enemyProgConn = nil
 
+local pendingCyclePayload = nil       -- { intervalSec=..., startedAt=... }
+local progressStartedOnce = false     -- 一度でも startEnemyProgress を呼んだか
+
+
 -- === 攻撃プログレスの起動挙動 ===
 local PROGRESS_COUNTDOWN_ON_START = false   -- trueで3,2,1のカウントダウン後に開始
 local COUNTDOWN_SECONDS = 3
 local DEFAULT_FIRST_INTERVAL = 4            -- サーバーが来るまでの仮インターバル(秒)
-local countdownFrame: Frame? = nil
-local countdownLabel: TextLabel? = nil
 
 -- 進行アニメ（プログレスバーを 0→満了 で伸ばす）
 local function startEnemyProgress(durationSec: number)
@@ -536,28 +541,33 @@ local function onBattleStart(monsterName, hp, maxHP, damage, levels, pHP, pMaxHP
 
 	battleGui.Enabled = true
 
-	-- 入力は一旦禁止（カウントダウンありなら）
-	TypingEnabled = not PROGRESS_COUNTDOWN_ON_START
+-- 入力は一旦禁止（カウントダウンOFFなので常に true）
+	ypingEnabled = true
 
-	-- ★開始直後にプログレスを“仮で”回す or カウントダウン後に回す
 	if enemyProgContainer and enemyProgFill then
-		if PROGRESS_COUNTDOWN_ON_START then
-			enemyProgContainer.Visible = false
-			-- ★ カウントダウン（ここでもし nil なら何もしないように）
-			if type(runCountdown) == "function" then
-				runCountdown(COUNTDOWN_SECONDS)
-			end
-			-- カウントダウン後にプログレス開始＆入力解禁
-			startEnemyProgress(DEFAULT_FIRST_INTERVAL)
-			TypingEnabled = true
+		-- まず UI を0にリセットだけしておく（見た目のチラつき防止）
+		enemyProgContainer.Visible = true
+		enemyProgFill.Size = UDim2.new(0, 0, 1, 0)
+
+		-- ★ 1) 既にサーバーの初回サイクルが届いていれば、それで即開始
+		if pendingCyclePayload and pendingCyclePayload.intervalSec then
+			local duration = tonumber(pendingCyclePayload.intervalSec) or DEFAULT_FIRST_INTERVAL
+			startEnemyProgress(duration)
+			progressStartedOnce = true
+			pendingCyclePayload = nil
 		else
-			-- 即時に仮プログレス開始
-			startEnemyProgress(DEFAULT_FIRST_INTERVAL)
+			-- ★ 2) ほんのわずかだけ待って（0.15s）、まだ来なければ仮4秒で開始
+			progressStartedOnce = false
+			task.delay(0.15, function()
+				if inBattle and not progressStartedOnce then
+					startEnemyProgress(DEFAULT_FIRST_INTERVAL)
+					progressStartedOnce = true
+				end
+			end)
 		end
 	else
 		warn("[BattleUI] enemy progress UI not initialized; fallback skipped")
 	end
-
 
 	-- ここから追加：プログレスバーの表示＆リセット（nilガード付き）
 	if enemyProgContainer and enemyProgFill then
@@ -569,10 +579,6 @@ local function onBattleStart(monsterName, hp, maxHP, damage, levels, pHP, pMaxHP
 		-- （通常は通らない想定）
 		-- ※ ここで上記 ② と同じ生成ブロックを呼ぶヘルパー関数を用意してもOK
 	end
-
-	-- ★ 敵攻撃プログレスバーを表示＆リセット
-	enemyProgContainer.Visible = true
-	enemyProgFill.Size = UDim2.new(0, 0, 1, 0)
 
 	-- 【重要】RichTextを確実に有効化、全ラベルをリセット
 	print("[BattleUI] UI要素をリセット")
@@ -637,12 +643,12 @@ local function onBattleStart(monsterName, hp, maxHP, damage, levels, pHP, pMaxHP
 	print("[BattleUI] タイムアウト設定")
 
 	-- タイムアウト機能：30秒経過したら強制終了
-	currentBattleTimeout = task.delay(30, function()
-		if inBattle then
-			warn("[BattleUI] バトルタイムアウト！強制終了します")
-			onBattleEnd(false)
-		end
-	end)
+	-- currentBattleTimeout = task.delay(30, function()
+	-- 	if inBattle then
+	-- 		warn("[BattleUI] バトルタイムアウト！強制終了します")
+	-- 		onBattleEnd(false)
+	-- 	end
+	-- end)
 
 	print("[BattleUI] === バトル開始処理完了 ===")
 end
@@ -952,19 +958,25 @@ BattleEndEvent.OnClientEvent:Connect(onBattleEnd)
 -- ★ 敵攻撃サイクル開始（プログレス用）: nil ガード付き
 local EnemyAttackCycleStartEvent = ReplicatedStorage:WaitForChild("EnemyAttackCycleStart", 30)
 EnemyAttackCycleStartEvent.OnClientEvent:Connect(function(payload)
-	if not inBattle or not payload then return end
+	-- ★ バトル開始イベントより先に届く可能性があるので、inBattleになる前なら保存して戻る
+	if not inBattle then
+		pendingCyclePayload = payload
+		return
+	end
+
+	if not payload then return end
 	if not enemyProgContainer or not enemyProgFill then
 		warn("[BattleUI] progress UI not ready; ignoring this cycle once")
 		return
 	end
 
-	-- サーバー権威で再同期：仮プログレスが回っていても一旦止めて上書き
+	-- サーバー権威で再同期
 	local duration = tonumber(payload.intervalSec) or DEFAULT_FIRST_INTERVAL
-	if enemyProgConn then enemyProgConn:Disconnect() enemyProgConn = nil end
-
-	-- 受信と同時に0→満了で回し直す（= ここからは本サイクル）
+	if enemyProgConn then enemyProgConn:Disconnect(); enemyProgConn = nil end
 	startEnemyProgress(duration)
+	progressStartedOnce = true
 end)
+
 
 
 

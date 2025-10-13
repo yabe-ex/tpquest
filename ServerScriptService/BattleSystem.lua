@@ -190,10 +190,8 @@ local function enemyAttack(player: Player, battleData)
 	battleData.nextAttackTime = nowTick + attackInterval
 
 	-- ★ 次サイクル開始を通知
-	EnemyAttackCycleStartEvent:FireClient(player, {
-		intervalSec = attackInterval,
-		startedAt = nowTick,
-	})
+	EnemyAttackCycleStartEvent:FireClient(player, {intervalSec = attackInterval, startedAt = nowTick})
+
 
 
 	print(("[BattleSystem] 次の攻撃まで %.1f 秒"):format(attackInterval))
@@ -310,10 +308,7 @@ function BattleSystem.startBattle(player: Player, monster: Model)
 	local nextAttackTime = nowTick + attackInterval
 
 	-- ★ 初回サイクルをクライアントへ通知
-	EnemyAttackCycleStartEvent:FireClient(player, {
-		intervalSec = attackInterval,
-		startedAt = nowTick,
-	})
+	EnemyAttackCycleStartEvent:FireClient(player, {intervalSec = attackInterval, startedAt = nowTick})
 
 
 	-- 戦闘データを記録
