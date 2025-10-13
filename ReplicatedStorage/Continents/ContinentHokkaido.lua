@@ -129,7 +129,7 @@ return {
             },
 		},
 
-				{
+		{
 			model = "box_closed",
 			position = {3125.8, 47.2, -60.7},
             mode = "fixed",
@@ -150,6 +150,58 @@ return {
                 openedModel = "box_opened",         -- 開いた状態のモデル名
                 rewards = {
 					{item = "ゴールド", count = 120},
+                },
+                displayDuration = 3,      -- 報酬表示時間（秒）
+            },
+		},
+
+		{
+			model = "box_closed",
+			position = {3136.9, 47.1, -49.5},
+            mode = "fixed",
+			size = 1,
+			rotation = {0, 0, 0},
+			stickToGround = false,   -- 省略可（trueが既定）
+			groundOffset  = 0,   -- 芝生で少し浮かせたい時
+			alignToSlope  = false,  -- 斜面に木を傾けたくないならfalse
+
+            interaction = {
+                type = "chest",           -- インタラクションタイプ
+                action = "開ける",         -- ボタンに表示されるテキスト
+                key = "E",                -- キーバインド
+                range = 8,                -- インタラクション可能距離（スタッド）
+
+                -- 宝箱固有の情報
+                chestId = "hokkaido_chest_04",          -- ユニークID
+                openedModel = "box_opened",         -- 開いた状態のモデル名
+                rewards = {
+					{item = "ゴールド", count = 70},
+                },
+                displayDuration = 3,      -- 報酬表示時間（秒）
+            },
+		},
+
+				{
+			model = "box_closed",
+			position = {3125.2, 48.0, -65.6},
+            mode = "ground",
+			size = 1,
+			rotation = {0, 0, 0},
+			stickToGround = false,   -- 省略可（trueが既定）
+			groundOffset  = 0,   -- 芝生で少し浮かせたい時
+			alignToSlope  = false,  -- 斜面に木を傾けたくないならfalse
+
+            interaction = {
+                type = "chest",           -- インタラクションタイプ
+                action = "開ける",         -- ボタンに表示されるテキスト
+                key = "E",                -- キーバインド
+                range = 8,                -- インタラクション可能距離（スタッド）
+
+                -- 宝箱固有の情報
+                chestId = "hokkaido_chest_05",          -- ユニークID
+                openedModel = "box_opened",         -- 開いた状態のモデル名
+                rewards = {
+					{item = "ゴールド", count = 50},
                 },
                 displayDuration = 3,      -- 報酬表示時間（秒）
             },

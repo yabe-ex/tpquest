@@ -76,20 +76,47 @@ local HP_BAR_H    = 40
 local PROG_H      = 14
 local STACK_PAD   = 10       -- 縦の隙間
 
--- 進行アニメ（プログレスバーを 0→満了 で伸ばす）
-local function startEnemyProgress(durationSec: number)
+-- 進行アニメ（プログレスバーを 0→満了 で伸ばす：サーバー startedAt に同期）
+local function startEnemyProgress(durationSec: number, startedAtServer: number?)
+	-- 進行アニメ停止＆非表示（保険）
+	local function stopEnemyProgress()
+		if enemyProgConn then
+			enemyProgConn:Disconnect()
+			enemyProgConn = nil
+		end
+		if enemyProgFill then
+			enemyProgFill.Size = UDim2.new(0, 0, 1, 0)
+		end
+		if enemyProgContainer then
+			enemyProgContainer.Visible = false
+		end
+	end
+
+
 	if not enemyProgContainer or not enemyProgFill then return end
 	enemyProgContainer.Visible = true
 	enemyProgFill.Size = UDim2.new(0, 0, 1, 0)
 
-	if enemyProgConn then enemyProgConn:Disconnect() enemyProgConn = nil end
-	local start = os.clock()
+	-- 旧接続があれば停止
+	if enemyProgConn then
+		enemyProgConn:Disconnect()
+		enemyProgConn = nil
+	end
+
+	-- サーバー基準の開始時刻（無ければ現在時刻）
+	local startedAt = tonumber(startedAtServer) or tick()
+
+	-- startedAt を基準に毎フレーム再計算（ドリフトしない）
 	enemyProgConn = game:GetService("RunService").RenderStepped:Connect(function()
-		local t = math.clamp((os.clock() - start) / durationSec, 0, 1)
+		local t = math.clamp((tick() - startedAt) / durationSec, 0, 1)
 		enemyProgFill.Size = UDim2.new(t, 0, 1, 0)
-		if t >= 1 then enemyProgConn:Disconnect(); enemyProgConn = nil end
+		if t >= 1 then
+			enemyProgConn:Disconnect()
+			enemyProgConn = nil
+		end
 	end)
 end
+
 
 -- 入力制御（カウントダウン中はタイピング無効）
 local TypingEnabled = true
@@ -199,6 +226,9 @@ end
 local onBattleEnd
 local updateDisplay
 local setNextWord
+local startEnemyProgress
+local stopEnemyProgress
+local playHitFlash
 
 -- HPバーの色を取得（HP割合に応じて変化）
 local function getHPColor(hpPercent)
@@ -521,9 +551,74 @@ local function createBattleUI()
 	print("[BattleUI] UI作成完了")
 end
 
--- local Sounds = ReplicatedStorage:WaitForChild("Sounds", 10)
--- local TypingCorrectSound = Sounds and Sounds:WaitForChild("TypingCorrect", 5)
--- local TypingErrorSound = Sounds and Sounds:WaitForChild("TypingError", 5)
+-- === 攻撃プログレス開始（0→満了）===
+startEnemyProgress = function(durationSec: number, startedAt: number?)
+    if not enemyProgContainer or not enemyProgFill then return end
+
+    -- 旧ループ停止
+    if enemyProgConn then
+        enemyProgConn:Disconnect()
+        enemyProgConn = nil
+    end
+
+    enemyProgContainer.Visible = true
+
+    -- サーバー基準 startedAt がある場合は進捗を補正
+    local now = os.clock()
+    local elapsed = 0
+    if startedAt and type(startedAt) == "number" then
+        elapsed = math.max(0, now - startedAt)
+    end
+    local startTime = now - elapsed
+
+    enemyProgConn = game:GetService("RunService").RenderStepped:Connect(function()
+        local t = math.clamp((os.clock() - startTime) / durationSec, 0, 1)
+        enemyProgFill.Size = UDim2.new(t, 0, 1, 0)
+        if t >= 1 then
+            enemyProgConn:Disconnect()
+            enemyProgConn = nil
+        end
+    end)
+end
+
+-- === 攻撃プログレス停止 ===
+stopEnemyProgress = function()
+    if enemyProgConn then
+        enemyProgConn:Disconnect()
+        enemyProgConn = nil
+    end
+    if enemyProgContainer and enemyProgFill then
+        enemyProgContainer.Visible = false
+        enemyProgFill.Size = UDim2.new(0, 0, 1, 0)
+    end
+end
+
+-- === 被弾エフェクト（タイプミス／敵ターン共通）===
+playHitFlash = function()
+    if not wordFrame then return end
+
+    -- 枠線キャッシュ
+    local frameStroke = wordFrame:FindFirstChildOfClass("UIStroke")
+
+    -- 赤く点滅
+    wordFrame.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+    wordFrame.BackgroundTransparency = 0.3
+    if frameStroke then
+        frameStroke.Color = Color3.fromRGB(255, 50, 50)
+    end
+
+    TweenService:Create(wordFrame, TweenInfo.new(0.3), {
+        BackgroundColor3 = Color3.fromRGB(30, 30, 40),
+        BackgroundTransparency = 0.2
+    }):Play()
+
+    if frameStroke then
+        TweenService:Create(frameStroke, TweenInfo.new(0.3), {
+            Color = Color3.fromRGB(100, 200, 255)
+        }):Play()
+    end
+end
+
 
 if not TypingCorrectSound then
 	warn("[BattleUI] TypingCorrect効果音が見つかりません (WaitForChild タイムアウト)")
@@ -532,7 +627,7 @@ if not TypingErrorSound then
 	warn("[BattleUI] TypingError効果音が見つかりません (WaitForChild タイムアウト)")
 end
 
--- バトル開始処理
+-- バトル開始処理（省略なし・整備版）
 local function onBattleStart(monsterName, hp, maxHP, damage, levels, pHP, pMaxHP)
 	print("[BattleUI] === onBattleStart呼び出し ===")
 
@@ -547,13 +642,15 @@ local function onBattleStart(monsterName, hp, maxHP, damage, levels, pHP, pMaxHP
 
 	print(("[BattleUI] バトル開始: vs %s (敵HP: %d, プレイヤーHP: %d/%d, Damage: %d)"):format(
 		monsterName, hp, pHP, pMaxHP, damage
-		))
+	))
 
+	-- すでに戦闘中なら無視
 	if inBattle then
 		print("[BattleUI DEBUG] すでに戦闘中")
 		return
 	end
 
+	-- 状態セット
 	inBattle = true
 	monsterHP = hp
 	monsterMaxHP = maxHP
@@ -562,12 +659,8 @@ local function onBattleStart(monsterName, hp, maxHP, damage, levels, pHP, pMaxHP
 	damagePerKey = damage
 	typingLevels = levels
 
-	-- システムキーをブロック
+	-- カメラ・入力ブロック
 	blockSystemKeys()
-
-	print("[BattleUI] プレイヤー停止処理開始")
-
-	-- プレイヤーの入力を完全にブロック
 	local character = player.Character
 	if character then
 		local humanoid = character:FindFirstChildOfClass("Humanoid")
@@ -578,8 +671,6 @@ local function onBattleStart(monsterName, hp, maxHP, damage, levels, pHP, pMaxHP
 		end
 	end
 
-	print("[BattleUI] RobloxのUIを無効化")
-
 	-- RobloxのUIを無効化
 	pcall(function()
 		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false)
@@ -588,123 +679,124 @@ local function onBattleStart(monsterName, hp, maxHP, damage, levels, pHP, pMaxHP
 		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.EmotesMenu, false)
 	end)
 
+	-- UI表示
 	print("[BattleUI] UIを表示")
-
 	battleGui.Enabled = true
-	if resolveSoundsIfNeeded then resolveSoundsIfNeeded() end
 
-
--- 入力は一旦禁止（カウントダウンOFFなので常に true）
-	ypingEnabled = true
-
-	if enemyProgContainer and enemyProgFill then
-		-- まず UI を0にリセットだけしておく（見た目のチラつき防止）
-		enemyProgContainer.Visible = true
-		enemyProgFill.Size = UDim2.new(0, 0, 1, 0)
-
-		-- ★ 1) 既にサーバーの初回サイクルが届いていれば、それで即開始
-		if pendingCyclePayload and pendingCyclePayload.intervalSec then
-			local duration = tonumber(pendingCyclePayload.intervalSec) or DEFAULT_FIRST_INTERVAL
-			startEnemyProgress(duration)
-			progressStartedOnce = true
-			pendingCyclePayload = nil
-		else
-			-- ★ 2) ほんのわずかだけ待って（0.15s）、まだ来なければ仮4秒で開始
-			progressStartedOnce = false
-			task.delay(0.15, function()
-				if inBattle and not progressStartedOnce then
-					startEnemyProgress(DEFAULT_FIRST_INTERVAL)
-					progressStartedOnce = true
-				end
-			end)
-		end
+	-- ★ プログレス初期化（確実に1本化）
+	if stopEnemyProgress then
+		stopEnemyProgress()
 	else
-		warn("[BattleUI] enemy progress UI not initialized; fallback skipped")
+		-- フォールバック：接続解除＆非表示
+		if enemyProgConn then enemyProgConn:Disconnect() enemyProgConn = nil end
+		if enemyProgContainer then enemyProgContainer.Visible = false end
 	end
-
-	-- ここから追加：プログレスバーの表示＆リセット（nilガード付き）
 	if enemyProgContainer and enemyProgFill then
 		enemyProgContainer.Visible = true
 		enemyProgFill.Size = UDim2.new(0, 0, 1, 0)
-	else
-		warn("[BattleUI] enemy progress UI not initialized; creating fallback...")
-		-- フォールバック：万一 createBattleUI 実行前だった場合に備えて再生成
-		-- （通常は通らない想定）
-		-- ※ ここで上記 ② と同じ生成ブロックを呼ぶヘルパー関数を用意してもOK
 	end
 
-	-- 【重要】RichTextを確実に有効化、全ラベルをリセット
-	print("[BattleUI] UI要素をリセット")
+	-- 効果音の取りこぼし保険
+	if resolveSoundsIfNeeded then
+		resolveSoundsIfNeeded()
+	end
+
+	-- カウントダウン有無に応じて入力制御
+	TypingEnabled = not PROGRESS_COUNTDOWN_ON_START
+
+	-- 背景の暗転
+	if darkenFrame then
+		darkenFrame.BackgroundTransparency = 0.4
+	end
+
+	-- ラベルなどリセット
 	if wordLabel then
 		wordLabel.RichText = true
 		wordLabel.TextColor3 = Color3.new(1, 1, 1)
 		wordLabel.Text = ""
-		wordLabel.TextTransparency = 0  -- 追加
-		wordLabel.TextStrokeTransparency = 0  -- 追加
+		wordLabel.TextTransparency = 0
+		wordLabel.TextStrokeTransparency = 0
 	end
 	if translationLabel then
 		translationLabel.TextColor3 = Color3.fromRGB(150, 200, 255)
 		translationLabel.Text = ""
 		translationLabel.Visible = true
-		translationLabel.TextTransparency = 0  -- 追加
-		translationLabel.TextStrokeTransparency = 0.3  -- 追加
+		translationLabel.TextTransparency = 0
+		translationLabel.TextStrokeTransparency = 0.3
 	end
 	if hpLabel then
 		hpLabel.TextColor3 = Color3.new(1, 1, 1)
 		hpLabel.Text = ""
-		hpLabel.TextTransparency = 0  -- 追加
-		hpLabel.TextStrokeTransparency = 0.5  -- 追加
+		hpLabel.TextTransparency = 0
+		hpLabel.TextStrokeTransparency = 0.5
 	end
 	if hpBarFill then
 		hpBarFill.Size = UDim2.new(1, 0, 1, 0)
 		hpBarFill.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
-		hpBarFill.BackgroundTransparency = 0  -- 追加
+		hpBarFill.BackgroundTransparency = 0
 	end
 	if hpBarBackground then
-		hpBarBackground.BackgroundTransparency = 0  -- 追加
+		hpBarBackground.BackgroundTransparency = 0
 	end
 	if playerHPBarFill then
 		playerHPBarFill.Size = UDim2.new(1, 0, 1, 0)
 		playerHPBarFill.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
 	end
-
-	-- 枠の色をリセット（青に戻す）
 	if wordFrame then
 		wordFrame.BorderColor3 = Color3.fromRGB(100, 200, 255)
-		wordFrame.BackgroundTransparency = 0.2  -- 追加
+		wordFrame.BackgroundTransparency = 0.2
 		local frameStroke = wordFrame:FindFirstChildOfClass("UIStroke")
 		if frameStroke then
 			frameStroke.Color = Color3.fromRGB(100, 200, 255)
-			frameStroke.Transparency = 0  -- 追加
+			frameStroke.Transparency = 0
 		end
 	end
 
-	-- 背景の透明度をリセット
-	if darkenFrame then
-		darkenFrame.BackgroundTransparency = 0.4  -- 追加
+	-- 最初の単語を設定（※ カウントダウンONのときは後で出す）
+	local function setFirstWordNow()
+		if type(setNextWord) == "function" then
+			setNextWord()
+		else
+			warn("[BattleUI] setNextWord が未定義です")
+		end
 	end
-	print("[BattleUI] 暗転処理")
 
-	-- 画面を薄暗くする
-	darkenFrame.BackgroundTransparency = 0.4
+	-- カウントダウン動作
+	if PROGRESS_COUNTDOWN_ON_START then
+		-- カウントダウン表示
+		if type(runCountdown) == "function" then
+			if countdownFrame then countdownFrame.Visible = true end
+			runCountdown(COUNTDOWN_SECONDS or 3)
+			if countdownFrame then countdownFrame.Visible = false end
+		end
+		-- 入力解禁＆単語表示
+		TypingEnabled = true
+		setFirstWordNow()
+		-- ★ 初回プログレスはここでは回さない（サーバからの EnemyAttackCycleStart を待つ）
+	else
+		-- カウントダウン無し：即座に単語表示
+		setFirstWordNow()
+		-- ★ 初回プログレスは「仮速度」で回さない（サーバ通知で正しい速度・開始時刻に同期）
+		-- ※ 以前の不具合（初回だけ途中で被弾）を避けるため、ここは何もしない
+	end
 
-	print("[BattleUI] 単語設定")
-
-	-- 最初の単語を設定
-	setNextWord()
-
-	print("[BattleUI] タイムアウト設定")
-
-	-- タイムアウト機能：30秒経過したら強制終了
-	-- currentBattleTimeout = task.delay(30, function()
-	-- 	if inBattle then
-	-- 		warn("[BattleUI] バトルタイムアウト！強制終了します")
-	-- 		onBattleEnd(false)
-	-- 	end
-	-- end)
+	-- 戦闘タイムアウト（お守り）
+	if currentBattleTimeout then
+		task.cancel(currentBattleTimeout)
+		currentBattleTimeout = nil
+	end
+	currentBattleTimeout = task.delay(30, function()
+		if inBattle then
+			warn("[BattleUI] バトルタイムアウト！強制終了します")
+			if onBattleEnd then
+				onBattleEnd(false)
+			end
+		end
+	end)
 
 	print("[BattleUI] === バトル開始処理完了 ===")
 end
+
 
 -- バトル終了処理
 onBattleEnd = function(victory)
@@ -730,7 +822,9 @@ onBattleEnd = function(victory)
 		currentBattleTimeout = nil
 	end
 
-	-- 勝利時の処理
+	-- 敵攻撃プログレスを停止＆隠す ← ココが「直後」
+	stopEnemyProgress()
+
 	-- 勝利時の処理
 	if victory then
 		-- システムキーのブロックを解除
@@ -1025,27 +1119,44 @@ end)
 
 -- ★ 敵攻撃サイクル開始（プログレス用）: nil ガード付き
 local EnemyAttackCycleStartEvent = ReplicatedStorage:WaitForChild("EnemyAttackCycleStart", 30)
+-- ★ サーバーから「敵攻撃サイクル開始」を受信
 EnemyAttackCycleStartEvent.OnClientEvent:Connect(function(payload)
-	-- ★ バトル開始イベントより先に届く可能性があるので、inBattleになる前なら保存して戻る
+	-- payload 未設定は無視
+	if not payload then return end
+
+	-- バトル外で誤配信されたら即停止して無視（保険）
 	if not inBattle then
-		pendingCyclePayload = payload
+		if stopEnemyProgress then stopEnemyProgress() end
 		return
 	end
 
-	if not payload then return end
+	-- プログレスUI未初期化なら一度だけ捨てる（保険）
 	if not enemyProgContainer or not enemyProgFill then
 		warn("[BattleUI] progress UI not ready; ignoring this cycle once")
 		return
 	end
 
 	-- サーバー権威で再同期
-	local duration = tonumber(payload.intervalSec) or DEFAULT_FIRST_INTERVAL
-	if enemyProgConn then enemyProgConn:Disconnect(); enemyProgConn = nil end
-	startEnemyProgress(duration)
-	progressStartedOnce = true
+	local duration  = tonumber(payload.intervalSec) or DEFAULT_FIRST_INTERVAL
+	local startedAt = tonumber(payload.startedAt)          -- サーバー側の開始基準時刻
+
+	-- デバッグログ（同期確認用）
+	print(("[BattleUI] sync interval=%.2f startedAt=%.3f"):format(duration, startedAt or -1))
+
+	-- 旧進行ループが残っていたら停止
+	if enemyProgConn then
+		enemyProgConn:Disconnect()
+		enemyProgConn = nil
+	end
+
+	-- 0%にリセットして可視化（視覚チラつき防止の初期化）
+	enemyProgContainer.Visible = true
+	enemyProgFill.Size = UDim2.new(0, 0, 1, 0)
+
+	-- サーバーの startedAt を使って 0→満了 を再生（内部でオフセット吸収）
+	-- ※ startEnemyProgress(duration, startedAt) が実装済みであることが前提
+	startEnemyProgress(duration, startedAt)
 end)
-
-
 
 
 -- HP更新イベント（敵）

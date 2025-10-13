@@ -154,14 +154,16 @@ local function calculateAttackInterval(playerSpeed: number, enemySpeed: number, 
 end
 
 -- 敵の攻撃処理
+-- 敵の攻撃処理
 local function enemyAttack(player: Player, battleData)
-	if not SharedState.ActiveBattles[player] or SharedState.EndingBattles[player] then
-		return  -- バトル終了済み
+	-- 安全ガード
+	if not battleData or not battleData.monster or not battleData.monsterDef then
+		warn(("[BattleSystem] invalid battleData; aborting enemyAttack for %s"):format(player.Name))
+		return
 	end
 
 	local monsterDef = battleData.monsterDef
 	local playerStats = PlayerStats.getStats(player)
-
 	if not playerStats then
 		warn(("[BattleSystem] %s のステータスが見つかりません"):format(player.Name))
 		return
@@ -169,36 +171,34 @@ local function enemyAttack(player: Player, battleData)
 
 	-- ダメージ計算
 	local damage = calculateDamage(monsterDef.Attack, playerStats.Defense)
+	print(("[BattleSystem] %s が %s から %d ダメージを受けた"):format(player.Name, battleData.monster.Name, damage))
 
-	print(("[BattleSystem] %s が %s から %d ダメージを受けた"):format(
-		player.Name, battleData.monster.Name, damage
-		))
-
-	-- プレイヤーにダメージ
+	-- ダメージ反映
 	local isDead = PlayerStats.takeDamage(player, damage)
+
+	-- クライアントに「敵ターンの被弾」を通知（赤点滅＋SE用）
 	EnemyDamageEvent:FireClient(player, { amount = damage })
 
-	-- HPをクライアントに通知
+	-- HP更新を通知
 	PlayerHPUpdateEvent:FireClient(player, playerStats.CurrentHP, playerStats.MaxHP)
 
-	-- 死亡判定
 	if isDead then
 		print(("[BattleSystem] %s は倒れた！"):format(player.Name))
-		BattleSystem.endBattle(player, false)  -- 敗北
+		BattleSystem.endBattle(player, false)
 		return
 	end
 
+	-- 次サイクルを確定
 	local attackInterval = calculateAttackInterval(playerStats.Speed, monsterDef.Speed, player, monsterDef)
 	local nowTick = tick()
 	battleData.nextAttackTime = nowTick + attackInterval
 
-	-- ★ 次サイクル開始を通知
-	EnemyAttackCycleStartEvent:FireClient(player, {intervalSec = attackInterval, startedAt = nowTick})
-
-
+	-- クライアントに次サイクル開始を通知（プログレス同期）
+	EnemyAttackCycleStartEvent:FireClient(player, { intervalSec = attackInterval, startedAt = nowTick })
 
 	print(("[BattleSystem] 次の攻撃まで %.1f 秒"):format(attackInterval))
 end
+
 
 -- バトル開始
 function BattleSystem.startBattle(player: Player, monster: Model)
@@ -310,11 +310,7 @@ function BattleSystem.startBattle(player: Player, monster: Model)
 	local nowTick = tick()
 	local nextAttackTime = nowTick + attackInterval
 
-	-- ★ 初回サイクルをクライアントへ通知
-	EnemyAttackCycleStartEvent:FireClient(player, {intervalSec = attackInterval, startedAt = nowTick})
-
-
-	-- 戦闘データを記録
+	-- ★ 戦闘データを先に記録（ここが最優先！）
 	SharedState.ActiveBattles[player] = {
 		monster = monster,
 		monsterDef = monsterDef,
@@ -328,7 +324,7 @@ function BattleSystem.startBattle(player: Player, monster: Model)
 		originalMonsterSpeed = originalMonsterSpeed
 	}
 
-	-- クライアントにバトル開始を通知
+	-- ★ クライアントにバトル開始を通知（この時点で inBattle = true になる）
 	BattleStartEvent:FireClient(
 		player,
 		monster.Name,
@@ -340,23 +336,26 @@ function BattleSystem.startBattle(player: Player, monster: Model)
 		playerStats.MaxHP
 	)
 
-	-- 敵の攻撃ループを開始
+	-- ★ 初回サイクルをクライアントへ通知（順序は BattleStart の“後”）
+	EnemyAttackCycleStartEvent:FireClient(player, { intervalSec = attackInterval, startedAt = nowTick })
+
+	-- ★ 敵の攻撃ループを開始（最後に）
 	task.spawn(function()
 		while SharedState.ActiveBattles[player] and not SharedState.EndingBattles[player] do
-			local battleData = SharedState.ActiveBattles[player]
-			if not battleData then break end
+			local bd = SharedState.ActiveBattles[player]
+			if not bd then break end
 
-			-- 攻撃タイミングをチェック
-			if tick() >= battleData.nextAttackTime then
-				enemyAttack(player, battleData)
+			if tick() >= bd.nextAttackTime then
+				enemyAttack(player, bd)
 			end
 
-			task.wait(0.1)  -- 0.1秒ごとにチェック
+			task.wait(0.1)
 		end
 	end)
-
+	-- ここから追記（関数を閉じる）
 	return true
 end
+
 
 -- プレイヤーからのダメージ処理
 local function onDamageReceived(player, damageAmount)
