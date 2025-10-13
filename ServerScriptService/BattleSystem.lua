@@ -88,6 +88,7 @@ local DeathChoiceEvent = getOrCreateRemoteEvent("DeathChoice")
 local TypingMistakeEvent = getOrCreateRemoteEvent("TypingMistake")
 local EnemyAttackCycleStartEvent = getOrCreateRemoteEvent("EnemyAttackCycleStart")
 local EnemyDamageEvent = getOrCreateRemoteEvent("EnemyDamage")
+local RequestEnemyCycleSyncEvent = getOrCreateRemoteEvent("RequestEnemyCycleSync")
 
 
 print("[BattleSystem] RemoteEvents準備完了")
@@ -609,6 +610,37 @@ function BattleSystem.init()
 		print(("[BattleSystem] ダメージ通知受信: %s -> %d"):format(player.Name, damageAmount))
 		onDamageReceived(player, damageAmount)
 	end)
+
+	-- クライアントからのサイクル再同期リクエスト
+	RequestEnemyCycleSyncEvent.OnServerEvent:Connect(function(player)
+		-- バトル中＆終了処理中でないことを確認
+		local bd = SharedState.ActiveBattles[player]
+		if not bd or SharedState.EndingBattles[player] then
+			return
+		end
+
+		-- 必要情報を取得
+		local stats = PlayerStats.getStats(player)
+		if not stats or not bd.monsterDef then
+			return
+		end
+
+		-- 現在の（設計上の）インターバルを計算
+		local intervalSec = calculateAttackInterval(stats.Speed, bd.monsterDef.Speed, player, bd.monsterDef)
+
+		-- 経過と残り時間から startedAt を逆算（クライアントのプログレスを滑らかに）
+		local now = tick()
+		local remaining = math.max(0.05, bd.nextAttackTime - now)              -- もうすぐ発動の場合も最低0.05秒
+		local elapsed = math.clamp(intervalSec - remaining, 0, intervalSec)    -- 経過時間をクランプ
+		local startedAt = now - elapsed
+
+		-- クライアントに「今このペースで回ってるよ」を即通知
+		EnemyAttackCycleStartEvent:FireClient(player, {
+			intervalSec = intervalSec,
+			startedAt   = startedAt
+		})
+	end)
+
 
 	-- 勝利イベント（念のため残しておく）
 	BattleVictoryEvent.OnServerEvent:Connect(function(player)

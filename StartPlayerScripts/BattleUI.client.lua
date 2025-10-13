@@ -1,5 +1,7 @@
 -- StarterPlayer/StarterPlayerScripts/BattleUI.client.lua
 -- タイピングバトルUI制御（クライアント側）
+local Logger = require(game.ReplicatedStorage.Util.Logger)
+local log = Logger.get("BattleUI") -- ファイル名などをタグに
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -16,6 +18,14 @@ local EnemyHitSound = Sounds and Sounds:WaitForChild("EnemyHit", 5)
 if not EnemyHitSound then
 	warn("[BattleUI] EnemyHit 効果音が見つかりません (WaitForChild タイムアウト)")
 end
+
+-- RemoteEventsを待機
+local BattleStartEvent = ReplicatedStorage:WaitForChild("BattleStart", 30)
+local BattleEndEvent = ReplicatedStorage:WaitForChild("BattleEnd", 30)
+local BattleDamageEvent = ReplicatedStorage:WaitForChild("BattleDamage", 30)
+local EnemyAttackCycleStartEvent = ReplicatedStorage:WaitForChild("EnemyAttackCycleStart", 30)
+
+local pendingEnemyCycle = nil
 
 -- 効果音の取りこぼしを戦闘開始時に再解決する保険
 if not resolveSoundsIfNeeded then
@@ -76,46 +86,67 @@ local HP_BAR_H    = 40
 local PROG_H      = 14
 local STACK_PAD   = 10       -- 縦の隙間
 
--- 進行アニメ（プログレスバーを 0→満了 で伸ばす：サーバー startedAt に同期）
+local enemyProgConn = nil
+
+local function stopEnemyProgress()
+	if enemyProgConn then
+		enemyProgConn:Disconnect()
+		enemyProgConn = nil
+	end
+	if enemyProgFill then
+		enemyProgFill.Size = UDim2.new(0, 0, 1, 0)
+	end
+	if enemyProgContainer then
+		enemyProgContainer.Visible = false
+	end
+	print("[BattleUI] stopEnemyProgress: disconnected & hidden")
+end
+
 local function startEnemyProgress(durationSec: number, startedAtServer: number?)
-	-- 進行アニメ停止＆非表示（保険）
-	local function stopEnemyProgress()
-		if enemyProgConn then
-			enemyProgConn:Disconnect()
-			enemyProgConn = nil
-		end
-		if enemyProgFill then
-			enemyProgFill.Size = UDim2.new(0, 0, 1, 0)
-		end
-		if enemyProgContainer then
-			enemyProgContainer.Visible = false
-		end
+	-- ここで必ずログ（早期returnの前に）
+	print(("[BattleUI] startEnemyProgress ENTER (dur=%.2f, startedAtServer=%s)"):
+		format(tonumber(durationSec) or -1, tostring(startedAtServer)))
+
+	if not enemyProgContainer or not enemyProgFill then
+		warn("[BattleUI] progress UI not ready; skip startEnemyProgress")
+		return
 	end
 
-
-	if not enemyProgContainer or not enemyProgFill then return end
 	enemyProgContainer.Visible = true
 	enemyProgFill.Size = UDim2.new(0, 0, 1, 0)
 
-	-- 旧接続があれば停止
 	if enemyProgConn then
 		enemyProgConn:Disconnect()
 		enemyProgConn = nil
 	end
 
-	-- サーバー基準の開始時刻（無ければ現在時刻）
 	local startedAt = tonumber(startedAtServer) or tick()
-
-	-- startedAt を基準に毎フレーム再計算（ドリフトしない）
+	log.debugf("[BattleUI] startEnemyProgress invoked dur=%.2f startedAt=%.3f now=%.3f",
+		durationSec, startedAt, tick())
+	print(("[BattleUI] startEnemyProgress invoked dur=%.2f startedAt=%.3f now=%.3f"):
+		format(durationSec, startedAt, tick()))
 	enemyProgConn = game:GetService("RunService").RenderStepped:Connect(function()
-		local t = math.clamp((tick() - startedAt) / durationSec, 0, 1)
-		enemyProgFill.Size = UDim2.new(t, 0, 1, 0)
-		if t >= 1 then
+		local estT = math.clamp((tick() - startedAt) / durationSec, 0, 1)
+		enemyProgFill.Size = UDim2.new(estT, 0, 1, 0)
+		-- デバッグ
+		-- print(("[BattleUI] estT=%.3f (elapsed=%.3f)"):format(estT, tick()-startedAt))
+		if estT >= 1 then
 			enemyProgConn:Disconnect()
 			enemyProgConn = nil
+			print("[BattleUI] startEnemyProgress: completed and disconnected")
 		end
 	end)
 end
+
+local function applyEnemyCycle(payload)
+	if not payload then return end
+	local duration = tonumber(payload.intervalSec) or DEFAULT_FIRST_INTERVAL
+	local startedAt = tonumber(payload.startedAt)
+
+	print(("[BattleUI] sync interval=%.2f startedAt=%.3f"):format(duration, startedAt or -1))
+	startEnemyProgress(duration, startedAt)
+end
+
 
 
 -- 入力制御（カウントダウン中はタイピング無効）
@@ -136,11 +167,24 @@ end
 
 print(("[BattleUI] ユーザーロケール: %s → 表示言語: %s"):format(userLocale, localeCode))
 
--- RemoteEventsを待機
-local BattleStartEvent = ReplicatedStorage:WaitForChild("BattleStart", 30)
-local BattleEndEvent = ReplicatedStorage:WaitForChild("BattleEnd", 30)
-local BattleDamageEvent = ReplicatedStorage:WaitForChild("BattleDamage", 30)
-local EnemyAttackCycleStartEvent = ReplicatedStorage:WaitForChild("EnemyAttackCycleStart", 30)
+
+local RunService = game:GetService("RunService")
+
+-- サイクルの再同期要求イベント
+local RequestEnemyCycleSyncEvent = ReplicatedStorage:WaitForChild("RequestEnemyCycleSync", 10)
+
+-- 最後にサイクル同期を受信した時刻（sec）
+local lastCycleAt = 0
+
+-- サーバーに再同期を要求
+local function requestEnemyCycleSync(reason: string?)
+	if not inBattle then return end
+	if not RequestEnemyCycleSyncEvent then return end
+	-- デバッグ（必要なら）
+	-- print(("[BattleUI] request sync (%s)"):format(reason or ""))
+	RequestEnemyCycleSyncEvent:FireServer()
+end
+
 if not BattleStartEvent or not BattleEndEvent or not BattleDamageEvent then
     warn("[BattleUI] RemoteEventの取得に失敗しました")
     return
@@ -781,16 +825,23 @@ local function onBattleStart(monsterName, hp, maxHP, damage, levels, pHP, pMaxHP
 	end
 
 	-- 戦闘タイムアウト（お守り）
-	if currentBattleTimeout then
-		task.cancel(currentBattleTimeout)
-		currentBattleTimeout = nil
-	end
-	currentBattleTimeout = task.delay(30, function()
-		if inBattle then
-			warn("[BattleUI] バトルタイムアウト！強制終了します")
-			if onBattleEnd then
-				onBattleEnd(false)
-			end
+	-- if currentBattleTimeout then
+	-- 	task.cancel(currentBattleTimeout)
+	-- 	currentBattleTimeout = nil
+	-- end
+	-- currentBattleTimeout = task.delay(30, function()
+	-- 	if inBattle then
+	-- 		warn("[BattleUI] バトルタイムアウト！強制終了します")
+	-- 		if onBattleEnd then
+	-- 			onBattleEnd(false)
+	-- 		end
+	-- 	end
+	-- end)
+
+	-- ★ 初回サイクル・ウォッチドッグ：0.35秒待っても同期が来なければ要求
+	task.delay(0.35, function()
+		if inBattle and (os.clock() - lastCycleAt) > 0.30 then
+			requestEnemyCycleSync("first-cycle watchdog")
 		end
 	end)
 
@@ -1117,46 +1168,20 @@ EnemyDamageEvent.OnClientEvent:Connect(function(payload)
 	end
 end)
 
--- ★ 敵攻撃サイクル開始（プログレス用）: nil ガード付き
-local EnemyAttackCycleStartEvent = ReplicatedStorage:WaitForChild("EnemyAttackCycleStart", 30)
--- ★ サーバーから「敵攻撃サイクル開始」を受信
 EnemyAttackCycleStartEvent.OnClientEvent:Connect(function(payload)
-	-- payload 未設定は無視
-	if not payload then return end
+	-- まずは受信ログ（ここが出ないならサーバー送信側かイベント名ミス）
+	print("[BattleUI] EnemyAttackCycleStart received")
 
-	-- バトル外で誤配信されたら即停止して無視（保険）
-	if not inBattle then
-		if stopEnemyProgress then stopEnemyProgress() end
+	-- UI がまだなら一旦保存（inBattle判定で落とさない）
+	if not battleGui or not battleGui.Enabled then
+		pendingEnemyCycle = payload
+		print("[BattleUI] stashed first cycle payload (UI not ready yet)")
 		return
 	end
 
-	-- プログレスUI未初期化なら一度だけ捨てる（保険）
-	if not enemyProgContainer or not enemyProgFill then
-		warn("[BattleUI] progress UI not ready; ignoring this cycle once")
-		return
-	end
-
-	-- サーバー権威で再同期
-	local duration  = tonumber(payload.intervalSec) or DEFAULT_FIRST_INTERVAL
-	local startedAt = tonumber(payload.startedAt)          -- サーバー側の開始基準時刻
-
-	-- デバッグログ（同期確認用）
-	print(("[BattleUI] sync interval=%.2f startedAt=%.3f"):format(duration, startedAt or -1))
-
-	-- 旧進行ループが残っていたら停止
-	if enemyProgConn then
-		enemyProgConn:Disconnect()
-		enemyProgConn = nil
-	end
-
-	-- 0%にリセットして可視化（視覚チラつき防止の初期化）
-	enemyProgContainer.Visible = true
-	enemyProgFill.Size = UDim2.new(0, 0, 1, 0)
-
-	-- サーバーの startedAt を使って 0→満了 を再生（内部でオフセット吸収）
-	-- ※ startEnemyProgress(duration, startedAt) が実装済みであることが前提
-	startEnemyProgress(duration, startedAt)
+	applyEnemyCycle(payload)
 end)
+
 
 
 -- HP更新イベント（敵）
@@ -1210,6 +1235,13 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 				humanoid.JumpHeight = 7.2
 			end
 		end
+	end
+end)
+
+-- ★ フォーカス復帰で再同期
+UserInputService.WindowFocused:Connect(function()
+	if inBattle then
+		requestEnemyCycleSync("window focused")
 	end
 end)
 

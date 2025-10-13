@@ -1,5 +1,7 @@
 -- StarterPlayer/StarterPlayerScripts/Minimap.client.lua
 -- ミニマップシステム（ズーム機能・ポータル表示対応版）
+local Logger = require(game.ReplicatedStorage.Util.Logger)
+local log = Logger.get("Minimap.client")
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -7,7 +9,7 @@ local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
-print("[Minimap] 初期化開始")
+log.debugf("初期化開始")
 
 -- ズームレベル設定
 local ZOOM_LEVELS = {
@@ -334,8 +336,6 @@ local function updateTerrainMap()
 	end
 
 	activeTiles = newActiveTiles
-
-	-- print(("[Minimap] 地形マップ更新完了: 陸=%d"):format(#activeTiles))
 end
 
 -- ワールド座標をミニマップ座標に変換
@@ -399,8 +399,8 @@ local function updatePlayerRotation_debug()
 
 	-- 5秒に1回デバッグ情報を表示
 	if os.clock() % 5 < 0.1 then
-		print(string.format("[Minimap DEBUG] LookVector: (%.2f, %.2f, %.2f)", lookVector.X, lookVector.Y, lookVector.Z))
-		print(string.format("[Minimap DEBUG] 角度: %.1f度", degrees))
+		log.debugf(string.format("LookVector: (%.2f, %.2f, %.2f)", lookVector.X, lookVector.Y, lookVector.Z))
+		log.debugf(string.format("角度: %.1f度", degrees))
 	end
 end
 
@@ -431,9 +431,9 @@ local function updatePlayerRotation_news()
 	playerIcon.Rotation = degrees
 
 	if os.clock() % 5 < 0.1 then
-		print(string.format("[Minimap DEBUG] 方角: %s", direction))
-		print(string.format("[Minimap DEBUG] LookVector: (%.2f, %.2f, %.2f)", lookVector.X, lookVector.Y, lookVector.Z))
-		print(string.format("[Minimap DEBUG] 角度: %.1f度", degrees))
+		log.debugf(string.format("方角: %s", direction))
+		log.debugf(string.format("LookVector: (%.2f, %.2f, %.2f)", lookVector.X, lookVector.Y, lookVector.Z))
+		log.debugf(string.format("角度: %.1f度", degrees))
 	end
 end
 
@@ -452,10 +452,6 @@ local function updatePlayerRotation()
 
 	-- 座標系を合わせる（地形マップと同じ反転）
 	playerIcon.Rotation = -degrees
-
-	-- if os.clock() % 1 < 0.1 then
-	-- 	print(string.format("[DEBUG] Y軸回転: %.1f度 → 表示: %.1f度", degrees, -degrees))
-	-- end
 end
 
 
@@ -537,23 +533,23 @@ local function updatePortalIcons()
 
 	-- デバッグ: ポータルの配置場所を確認
 	if not portalDebugDone then
-		print("[Minimap DEBUG] ポータル検索開始")
+		log.debugf("ポータル検索開始")
 
 		-- workspace.Worldの中身を確認
 		local worldFolder = workspace:FindFirstChild("World")
 		if worldFolder then
-			print("[Minimap DEBUG] workspace.World発見: " .. #worldFolder:GetChildren() .. "個のオブジェクト")
+			log.debugf("workspace.World発見: " .. #worldFolder:GetChildren() .. "個のオブジェクト")
 			local portalCount = 0
 			for _, obj in ipairs(worldFolder:GetChildren()) do
 				local toZone = obj:GetAttribute("ToZone")
 				if toZone then
 					portalCount = portalCount + 1
-					print("[Minimap DEBUG]   - " .. obj.Name .. " → " .. toZone .. " (Pos: " .. tostring(obj.Position) .. ")")
+					log.debugf("  - " .. obj.Name .. " → " .. toZone .. " (Pos: " .. tostring(obj.Position) .. ")")
 				end
 			end
-			print("[Minimap DEBUG] ポータル総数: " .. portalCount)
+			log.debugf("ポータル総数: " .. portalCount)
 		else
-			print("[Minimap DEBUG] workspace.Worldが見つかりません")
+			log.debugf("workspace.Worldが見つかりません")
 		end
 
 		portalDebugDone = true
@@ -599,7 +595,7 @@ local function changeZoomLevel(delta)
 	lastTerrainUpdate = 0
 	lastPlayerPos = nil
 
-	print("[Minimap] ズーム変更: " .. settings.name)
+	log.debugf("ズーム変更: " .. settings.name)
 end
 
 -- マウスホイール入力
@@ -662,7 +658,7 @@ task.spawn(function()
 	if worldFolder then
 		worldFolder.ChildAdded:Connect(function(child)
 			if child:IsA("BasePart") and child:GetAttribute("ToZone") then
-				print("[Minimap] 新しいポータル検出: " .. child.Name)
+				log.debugf("新しいポータル検出: " .. child.Name)
 				task.wait(0.1)
 				updatePortalIcons()
 			end
@@ -685,14 +681,13 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		local continent = player:GetAttribute("ContinentName") or "?"
 		local island = player:GetAttribute("IslandName") or "?"
 
-		print("📍 現在地情報 -------------------------")
-		print("🗺️ 大陸名: " .. continent)
-		-- print("🏝️ 島名: " .. island)
-		print(string.format("📌 座標: (%.1f, %.1f, %.1f)", position.X, position.Y, position.Z))
-		print("--------------------------------------")
+		log.debugf("📍 現在地情報 -------------------------")
+		log.debugf("🗺️ 大陸名: " .. continent)
+		log.debugf(string.format("📌 座標: (%.1f, %.1f, %.1f)", position.X, position.Y, position.Z))
+		log.debugf("--------------------------------------")
 	end
 end)
 
 
 
-print("[Minimap] 初期化完了（ズーム機能付き）")
+log.debugf("初期化完了（ズーム機能付き）")

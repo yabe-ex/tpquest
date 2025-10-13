@@ -1,5 +1,7 @@
 -- StarterPlayer/StarterPlayerScripts/MenuUI.client.lua
 -- メニューシステム（ステータス、アイテム、スキル等）
+local Logger = require(game.ReplicatedStorage.Util.Logger)
+local log = Logger.get("MenuUI.client")
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -8,7 +10,7 @@ local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
-print("[MenuUI] 初期化中...")
+log.debugf("初期化中...")
 
 -- 状態管理
 local currentModal = nil
@@ -50,31 +52,31 @@ end
 
 -- 戦歴更新を受信 (既存ロジック)
 task.spawn(function()
-	print("[MenuUI] StatsDetailイベント接続を開始...")
+	log.debugf("StatsDetailイベント接続を開始...")
 
 	local StatsDetailEvent = ReplicatedStorage:WaitForChild("StatsDetail", 5)
 	if not StatsDetailEvent then
-		warn("[MenuUI] StatsDetailイベントが見つかりません！")
+		log.warnf("StatsDetailイベントが見つかりません！")
 		return
 	end
 
-	print("[MenuUI] StatsDetailイベントを発見しました")
+	log.debugf("StatsDetailイベントを発見しました")
 
 	StatsDetailEvent.OnClientEvent:Connect(function(stats)
-		print("[MenuUI] ========================================")
-		print("[MenuUI] 🎯 StatsDetail受信イベント発火！")
+		log.debugf("========================================")
+		log.debugf("🎯 StatsDetail受信イベント発火！")
 		if stats then
 			for key, value in pairs(stats) do
 				cachedStats[key] = value
 			end
-			print("[MenuUI] ✅ キャッシュ更新完了")
+			log.debugf("✅ キャッシュ更新完了")
 		else
-			warn("[MenuUI] ❌ statsがnilです！")
+			log.warnf("❌ statsがnilです！")
 		end
-		print("[MenuUI] ========================================")
+		log.debugf("========================================")
 	end)
 
-	print("[MenuUI] StatsDetailイベント接続完了")
+	log.debugf("StatsDetailイベント接続完了")
 end)
 
 -- バトル状態を監視 (既存ロジック)
@@ -400,9 +402,9 @@ local function showLoadModal()
                 if RequestLoadRespawnEvent then
                     -- Studioの場合、サーバーにリスポーンを要求
                     RequestLoadRespawnEvent:FireServer()
-                    print("[MenuUI] Studioモード: サーバーにロードリスポーンを要求しました")
+                    log.debugf("Studioモード: サーバーにロードリスポーンを要求しました")
                 else
-                    warn("[MenuUI] RequestLoadRespawnEventが見つかりません！")
+                    log.warnf("RequestLoadRespawnEventが見つかりません！")
                 end
             else
                 -- 実際のゲームの場合、キックして再接続を促す
@@ -604,9 +606,9 @@ end
 -- 戦歴画面 (既存ロジック)
 local function showRecords()
 	createModal("戦歴", function(content)
-		print("[MenuUI] ========================================")
-		print("[MenuUI] 戦歴画面を開きました")
-		print("[MenuUI] キャッシュされた値:", cachedStats.MonstersDefeated or 0)
+		log.debugf("========================================")
+		log.debugf("戦歴画面を開きました")
+		log.debugf("キャッシュされた値:", cachedStats.MonstersDefeated or 0)
 
 		-- ラベルを先に作成
 		local label = Instance.new("TextLabel")
@@ -631,21 +633,21 @@ local function showRecords()
 		-- サーバーに最新の戦歴をリクエスト
 		local RequestStatsDetailEvent = ReplicatedStorage:FindFirstChild("RequestStatsDetail")
 		if RequestStatsDetailEvent then
-			print("[MenuUI] サーバーに詳細ステータスをリクエスト中...")
+			log.debugf("サーバーに詳細ステータスをリクエスト中...")
 			RequestStatsDetailEvent:FireServer()
 
 			-- 0.5秒後にラベルを更新（サーバーからのレスポンスを待つ）
 			task.delay(0.5, function()
 				if label and label.Parent then
 					label.Text = string.format("倒したモンスター数: %d", cachedStats.MonstersDefeated or 0)
-					print("[MenuUI] ラベル更新: MonstersDefeated =", cachedStats.MonstersDefeated)
+					log.debugf("ラベル更新: MonstersDefeated =", cachedStats.MonstersDefeated)
 				end
 			end)
 		else
-			warn("[MenuUI] RequestStatsDetailEventが見つかりません")
+			log.warnf("RequestStatsDetailEventが見つかりません")
 		end
 
-		print("[MenuUI] ========================================")
+		log.debugf("========================================")
 	end)
 end
 
@@ -907,7 +909,7 @@ local function createMenuUI()
 		end)
 	end
 
-	print("[MenuUI] メニューUI作成完了")
+	log.debugf("メニューUI作成完了")
 end
 
 createMenuUI()
@@ -917,4 +919,4 @@ if RequestStatusEvent then
 	RequestStatusEvent:FireServer()
 end
 
-print("[MenuUI] 初期化完了")
+log.debugf("初期化完了")
