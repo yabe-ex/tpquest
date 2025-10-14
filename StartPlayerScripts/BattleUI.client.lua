@@ -11,6 +11,18 @@ local StarterGui = game:GetService("StarterGui")
 local ContextActionService = game:GetService("ContextActionService")
 local LocalizationService = game:GetService("LocalizationService")
 
+local Labels = require(ReplicatedStorage.Typing.CategoryLabels)
+local TypingWords = require(ReplicatedStorage.Typing.TypingWords)
+
+-- 表示言語の決定は設定に合わせて（暫定でja）
+local LANG = "ja"
+
+local function getCategoryLabels(entry)
+	local cat1 = entry and entry.category1 and Labels[LANG][entry.category1] or nil
+	local cat2 = entry and entry.category2 and entry.category2[LANG] or nil
+	return cat1, cat2
+end
+
 local Sounds = ReplicatedStorage:WaitForChild("Sounds", 10)
 local TypingCorrectSound = Sounds and Sounds:WaitForChild("TypingCorrect", 5)
 local TypingErrorSound = Sounds and Sounds:WaitForChild("TypingError", 5)
@@ -97,7 +109,7 @@ end
 local wordLabelNext = nil
 local precogNextWordData = nil  -- 次に来る“予約”単語
 local function hasPrecog()
-	return  -- 予知ワード表示フラグ
+	return true -- 予知ワード表示フラグ
 end
 
 local enemyProgConn = nil
@@ -200,7 +212,9 @@ if not BattleStartEvent or not BattleEndEvent or not BattleDamageEvent then
 end
 
 -- 単語リストを読み込み
-local TypingWords = require(ReplicatedStorage:WaitForChild("TypingWords"))
+-- local TypingWords = require(ReplicatedStorage:WaitForChild("TypingWords"))
+local TypingFolder = ReplicatedStorage:WaitForChild("Typing", 30)
+local TypingWords = require(TypingFolder:WaitForChild("TypingWords", 30))
 
 -- デバッグ：単語リストの内容を確認
 log.debug("[BattleUI DEBUG] TypingWords.level_1[1]:")

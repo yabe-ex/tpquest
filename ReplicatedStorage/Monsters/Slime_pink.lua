@@ -16,8 +16,8 @@ return {
 
 	-- タイピングレベル（重み付き）
 	TypingLevels = {
-		{level = "level_1", weight = 30},  -- 70%の確率でレベル1
-		{level = "level_2", weight = 70},  -- 30%の確率でレベル2
+		{level = "level_2", weight = 10},  -- 70%の確率でレベル1
+		{level = "level_3", weight = 90},  -- 30%の確率でレベル2
 	},
 
 	-- 旧設定（互換性のため残す）
