@@ -10,40 +10,184 @@ local TweenService = game:GetService("TweenService")
 local StarterGui = game:GetService("StarterGui")
 local ContextActionService = game:GetService("ContextActionService")
 local LocalizationService = game:GetService("LocalizationService")
+local BattleDamageEvent = ReplicatedStorage:WaitForChild("BattleDamage")
 
 local Labels = require(ReplicatedStorage.Typing.CategoryLabels)
 local TypingWords = require(ReplicatedStorage.Typing.TypingWords)
+local renderCategory
 
--- 表示言語の決定は設定に合わせて（暫定でja）
+local UI_READY = false
+local PENDING_ENTRY = nil
+
+local Labels = require(ReplicatedStorage.Typing.CategoryLabels)
+
+local renderCategory
+
+local wordFrame = nil
+local wordLabel = nil
+
+-- 表示言語（この塊で1回だけ定義）
 local LANG = "ja"
 
-local function getCategoryLabels(entry)
-	local cat1 = entry and entry.category1 and Labels[LANG][entry.category1] or nil
-	local cat2 = entry and entry.category2 and entry.category2[LANG] or nil
-	return cat1, cat2
+-- カラー定義
+local CATEGORY_STYLE = {
+	n = { bg = Color3.fromRGB(54, 118, 255), text = Color3.fromRGB(255, 255, 255) }, -- 名詞: 青
+	v = { bg = Color3.fromRGB(68, 201, 91), text = Color3.fromRGB(0, 24, 0) }, -- 動詞: 緑
+	a = { bg = Color3.fromRGB(255, 149, 0), text = Color3.fromRGB(40, 16, 0) }, -- 形容詞: 橙
+	o = { bg = Color3.fromRGB(120, 120, 120), text = Color3.fromRGB(255, 255, 255) }, -- その他: 灰
+}
+local DEFAULT_STYLE = { bg = Color3.fromRGB(240, 240, 240), text = Color3.fromRGB(20, 20, 20) }
+
+-- 言語切替
+local function setLang(lang)
+	lang = tostring(lang or ""):lower()
+	if Labels[lang] then
+		LANG = lang
+	else
+		LANG = "ja"
+	end
 end
 
-local Sounds = ReplicatedStorage:WaitForChild("Sounds", 10)
-local TypingCorrectSound = Sounds and Sounds:WaitForChild("TypingCorrect", 5)
-local TypingErrorSound = Sounds and Sounds:WaitForChild("TypingError", 5)
-local EnemyHitSound = Sounds and Sounds:WaitForChild("EnemyHit", 5)
-if not EnemyHitSound then
-	warn("[BattleUI] EnemyHit 効果音が見つかりません (WaitForChild タイムアウト)")
+local function getTranslation(entry, lang)
+	if not entry then
+		return ""
+	end
+	lang = (lang or LANG)
+	return entry[lang] or entry.ja or entry.es or entry.fr or entry.de or entry.tl or ""
 end
 
--- RemoteEventsを待機
-local BattleStartEvent = ReplicatedStorage:WaitForChild("BattleStart", 30)
-local BattleEndEvent = ReplicatedStorage:WaitForChild("BattleEnd", 30)
-local BattleDamageEvent = ReplicatedStorage:WaitForChild("BattleDamage", 30)
-local EnemyAttackCycleStartEvent = ReplicatedStorage:WaitForChild("EnemyAttackCycleStart", 30)
+-- 起動時に一度適用（localeCode は既存の変数を利用）
+-- setLang(Players.LocalPlayer:GetAttribute("UILang") or localeCode)
+setLang(Players.LocalPlayer:GetAttribute("UILang") or "fr")
 
-local pendingEnemyCycle = nil
+-- 属性変化で再描画
+Players.LocalPlayer:GetAttributeChangedSignal("UILang"):Connect(function()
+	setLang(Players.LocalPlayer:GetAttribute("UILang"))
+	if wordFrame and currentWordData then
+		renderCategory(wordFrame, currentWordData)
+	end
+	if translationLabel and currentWordData then
+		translationLabel.Text = getTranslation(currentWordData, LANG)
+		translationLabel.Visible = translationLabel.Text ~= ""
+	end
+end)
+
+local function showWord(entry)
+	log.debug(
+		("[showWord] entry=%s UI_READY=%s wf=%s wl=%s"):format(
+			entry and entry.word or "nil",
+			tostring(UI_READY),
+			tostring(wordFrame),
+			tostring(wordLabel)
+		)
+	)
+	if not entry then
+		return
+	end
+	if not UI_READY or not (wordFrame and wordLabel) then
+		PENDING_ENTRY = entry
+		return
+	end
+	wordLabel.Text = entry.word
+
+	-- ★ 安全ガード（nil なら呼ばない）
+	local f = renderCategory
+	if type(f) == "function" then
+		f(wordFrame, entry)
+	else
+		warn("[BattleUI] renderCategory is nil (not assigned yet). Check forward declaration / duplicate locals.")
+	end
+end
+
+-- バッジ生成（控えめデザイン）
+local function ensureCategoryBadge(parentFrame: Frame?)
+	if not parentFrame then
+		return nil
+	end
+	local badge = parentFrame:FindFirstChild("CategoryBadge")
+	if not badge then
+		badge = Instance.new("TextLabel")
+		badge.Name = "CategoryBadge"
+		badge.AnchorPoint = Vector2.new(0, 0)
+		badge.Position = UDim2.fromOffset(8, 6)
+		badge.Size = UDim2.new(0, 0, 0, 0)
+		badge.AutomaticSize = Enum.AutomaticSize.XY
+		badge.BackgroundTransparency = 0.15
+		badge.BackgroundColor3 = DEFAULT_STYLE.bg
+		badge.TextColor3 = DEFAULT_STYLE.text
+		badge.Font = Enum.Font.GothamSemibold
+		badge.TextSize = 22
+		badge.TextXAlignment = Enum.TextXAlignment.Left
+		badge.TextYAlignment = Enum.TextYAlignment.Top
+		badge.BorderSizePixel = 0
+		badge.ZIndex = (parentFrame.ZIndex or 1) + 2
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 6)
+		corner.Parent = badge
+
+		local stroke = Instance.new("UIStroke")
+		stroke.Thickness = 1.25
+		stroke.Transparency = 0.4
+		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		stroke.Parent = badge
+
+		local pad = Instance.new("UIPadding")
+		pad.PaddingTop = UDim.new(0, 6)
+		pad.PaddingBottom = UDim.new(0, 6)
+		pad.PaddingLeft = UDim.new(0, 10)
+		pad.PaddingRight = UDim.new(0, 10)
+		pad.Parent = badge
+
+		badge.Parent = parentFrame
+	end
+	return badge
+end
+
+-- 文言生成（[名詞] 生き物）
+local function buildCategoryText(entry, lang)
+	if not entry then
+		return ""
+	end
+	local L = Labels[lang] or Labels.ja
+	local c1 = entry.category1 and (L[entry.category1] or entry.category1) or ""
+	local c2 = (entry.category2 and entry.category2[lang]) or ""
+	if c1 ~= "" and c2 ~= "" then
+		return string.format("[%s] %s", c1, c2)
+	elseif c1 ~= "" then
+		return string.format("[%s]", c1)
+	else
+		return c2 or ""
+	end
+end
+
+-- 反映
+renderCategory = function(frame: Frame?, entry: table)
+	if not frame or not entry then
+		return
+	end
+	local badge = ensureCategoryBadge(frame)
+	if not badge then
+		return
+	end
+
+	local text = buildCategoryText(entry, LANG)
+	badge.Text = text or ""
+	badge.Visible = (badge.Text ~= "")
+
+	local style = CATEGORY_STYLE[entry.category1] or DEFAULT_STYLE
+	badge.BackgroundColor3 = style.bg
+	badge.TextColor3 = style.text
+end
+-- === カテゴリ表示：準備ここまで ===
 
 -- 効果音の取りこぼしを戦闘開始時に再解決する保険
 if not resolveSoundsIfNeeded then
 	function resolveSoundsIfNeeded()
 		local s = ReplicatedStorage:FindFirstChild("Sounds")
-		if not s then return end
+		if not s then
+			return
+		end
 		if not TypingCorrectSound or not TypingCorrectSound.Parent then
 			TypingCorrectSound = s:FindFirstChild("TypingCorrect")
 		end
@@ -56,25 +200,23 @@ if not resolveSoundsIfNeeded then
 	end
 end
 
-
 local countdownFrame: Frame? = nil
 local countdownLabel: TextLabel? = nil
 
 local function runCountdown(seconds: number)
-	if not countdownFrame or not countdownLabel then return end
+	if not countdownFrame or not countdownLabel then
+		return
+	end
 	countdownFrame.Visible = true
 	for n = seconds, 1, -1 do
 		countdownLabel.Text = tostring(n)
 		-- 簡単な演出
 		countdownLabel.TextTransparency = 0
-		game:GetService("TweenService")
-			:Create(countdownLabel, TweenInfo.new(0.25), { TextTransparency = 0 })
-			:Play()
+		game:GetService("TweenService"):Create(countdownLabel, TweenInfo.new(0.25), { TextTransparency = 0 }):Play()
 		task.wait(1)
 	end
 	countdownFrame.Visible = false
 end
-
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -82,24 +224,23 @@ local enemyProgContainer = nil
 local enemyProgFill = nil
 local enemyProgConn = nil
 
-local pendingCyclePayload = nil       -- { intervalSec=..., startedAt=... }
-local progressStartedOnce = false     -- 一度でも startEnemyProgress を呼んだか
-
+local pendingCyclePayload = nil -- { intervalSec=..., startedAt=... }
+local progressStartedOnce = false -- 一度でも startEnemyProgress を呼んだか
 
 -- === 攻撃プログレスの起動挙動 ===
-local PROGRESS_COUNTDOWN_ON_START = false   -- trueで3,2,1のカウントダウン後に開始
+local PROGRESS_COUNTDOWN_ON_START = false -- trueで3,2,1のカウントダウン後に開始
 local COUNTDOWN_SECONDS = 3
-local DEFAULT_FIRST_INTERVAL = 4            -- サーバーが来るまでの仮インターバル(秒)
+local DEFAULT_FIRST_INTERVAL = 4 -- サーバーが来るまでの仮インターバル(秒)
 
 -- === 共通レイアウト定数（横幅を揃える） ===
-local STACK_WIDTH = 700      -- 3つの横幅を統一（WordFrame の幅と同じ）
-local WORD_H      = 150
-local HP_BAR_H    = 40
-local PROG_H      = 14
-local STACK_PAD   = 10       -- 縦の隙間
+local STACK_WIDTH = 700 -- 3つの横幅を統一（WordFrame の幅と同じ）
+local WORD_H = 150
+local HP_BAR_H = 40
+local PROG_H = 14
+local STACK_PAD = 10 -- 縦の隙間
 
 -- ========= 予知（次単語の先行描画）設定 =========
-local PRECOGNITION_ENABLED = false  -- デフォはOFF（手動スイッチ）
+local PRECOGNITION_ENABLED = false -- デフォはOFF（手動スイッチ）
 local function hasPrecog()
 	-- 手動スイッチ or 指輪装備で付与される属性（サーバ側からSetAttribute想定）
 	return PRECOGNITION_ENABLED or (Players.LocalPlayer:GetAttribute("HasPrecognition") == true)
@@ -107,7 +248,7 @@ end
 
 -- 予知UI／データ（他の関数から参照するので先に宣言）
 local wordLabelNext = nil
-local precogNextWordData = nil  -- 次に来る“予約”単語
+local precogNextWordData = nil -- 次に来る“予約”単語
 local function hasPrecog()
 	return true -- 予知ワード表示フラグ
 end
@@ -129,8 +270,12 @@ local function stopEnemyProgress()
 end
 
 local function startEnemyProgress(durationSec: number, startedAtServer: number?)
-	log.debugf(("[BattleUI] startEnemyProgress ENTER (dur=%.2f, startedAtServer=%s)"):
-		format(tonumber(durationSec) or -1, tostring(startedAtServer)))
+	log.debugf(
+		("[BattleUI] startEnemyProgress ENTER (dur=%.2f, startedAtServer=%s)"):format(
+			tonumber(durationSec) or -1,
+			tostring(startedAtServer)
+		)
+	)
 
 	if not enemyProgContainer or not enemyProgFill then
 		log.warn("[BattleUI] progress UI not ready; skip startEnemyProgress")
@@ -157,15 +302,17 @@ local function startEnemyProgress(durationSec: number, startedAtServer: number?)
 end
 
 local function applyEnemyCycle(payload)
-	if not payload then return end
+	if not payload then
+		return
+	end
 	local duration = tonumber(payload.intervalSec) or DEFAULT_FIRST_INTERVAL
 	local startedAt = tonumber(payload.startedAt)
 
 	log.debugf(("[BattleUI] sync interval=%.2f startedAt=%.3f"):format(duration, startedAt or -1))
 	startEnemyProgress(duration, startedAt)
+	-- ★ 同期受信時刻を tick() 基準で記録（ウォッチドッグと同一基準）
+	lastCycleAt = tick()
 end
-
-
 
 -- 入力制御（カウントダウン中はタイピング無効）
 local TypingEnabled = true
@@ -174,17 +321,16 @@ log.debug("[BattleUI] クライアント起動中...")
 
 -- ユーザーのロケールを取得
 local userLocale = string.lower(LocalizationService.RobloxLocaleId)
-local localeCode = string.match(userLocale, "^(%a+)") or "en"  -- "ja-jp" → "ja"
+local localeCode = string.match(userLocale, "^(%a+)") or "en" -- "ja-jp" → "ja"
 
 -- 【開発用】強制的に日本語表示（本番では削除可能）
-local FORCE_LOCALE = "ja"  -- ここを変更すると表示言語が変わる（nil で自動検出）
+local FORCE_LOCALE = "ja" -- ここを変更すると表示言語が変わる（nil で自動検出）
 if FORCE_LOCALE then
 	localeCode = FORCE_LOCALE
 	log.debugf(("[BattleUI] 言語を強制設定: %s"):format(localeCode))
 end
 
 log.debugf(("[BattleUI] ユーザーロケール: %s → 表示言語: %s"):format(userLocale, localeCode))
-
 
 local RunService = game:GetService("RunService")
 
@@ -196,19 +342,17 @@ local lastCycleAt = 0
 
 -- サーバーに再同期を要求
 local function requestEnemyCycleSync(reason: string?)
-	if not inBattle then return end
-	if not RequestEnemyCycleSyncEvent then return end
+	if not inBattle then
+		return
+	end
+	if not RequestEnemyCycleSyncEvent then
+		return
+	end
 	RequestEnemyCycleSyncEvent:FireServer()
 end
 
 if not BattleStartEvent or not BattleEndEvent or not BattleDamageEvent then
-    warn("[BattleUI] RemoteEventの取得に失敗しました")
-    return
-end
-
-if not BattleStartEvent or not BattleEndEvent or not BattleDamageEvent then
 	warn("[BattleUI] RemoteEventの取得に失敗しました")
-	return
 end
 
 -- 単語リストを読み込み
@@ -234,15 +378,15 @@ log.debug("[BattleUI] RemoteEvents取得完了")
 -- 状態
 local inBattle = false
 local currentWord = ""
-local currentWordData = nil  -- 翻訳データを含む単語情報
-local lastWord = nil  -- 前回の単語（連続回避用）
+local currentWordData = nil -- 翻訳データを含む単語情報
+local lastWord = nil -- 前回の単語（連続回避用）
 local currentIndex = 1
 local typingLevels = {}
 local currentBattleTimeout = nil
 local monsterHP = 0
 local monsterMaxHP = 0
-local playerHP = 0  -- プレイヤーの現在HP
-local playerMaxHP = 0  -- プレイヤーの最大HP
+local playerHP = 0 -- プレイヤーの現在HP
+local playerMaxHP = 0 -- プレイヤーの最大HP
 local damagePerKey = 1
 
 -- カメラ設定保存用
@@ -252,9 +396,9 @@ local originalCameraMinZoom = nil
 -- UI要素
 local battleGui = nil
 local darkenFrame = nil
-local wordFrame = nil
-local wordLabel = nil
-local translationLabel = nil  -- 翻訳表示用
+-- local wordFrame = nil
+-- local wordLabel = nil
+local translationLabel = nil -- 翻訳表示用
 local hpBarBackground = nil
 local hpBarFill = nil
 local hpLabel = nil
@@ -305,7 +449,9 @@ end
 
 -- 表示を更新
 updateDisplay = function()
-	if not wordLabel then return end
+	if not wordLabel then
+		return
+	end
 
 	-- 入力済み文字を緑、未入力を白で表示
 	local typedPart = string.sub(currentWord, 1, currentIndex - 1)
@@ -320,7 +466,7 @@ updateDisplay = function()
 		-- バーの長さをアニメーション
 		local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 		local tween = TweenService:Create(hpBarFill, tweenInfo, {
-			Size = UDim2.new(hpPercent, 0, 1, 0)
+			Size = UDim2.new(hpPercent, 0, 1, 0),
 		})
 		tween:Play()
 
@@ -336,7 +482,7 @@ end
 local function selectWord()
 	if #typingLevels == 0 then
 		-- デフォルト：level_1のみ
-		typingLevels = {{level = "level_1", weight = 100}}
+		typingLevels = { { level = "level_1", weight = 100 } }
 	end
 
 	-- 重み付きランダム選択
@@ -382,16 +528,18 @@ local function selectWord()
 			return wordData
 		else
 			-- 旧形式の場合は互換性のためテーブルに変換
-			return {word = wordData}
+			return { word = wordData }
 		end
 	else
-		return {word = "apple", ja = "りんご"}  -- フォールバック
+		return { word = "apple", ja = "りんご" } -- フォールバック
 	end
 end
 
 -- 予知UIの更新
 local function refreshPrecogUI()
-	if not wordLabelNext then return end
+	if not wordLabelNext then
+		return
+	end
 	if hasPrecog() and precogNextWordData and precogNextWordData.word then
 		wordLabelNext.Text = "次: " .. tostring(precogNextWordData.word)
 		wordLabelNext.Visible = true
@@ -408,26 +556,28 @@ local function rollNextPrecogWord()
 	repeat
 		candidate = selectWord()
 		tries += 1
-		-- 直前と同じは避ける（最大5回まで）
+	-- 直前と同じは避ける（最大5回まで）
 	until (not currentWordData or candidate.word ~= currentWordData.word) or tries >= 5
 	precogNextWordData = candidate
 	refreshPrecogUI()
 end
-
 
 -- 次の単語を設定（予知に対応）
 -- 引数 nextData は任意。与えなければ従来どおりランダム選択。
 setNextWord = function(nextData)
 	-- 1) 今回出す単語を決定（外部指定が無ければ従来の selectWord()）
 	currentWordData = nextData or selectWord()
-	currentWord     = currentWordData.word
-	currentIndex    = 1
-	lastWord        = currentWord
+	currentWord = currentWordData.word
+	currentIndex = 1
+	lastWord = currentWord
+
+	log.debug(("[setNextWord] choose=%s"):format(currentWordData.word))
+	showWord(currentWordData)
+	log.debug("[setNextWord] after showWord")
 
 	-- 2) 翻訳表示（従来どおり）
 	if translationLabel then
-		local translation = currentWordData[localeCode]
-			or currentWordData.ja or currentWordData.es or currentWordData.fr or ""
+		local translation = getTranslation(currentWordData, LANG)
 		translationLabel.Text = translation
 		translationLabel.Visible = translation ~= ""
 	end
@@ -457,10 +607,11 @@ setNextWord = function(nextData)
 	else
 		-- OFF：非表示＆予約クリア（好みで残しても良い）
 		precogNextWordData = nil
-		if wordLabelNext then wordLabelNext.Visible = false end
+		if wordLabelNext then
+			wordLabelNext.Visible = false
+		end
 	end
 end
-
 
 -- UI作成
 local function createBattleUI()
@@ -570,7 +721,7 @@ local function createBattleUI()
 	wordLabelNext = Instance.new("TextLabel")
 	wordLabelNext.Name = "NextWordHint"
 	wordLabelNext.BackgroundTransparency = 1
-	wordLabelNext.Size = UDim2.new(1, -40, 0, 24)   -- 枠内いっぱい、左右20px余白
+	wordLabelNext.Size = UDim2.new(1, -40, 0, 24) -- 枠内いっぱい、左右20px余白
 	wordLabelNext.Position = UDim2.new(0, 20, 0, 6) -- 枠の上側に小さく表示
 	wordLabelNext.Font = Enum.Font.Gotham
 	wordLabelNext.TextSize = 22
@@ -582,8 +733,6 @@ local function createBattleUI()
 	wordLabelNext.Visible = false
 	wordLabelNext.Parent = wordFrame
 
-
-
 	-- 単語表示（RichText対応）
 	wordLabel = Instance.new("TextLabel")
 	wordLabel.Name = "WordLabel"
@@ -594,10 +743,16 @@ local function createBattleUI()
 	wordLabel.TextStrokeTransparency = 0
 	wordLabel.Font = Enum.Font.GothamBold
 	wordLabel.TextSize = 60
-	wordLabel.Text = "apple"
+	wordLabel.Text = ""
 	wordLabel.RichText = true
 	wordLabel.ZIndex = 3
 	wordLabel.Parent = wordFrame
+
+	UI_READY = true
+	if PENDING_ENTRY then
+		showWord(PENDING_ENTRY)
+		PENDING_ENTRY = nil
+	end
 
 	-- 翻訳表示（単語の下）
 	translationLabel = Instance.new("TextLabel")
@@ -609,7 +764,7 @@ local function createBattleUI()
 	translationLabel.TextStrokeTransparency = 0.3
 	translationLabel.Font = Enum.Font.Gotham
 	translationLabel.TextSize = 28
-	translationLabel.Text = "テスト"  -- デバッグ用の初期値
+	translationLabel.Text = ""
 	translationLabel.TextYAlignment = Enum.TextYAlignment.Top
 	translationLabel.Visible = true
 	translationLabel.ZIndex = 3
@@ -660,7 +815,7 @@ local function createBattleUI()
 	countdownLabel.BackgroundTransparency = 1
 	countdownLabel.Font = Enum.Font.GothamBlack
 	countdownLabel.TextScaled = true
-	countdownLabel.TextColor3 = Color3.fromRGB(255,255,255)
+	countdownLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	countdownLabel.TextStrokeTransparency = 0.2
 	countdownLabel.ZIndex = 21
 	countdownLabel.Parent = countdownFrame
@@ -668,74 +823,91 @@ local function createBattleUI()
 	log.debug("[BattleUI] UI作成完了")
 end
 
+-- ▼▼▼ ここから：createBattleUI() の定義“直後”に入れる ▼▼▼
+local function connectRemoteEvent(name, handler)
+	-- 先に探す
+	local ev = ReplicatedStorage:FindFirstChild(name)
+	if not ev then
+		warn(("[BattleUI] waiting RemoteEvent: %s"):format(name))
+		-- 生成されるまで待機（タイムアウトなし）
+		ev = ReplicatedStorage:WaitForChild(name)
+	end
+	if not ev or not ev:IsA("RemoteEvent") then
+		error(
+			("[BattleUI] RemoteEvent not found or wrong type: %s (got %s)"):format(name, ev and ev.ClassName or "nil")
+		)
+	end
+	return ev.OnClientEvent:Connect(handler)
+end
+-- ▲▲▲ ここまで追加 ▲▲▲
+
 -- === 攻撃プログレス開始（0→満了）===
 startEnemyProgress = function(durationSec: number, startedAt: number?)
-    if not enemyProgContainer or not enemyProgFill then return end
+	if not enemyProgContainer or not enemyProgFill then
+		return
+	end
 
-    -- 旧ループ停止
-    if enemyProgConn then
-        enemyProgConn:Disconnect()
-        enemyProgConn = nil
-    end
+	-- 旧ループ停止
+	if enemyProgConn then
+		enemyProgConn:Disconnect()
+		enemyProgConn = nil
+	end
 
-    enemyProgContainer.Visible = true
+	enemyProgContainer.Visible = true
+	enemyProgFill.Size = UDim2.new(0, 0, 1, 0)
 
-    -- サーバー基準 startedAt がある場合は進捗を補正
-    local now = os.clock()
-    local elapsed = 0
-    if startedAt and type(startedAt) == "number" then
-        elapsed = math.max(0, now - startedAt)
-    end
-    local startTime = now - elapsed
+	-- ★ tick() に統一（サーバの startedAt と同基準）
+	local s = tonumber(startedAt) or tick()
 
-    enemyProgConn = game:GetService("RunService").RenderStepped:Connect(function()
-        local t = math.clamp((os.clock() - startTime) / durationSec, 0, 1)
-        enemyProgFill.Size = UDim2.new(t, 0, 1, 0)
-        if t >= 1 then
-            enemyProgConn:Disconnect()
-            enemyProgConn = nil
-        end
-    end)
+	enemyProgConn = game:GetService("RunService").RenderStepped:Connect(function()
+		local t = math.clamp((tick() - s) / durationSec, 0, 1)
+		enemyProgFill.Size = UDim2.new(t, 0, 1, 0)
+		if t >= 1 then
+			enemyProgConn:Disconnect()
+			enemyProgConn = nil
+		end
+	end)
 end
 
 -- === 攻撃プログレス停止 ===
 stopEnemyProgress = function()
-    if enemyProgConn then
-        enemyProgConn:Disconnect()
-        enemyProgConn = nil
-    end
-    if enemyProgContainer and enemyProgFill then
-        enemyProgContainer.Visible = false
-        enemyProgFill.Size = UDim2.new(0, 0, 1, 0)
-    end
+	if enemyProgConn then
+		enemyProgConn:Disconnect()
+		enemyProgConn = nil
+	end
+	if enemyProgContainer and enemyProgFill then
+		enemyProgContainer.Visible = false
+		enemyProgFill.Size = UDim2.new(0, 0, 1, 0)
+	end
 end
 
 -- === 被弾エフェクト（タイプミス／敵ターン共通）===
 playHitFlash = function()
-    if not wordFrame then return end
+	if not wordFrame then
+		return
+	end
 
-    -- 枠線キャッシュ
-    local frameStroke = wordFrame:FindFirstChildOfClass("UIStroke")
+	-- 枠線キャッシュ
+	local frameStroke = wordFrame:FindFirstChildOfClass("UIStroke")
 
-    -- 赤く点滅
-    wordFrame.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-    wordFrame.BackgroundTransparency = 0.3
-    if frameStroke then
-        frameStroke.Color = Color3.fromRGB(255, 50, 50)
-    end
+	-- 赤く点滅
+	wordFrame.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+	wordFrame.BackgroundTransparency = 0.3
+	if frameStroke then
+		frameStroke.Color = Color3.fromRGB(255, 50, 50)
+	end
 
-    TweenService:Create(wordFrame, TweenInfo.new(0.3), {
-        BackgroundColor3 = Color3.fromRGB(30, 30, 40),
-        BackgroundTransparency = 0.2
-    }):Play()
+	TweenService:Create(wordFrame, TweenInfo.new(0.3), {
+		BackgroundColor3 = Color3.fromRGB(30, 30, 40),
+		BackgroundTransparency = 0.2,
+	}):Play()
 
-    if frameStroke then
-        TweenService:Create(frameStroke, TweenInfo.new(0.3), {
-            Color = Color3.fromRGB(100, 200, 255)
-        }):Play()
-    end
+	if frameStroke then
+		TweenService:Create(frameStroke, TweenInfo.new(0.3), {
+			Color = Color3.fromRGB(100, 200, 255),
+		}):Play()
+	end
 end
-
 
 if not TypingCorrectSound then
 	warn("[BattleUI] TypingCorrect効果音が見つかりません (WaitForChild タイムアウト)")
@@ -753,13 +925,19 @@ local function onBattleStart(monsterName, hp, maxHP, damage, levels, pHP, pMaxHP
 	hp = hp or 10
 	maxHP = maxHP or 10
 	damage = damage or 1
-	levels = levels or {{level = "level_1", weight = 100}}
+	levels = levels or { { level = "level_1", weight = 100 } }
 	pHP = pHP or 100
 	pMaxHP = pMaxHP or 100
 
-	log.debugf(("[BattleUI] バトル開始: vs %s (敵HP: %d, プレイヤーHP: %d/%d, Damage: %d)"):format(
-		monsterName, hp, pHP, pMaxHP, damage
-	))
+	log.debugf(
+		("[BattleUI] バトル開始: vs %s (敵HP: %d, プレイヤーHP: %d/%d, Damage: %d)"):format(
+			monsterName,
+			hp,
+			pHP,
+			pMaxHP,
+			damage
+		)
+	)
 
 	-- すでに戦闘中なら無視
 	if inBattle then
@@ -823,7 +1001,7 @@ local function onBattleStart(monsterName, hp, maxHP, damage, levels, pHP, pMaxHP
 		wordLabel.Text = ""
 		wordLabel.TextTransparency = 0
 		wordLabel.TextStrokeTransparency = 0
-		wordLabel.TextColor3 = Color3.new(1,1,1)
+		wordLabel.TextColor3 = Color3.new(1, 1, 1)
 	end
 	if translationLabel then
 		translationLabel.Visible = true
@@ -832,7 +1010,6 @@ local function onBattleStart(monsterName, hp, maxHP, damage, levels, pHP, pMaxHP
 		translationLabel.TextStrokeTransparency = 0.3
 		translationLabel.TextColor3 = Color3.fromRGB(150, 200, 255)
 	end
-
 
 	-- ★ HPバーは開始時点で必ず表示に戻す
 	if hpBarBackground then
@@ -844,8 +1021,13 @@ local function onBattleStart(monsterName, hp, maxHP, damage, levels, pHP, pMaxHP
 		stopEnemyProgress()
 	else
 		-- フォールバック：接続解除＆非表示
-		if enemyProgConn then enemyProgConn:Disconnect() enemyProgConn = nil end
-		if enemyProgContainer then enemyProgContainer.Visible = false end
+		if enemyProgConn then
+			enemyProgConn:Disconnect()
+			enemyProgConn = nil
+		end
+		if enemyProgContainer then
+			enemyProgContainer.Visible = false
+		end
 	end
 	if enemyProgContainer and enemyProgFill then
 		enemyProgContainer.Visible = true
@@ -921,9 +1103,13 @@ local function onBattleStart(monsterName, hp, maxHP, damage, levels, pHP, pMaxHP
 	if PROGRESS_COUNTDOWN_ON_START then
 		-- カウントダウン表示
 		if type(runCountdown) == "function" then
-			if countdownFrame then countdownFrame.Visible = true end
+			if countdownFrame then
+				countdownFrame.Visible = true
+			end
 			runCountdown(COUNTDOWN_SECONDS or 3)
-			if countdownFrame then countdownFrame.Visible = false end
+			if countdownFrame then
+				countdownFrame.Visible = false
+			end
 		end
 		-- 入力解禁＆単語表示
 		TypingEnabled = true
@@ -952,12 +1138,12 @@ local function onBattleStart(monsterName, hp, maxHP, damage, levels, pHP, pMaxHP
 
 	-- ★ 初回サイクル・ウォッチドッグ：0.35秒待っても同期が来なければ要求
 	task.delay(0.35, function()
-		if inBattle and (os.clock() - lastCycleAt) > 0.30 then
+		-- ★ 比較も tick() に統一
+		if inBattle and (tick() - lastCycleAt) > 0.30 then
 			requestEnemyCycleSync("first-cycle watchdog")
 		end
 	end)
 end
-
 
 -- バトル終了処理
 onBattleEnd = function(victory, summary)
@@ -988,13 +1174,13 @@ onBattleEnd = function(victory, summary)
 
 	-- 敵HP表示を即座に消す
 	if hpBarBackground then
-		hpBarBackground.Visible = false       -- 子の hpLabel / hpBarFill もまとめて非表示
+		hpBarBackground.Visible = false -- 子の hpLabel / hpBarFill もまとめて非表示
 	end
 	if hpBarFill then
 		hpBarFill.Size = UDim2.new(0, 0, 1, 0) -- 念のためリセット
 	end
 	if hpLabel then
-		hpLabel.Text = ""                      -- 念のためリセット
+		hpLabel.Text = "" -- 念のためリセット
 	end
 
 	-- 単語ボックスを即座に非表示
@@ -1033,7 +1219,9 @@ onBattleEnd = function(victory, summary)
 			local dropsList = (summary and summary.drops) or {}
 			-- 表示テキスト（「なし」を含む）
 			local function formatDrops(drops)
-				if type(drops) ~= "table" or #drops == 0 then return "なし" end
+				if type(drops) ~= "table" or #drops == 0 then
+					return "なし"
+				end
 				local t = {}
 				for _, d in ipairs(drops) do
 					if typeof(d) == "string" then
@@ -1053,7 +1241,7 @@ onBattleEnd = function(victory, summary)
 			panel.Name = "ResultSummary"
 			panel.Size = UDim2.new(0, 520, 0, 110)
 			panel.Position = UDim2.new(0.5, -260, 0.10, 0) -- ← 上部に配置（中央寄せ）
-			panel.BackgroundColor3 = Color3.fromRGB(25,25,32)
+			panel.BackgroundColor3 = Color3.fromRGB(25, 25, 32)
 			panel.BackgroundTransparency = 0.1
 			panel.BorderSizePixel = 0
 			panel.ZIndex = 50
@@ -1065,7 +1253,7 @@ onBattleEnd = function(victory, summary)
 
 			local stroke = Instance.new("UIStroke")
 			stroke.Thickness = 2
-			stroke.Color = Color3.fromRGB(100,200,255)
+			stroke.Color = Color3.fromRGB(100, 200, 255)
 			stroke.Transparency = 0.2
 			stroke.Parent = panel
 
@@ -1073,11 +1261,11 @@ onBattleEnd = function(victory, summary)
 				local label = Instance.new("TextLabel")
 				label.BackgroundTransparency = 1
 				label.Size = UDim2.new(1, -24, 0, 30)
-				label.Position = UDim2.new(0, 12, 0, 10 + (order-1)*32)
+				label.Position = UDim2.new(0, 12, 0, 10 + (order - 1) * 32)
 				label.Font = Enum.Font.GothamBold
 				label.TextSize = 22
 				label.TextXAlignment = Enum.TextXAlignment.Left
-				label.TextColor3 = Color3.fromRGB(230,240,255)
+				label.TextColor3 = Color3.fromRGB(230, 240, 255)
 				label.Text = text
 				label.ZIndex = 51
 				label.Parent = panel
@@ -1091,21 +1279,23 @@ onBattleEnd = function(victory, summary)
 			-- 2秒キープ → 0.6秒フェードアウト → 破棄
 			task.delay(2.0, function()
 				if panel then
-					TweenService:Create(panel, TweenInfo.new(0.6), {BackgroundTransparency = 1}):Play()
-					TweenService:Create(stroke, TweenInfo.new(0.6), {Transparency = 1}):Play()
+					TweenService:Create(panel, TweenInfo.new(0.6), { BackgroundTransparency = 1 }):Play()
+					TweenService:Create(stroke, TweenInfo.new(0.6), { Transparency = 1 }):Play()
 					for _, child in ipairs(panel:GetChildren()) do
 						if child:IsA("TextLabel") then
 							TweenService:Create(child, TweenInfo.new(0.6), {
-								TextTransparency = 1, TextStrokeTransparency = 1
+								TextTransparency = 1,
+								TextStrokeTransparency = 1,
 							}):Play()
 						end
 					end
 					task.wait(0.65)
-					if panel then panel:Destroy() end
+					if panel then
+						panel:Destroy()
+					end
 				end
 			end)
 		end
-
 
 		-- プレイヤーの入力ブロックを解除
 		local character = player.Character
@@ -1120,13 +1310,13 @@ onBattleEnd = function(victory, summary)
 
 		-- 画面を明るく戻す
 		TweenService:Create(darkenFrame, TweenInfo.new(0.5), {
-			BackgroundTransparency = 1
+			BackgroundTransparency = 1,
 		}):Play()
 
 		-- UIを非表示にするための遅延実行（別スレッドで）
 		task.spawn(function()
-			task.wait(2.6)  -- アニメーション完了を待つ
-			if not inBattle then  -- まだ次のバトルが始まっていないことを確認
+			task.wait(2.6) -- アニメーション完了を待つ
+			if not inBattle then -- まだ次のバトルが始まっていないことを確認
 				battleGui.Enabled = false
 
 				-- プログレスバーを隠す＆進行ループ停止
@@ -1217,7 +1407,9 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 playHitFlash = function()
-	if not wordFrame then return end
+	if not wordFrame then
+		return
+	end
 	local frameStroke = wordFrame:FindFirstChildOfClass("UIStroke")
 
 	-- 赤く点滅
@@ -1239,11 +1431,14 @@ playHitFlash = function()
 	end
 end
 
-
 -- キー入力処理
 local function onKeyPress(input, gameProcessed)
-	if not inBattle then return end
-	if not TypingEnabled then return end
+	if not inBattle then
+		return
+	end
+	if not TypingEnabled then
+		return
+	end
 
 	if input.UserInputType == Enum.UserInputType.Keyboard then
 		local keyCode = input.KeyCode
@@ -1282,11 +1477,11 @@ local function onKeyPress(input, gameProcessed)
 							currentIndex = 1
 							lastWord = currentWord
 							if translationLabel then
-								local translation = currentWordData[localeCode]
-									or currentWordData.ja or currentWordData.es or currentWordData.fr or ""
+								local translation = getTranslation(currentWordData, LANG)
 								translationLabel.Text = translation
 								translationLabel.Visible = translation ~= ""
 							end
+
 							updateDisplay()
 						end
 
@@ -1296,14 +1491,15 @@ local function onKeyPress(input, gameProcessed)
 				else
 					updateDisplay()
 				end
-
 			else
 				-- タイプミス
 				if TypingErrorSound then
 					TypingErrorSound:Play()
 				end
 
-				if playHitFlash then playHitFlash() end
+				if playHitFlash then
+					playHitFlash()
+				end
 
 				-- タイプミス時のダメージをサーバーに通知
 				local TypingMistakeEvent = ReplicatedStorage:FindFirstChild("TypingMistake")
@@ -1319,13 +1515,75 @@ end
 createBattleUI()
 
 log.debug("イベント接続中...")
-BattleStartEvent.OnClientEvent:Connect(onBattleStart)
-BattleEndEvent.OnClientEvent:Connect(onBattleEnd)
+connectRemoteEvent("BattleStart", onBattleStart)
+connectRemoteEvent("BattleEnd", onBattleEnd)
+
+local RS = ReplicatedStorage
+
+-- 必須イベント：サーバが出すまで待つ（タイムアウト無しでOK）
+RS:WaitForChild("BattleStart").OnClientEvent:Connect(onBattleStart)
+RS:WaitForChild("BattleEnd").OnClientEvent:Connect(onBattleEnd)
+RS:WaitForChild("EnemyAttackCycleStart").OnClientEvent:Connect(function(payload)
+	-- UI 未準備なら一旦保留
+	if not battleGui or not battleGui.Enabled then
+		pendingEnemyCycle = payload
+		return
+	end
+	applyEnemyCycle(payload)
+end)
+RS:WaitForChild("EnemyDamage").OnClientEvent:Connect(function(payload)
+	if not inBattle then
+		return
+	end
+	playHitFlash()
+	if EnemyHitSound and EnemyHitSound.Play then
+		EnemyHitSound:Play()
+	end
+end)
+
+-- 任意イベント：無い環境も想定して“待ち時間つきで取得”
+do
+	local ev = RS:WaitForChild("BattleHPUpdate", 10)
+	if ev then
+		ev.OnClientEvent:Connect(onHPUpdate)
+	else
+		warn("[BattleUI] BattleHPUpdate が見つからない（スキップ）")
+	end
+end
+do
+	local ev = RS:WaitForChild("PlayerHPUpdate", 10)
+	if ev then
+		ev.OnClientEvent:Connect(onPlayerHPUpdate)
+	else
+		warn("[BattleUI] PlayerHPUpdate が見つからない（スキップ）")
+	end
+end
+
+-- ついでに他も安全化
+connectRemoteEvent("EnemyDamage", function(payload)
+	if not inBattle then
+		return
+	end
+	playHitFlash()
+	if EnemyHitSound and EnemyHitSound.Play then
+		EnemyHitSound:Play()
+	end
+end)
+
+connectRemoteEvent("EnemyAttackCycleStart", function(payload)
+	if not battleGui or not battleGui.Enabled then
+		pendingEnemyCycle = payload
+		return
+	end
+	applyEnemyCycle(payload)
+end)
 
 local EnemyDamageEvent = ReplicatedStorage:WaitForChild("EnemyDamage", 30)
 EnemyDamageEvent.OnClientEvent:Connect(function(payload)
 	-- バトル中だけ反応
-	if not inBattle then return end
+	if not inBattle then
+		return
+	end
 
 	-- 敵ターンの被弾エフェクト
 	playHitFlash()
@@ -1336,17 +1594,13 @@ EnemyDamageEvent.OnClientEvent:Connect(function(payload)
 	end
 end)
 
-EnemyAttackCycleStartEvent.OnClientEvent:Connect(function(payload)
-	-- UI がまだなら一旦保存（inBattle判定で落とさない）
+ReplicatedStorage:WaitForChild("EnemyAttackCycleStart").OnClientEvent:Connect(function(payload)
 	if not battleGui or not battleGui.Enabled then
 		pendingEnemyCycle = payload
 		return
 	end
-
 	applyEnemyCycle(payload)
 end)
-
-
 
 -- HP更新イベント（敵）
 local HPUpdateEvent = ReplicatedStorage:FindFirstChild("BattleHPUpdate")

@@ -6,15 +6,15 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- 設定
-local WATER_LEVEL = -25  -- この高さより下に落ちたら処理
-local CHECK_INTERVAL = 0.5  -- チェック間隔（秒）
+local WATER_LEVEL = -25 -- この高さより下に落ちたら処理
+local CHECK_INTERVAL = 0.5 -- チェック間隔（秒）
 
 -- 島の中心（プレイヤーのリスポーン位置）
 local Islands = require(ReplicatedStorage.Islands.Registry)
 local firstIsland = Islands[1]
 local SPAWN_X = firstIsland.centerX
 local SPAWN_Z = firstIsland.centerZ
-local SPAWN_Y = firstIsland.baseY + 25  -- 島の上空
+local SPAWN_Y = firstIsland.baseY + 25 -- 島の上空
 
 print("[OceanSafety] 初期化完了")
 
@@ -27,10 +27,14 @@ local function monitorPlayer(player)
 		local lastCheck = 0
 
 		RunService.Heartbeat:Connect(function()
-			if not character.Parent or not hrp.Parent then return end
+			if not character.Parent or not hrp.Parent then
+				return
+			end
 
 			local now = os.clock()
-			if now - lastCheck < CHECK_INTERVAL then return end
+			if now - lastCheck < CHECK_INTERVAL then
+				return
+			end
 			lastCheck = now
 
 			-- 水面より下に落ちたかチェック
