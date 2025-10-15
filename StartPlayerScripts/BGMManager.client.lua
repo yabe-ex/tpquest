@@ -22,6 +22,27 @@ local isBattleActive = false
 local bgmSound = nil
 local originalVolume = 0.3 -- 【追加・修正1】元の音量を保持する変数を追加（デフォルト値 0.3）
 
+-- === User Settings bridge ===
+local function getAttrNum(name, default)
+	local v = Players.LocalPlayer:GetAttribute(name)
+	return (type(v) == "number") and v or default
+end
+
+-- SE/BGMの反映（SEはSoundService全体、BGMはbgmSoundに適用）
+local function applyVolumes()
+	local se = getAttrNum("SEVolume", 1.0)
+	local bgm = getAttrNum("BGMVolume", 1.0)
+
+	SoundService.Volume = se
+
+	-- BGMは isBattleActive 中はディミング係数(0.3)が乗る
+	if bgmSound then
+		local base = originalVolume -- originalVolume は createBGMSound で更新
+		local dim = isBattleActive and 0.3 or 1.0
+		bgmSound.Volume = base * dim
+	end
+end
+
 -- BGMサウンドを作成
 local function createBGMSound(assetId, volume)
 	if bgmSound then
@@ -34,9 +55,10 @@ local function createBGMSound(assetId, volume)
 	bgmSound.SoundId = assetId
 
 	-- 【修正2】音量を設定し、originalVolumeを更新
-	local finalVolume = volume or 0.3
+	local userBGM = tonumber(Players.LocalPlayer:GetAttribute("BGMVolume")) or 1.0
+	local finalVolume = (volume or 0.3) * userBGM
 	bgmSound.Volume = finalVolume
-	originalVolume = finalVolume -- 取得した音量を保存
+	originalVolume = finalVolume
 
 	bgmSound.Looped = true
 	bgmSound.Parent = SoundService
@@ -68,19 +90,19 @@ local function stopBGM()
 	if bgmSound then
 		print("[BGMManager] BGM停止")
 
-        -- 【修正3】Tweenを使ってスムーズに停止
-        TweenService:Create(bgmSound, TweenInfo.new(0.5), {
-            Volume = 0
-        }):Play()
+		-- 【修正3】Tweenを使ってスムーズに停止
+		TweenService:Create(bgmSound, TweenInfo.new(0.5), {
+			Volume = 0,
+		}):Play()
 
-        task.delay(0.5, function()
-            -- 0.5秒後、音量が0であることを確認して停止・削除
-            if bgmSound and bgmSound.Volume == 0 then
-                bgmSound:Stop()
-                bgmSound:Destroy()
-                bgmSound = nil -- 参照をクリア
-            end
-        end)
+		task.delay(0.5, function()
+			-- 0.5秒後、音量が0であることを確認して停止・削除
+			if bgmSound and bgmSound.Volume == 0 then
+				bgmSound:Stop()
+				bgmSound:Destroy()
+				bgmSound = nil -- 参照をクリア
+			end
+		end)
 	end
 	currentBGM = nil
 end
@@ -121,10 +143,9 @@ if BattleStartEvent then
 			local targetVolume = originalVolume * 0.3 -- 元の音量の50%
 			print(("[BGMManager] BGM音量を %.2f から %.2f に調整"):format(bgmSound.Volume, targetVolume))
 			TweenService:Create(bgmSound, TweenInfo.new(0.5), {
-				Volume = targetVolume
+				Volume = targetVolume,
 			}):Play()
 		end
-
 	end)
 end
 
@@ -139,7 +160,7 @@ if BattleEndEvent then
 		if bgmSound and bgmSound.IsPlaying then
 			print(("[BGMManager] BGM音量を %.2f に戻す"):format(originalVolume))
 			TweenService:Create(bgmSound, TweenInfo.new(0.5), {
-				Volume = originalVolume
+				Volume = originalVolume,
 			}):Play()
 		end
 	end)
@@ -158,7 +179,16 @@ task.spawn(function()
 		onZoneChange(zoneName, isActive)
 	end)
 
+	-- プレイヤー属性の変化を監視して随時反映
+	Players.LocalPlayer:GetAttributeChangedSignal("SEVolume"):Connect(applyVolumes)
+	Players.LocalPlayer:GetAttributeChangedSignal("BGMVolume"):Connect(function()
+		-- originalVolume は createBGMSound 時に更新済みなので、
+		-- ここでは現在の originalVolume を使って音量だけ再適用
+		applyVolumes()
+	end)
+
 	print("[BGMManager] ZoneChangeイベント接続完了")
 end)
 
+applyVolumes()
 print("[BGMManager] 初期化完了")
