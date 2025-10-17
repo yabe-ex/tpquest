@@ -1,56 +1,61 @@
 --- Continents ---
 return {
-name = "ContinentKyushu",
-displayName = "ContinentKyushu",
-islands = {
-"ContinentKyushu_C1",
-"ContinentKyushu_C2",
-"ContinentKyushu_C3",
-"ContinentKyushu_C4",
-"ContinentKyushu_C5",
-"ContinentKyushu_C6",
-"ContinentKyushu_C7",
-"ContinentKyushu_C8",
-"ContinentKyushu_C9",
-"ContinentKyushu_C10",
-"ContinentKyushu_C11",
-"ContinentKyushu_C12",
-"ContinentKyushu_C13",
-"ContinentKyushu_C14",
-"ContinentKyushu_C15",
-"ContinentKyushu_C16",
-"ContinentKyushu_C17",
-"ContinentKyushu_C18",
-"ContinentKyushu_C19",
-"ContinentKyushu_C20",
-"ContinentKyushu_C21",
-"ContinentKyushu_C22",
-"ContinentKyushu_C23",
-"ContinentKyushu_C24",
-},
-paths = {
-	points = {
-			{93300, 10, -560},
-			{93320, 10, -460},
-			{93340, 10, -360},
-			{93360, 10, -240},
-			{93380, 10, -120},
-			{93390, 10, 0},
-			{93380, 10, 120},
-			{93360, 10, 240},
-			{93340, 10, 360},
-			{93300, 10, 480},
+	name = "ContinentKyushu",
+	displayName = "ContinentKyushu",
+	islands = {
+		"ContinentKyushu_C1",
+		"ContinentKyushu_C2",
+		"ContinentKyushu_C3",
+		"ContinentKyushu_C4",
+		"ContinentKyushu_C5",
+		"ContinentKyushu_C6",
+		"ContinentKyushu_C7",
+		"ContinentKyushu_C8",
+		"ContinentKyushu_C9",
+		"ContinentKyushu_C10",
+		"ContinentKyushu_C11",
+		"ContinentKyushu_C12",
+		"ContinentKyushu_C13",
+		"ContinentKyushu_C14",
+		"ContinentKyushu_C15",
+		"ContinentKyushu_C16",
+		"ContinentKyushu_C17",
+		"ContinentKyushu_C18",
+		"ContinentKyushu_C19",
+		"ContinentKyushu_C20",
+		"ContinentKyushu_C21",
+		"ContinentKyushu_C22",
+		"ContinentKyushu_C23",
+		"ContinentKyushu_C24",
 	},
-	width = 24,                -- 道の幅（stud）
-	method = "terrain",        -- "terrain"（地形を塗る） or "parts"（パーツ敷き）
-	material = Enum.Material.Ground,  -- method="terrain"時の塗り材質
-	step = 3,                  -- サンプリング間隔（小さいほど滑らか＆重い）
-	alignToSlope = false,      -- 斜面に道面を傾けるか（見た目：true、歩きやすさ：false）
-	groundOffset = 4.8,       -- めり込み回避の微小オフセット
-},
+	paths = {
+		points = {
+			{ 92900.0, 27.9, -520.0 },
+			{ 92905.2, 24.3, -476.6 },
+			{ 92913.0, 29.8, -411.3 },
+			{ 92941.8, 35.9, -358.1 },
+			{ 92947.1, 27.6, -297.2 },
+			{ 92977.9, 26.4, -189.7 },
+			{ 93017.4, 27.1, -164.7 },
+			{ 93067.9, 26.6, -146.5 },
+			{ 93114.1, 21.4, -114.5 },
+			{ 93142.8, 19.0, -84.7 },
+			{ 93176.9, 24.6, -54.0 },
+			{ 93206.0, 30.2, -12.3 },
+			{ 93241.6, 27.1, 26.9 },
+			{ 93281.9, 20.9, 49.9 },
+			{ 93354.5, 22.2, 61.4 },
+		},
+		width = 24, -- 道の幅（stud）
+		method = "terrain", -- "terrain"（地形を塗る） or "parts"（パーツ敷き）
+		material = Enum.Material.Ground, -- method="terrain"時の塗り材質
+		step = 3, -- サンプリング間隔（小さいほど滑らか＆重い）
+		alignToSlope = false, -- 斜面に道面を傾けるか（見た目：true、歩きやすさ：false）
+		groundOffset = 4.8, -- めり込み回避の微小オフセット
+	},
 
---93080.8, 38.0, 166.2
-portals = {
+	--93080.8, 38.0, 166.2
+	portals = {
 		{
 			name = "Kyushu_to_Town",
 			toZone = "ContinentTown",
@@ -68,38 +73,37 @@ portals = {
 			offsetZ = 100,
 			label = "→ Hokkaido",
 			color = Color3.fromRGB(255, 255, 255),
-		}
-},
+		},
+	},
 
-
-fieldObjects = {
+	fieldObjects = {
 		{
 			model = "box_closed",
-			position = {92895.2, 46.2, -205.6},
+			position = { 92895.2, 46.2, -205.6 },
 			mode = "ground",
 			size = 1,
-			rotation = {0, -90, 0},
-			stickToGround = false,   -- 省略可（trueが既定）
-			groundOffset  = 0,   -- 芝生で少し浮かせたい時
-			alignToSlope  = false,  -- 斜面に木を傾けたくないならfalse
+			rotation = { 0, -90, 0 },
+			stickToGround = false, -- 省略可（trueが既定）
+			groundOffset = 0, -- 芝生で少し浮かせたい時
+			alignToSlope = false, -- 斜面に木を傾けたくないならfalse
 
 			interaction = {
-				type = "chest",           -- インタラクションタイプ
-				action = "開ける",         -- ボタンに表示されるテキスト
-				key = "E",                -- キーバインド
-				range = 18,                -- インタラクション可能距離（スタッド）
+				type = "chest", -- インタラクションタイプ
+				action = "開ける", -- ボタンに表示されるテキスト
+				key = "E", -- キーバインド
+				range = 18, -- インタラクション可能距離（スタッド）
 
 				-- 宝箱固有の情報
-				chestId = "kyushu_chest_01",          -- ユニークID
-				openedModel = "box_opened",         -- 開いた状態のモデル名
+				chestId = "kyushu_chest_01", -- ユニークID
+				openedModel = "box_opened", -- 開いた状態のモデル名
 				rewards = {
-					{item = "ポーション", count = 1},
+					{ item = "ポーション", count = 1 },
 				},
-				displayDuration = 2,      -- 報酬表示時間（秒）
+				displayDuration = 2, -- 報酬表示時間（秒）
 			},
 		},
 	},
 
-BGM = "",
-BGMVolume = 0.2
+	BGM = "",
+	BGMVolume = 0.2,
 }

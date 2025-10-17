@@ -15,27 +15,27 @@ log.debugf("初期化開始")
 local ZOOM_LEVELS = {
 	{
 		name = "詳細",
-		scale = 2,           -- 2スタッド/ピクセル
-		terrainGrid = 45,    -- 60→45に削減（負荷軽減）
-		terrainUpdateInterval = 0.25,  -- 0.15秒 → 0.25秒（更新頻度を下げる）
+		scale = 2, -- 既存のまま（座標変換に影響しない）
+		terrainGrid = 45, -- 45 → 120（高精細）
+		terrainUpdateInterval = 0.25, -- 更新間隔は微調整
 		iconUpdateInterval = 0.05,
 		monsterIconSize = 7,
 		portalIconSize = 9,
 	},
 	{
 		name = "中間",
-		scale = 4,           -- 4スタッド/ピクセル
-		terrainGrid = 50,    -- 50x50グリッド
-		terrainUpdateInterval = 0.25,
+		scale = 4,
+		terrainGrid = 70, -- 50 → 90
+		terrainUpdateInterval = 0.24,
 		iconUpdateInterval = 0.05,
 		monsterIconSize = 5,
 		portalIconSize = 7,
 	},
 	{
 		name = "広域",
-		scale = 8,           -- 8スタッド/ピクセル
-		terrainGrid = 40,    -- 40x40グリッド（広域は負荷軽減）
-		terrainUpdateInterval = 0.4,
+		scale = 8,
+		terrainGrid = 50, -- 40 → 60
+		terrainUpdateInterval = 0.35,
 		iconUpdateInterval = 0.08,
 		monsterIconSize = 3,
 		portalIconSize = 5,
@@ -54,8 +54,8 @@ local MINIMAP_SIZE = 200
 local WATER_LEVEL = -15
 
 -- 色設定
-local LAND_COLOR = Color3.fromRGB(50, 70, 50)
-local SEA_COLOR = Color3.fromRGB(30, 30, 30)
+local LAND_COLOR = Color3.fromRGB(60, 180, 90) -- 明るめの緑
+local SEA_COLOR = Color3.fromRGB(40, 110, 200) -- 落ち着いた青
 local PLAYER_COLOR = Color3.fromRGB(100, 200, 255)
 local MONSTER_COLOR = Color3.fromRGB(255, 50, 50)
 local PORTAL_TOWN_COLOR = Color3.fromRGB(255, 200, 100)
@@ -74,10 +74,11 @@ minimapFrame.Name = "MinimapFrame"
 minimapFrame.Size = UDim2.new(0, MINIMAP_SIZE, 0, MINIMAP_SIZE)
 minimapFrame.Position = UDim2.new(0, 20, 1, -MINIMAP_SIZE - 20)
 minimapFrame.BackgroundColor3 = SEA_COLOR
-minimapFrame.BackgroundTransparency = 0.3
+minimapFrame.BackgroundTransparency = 0.2
 minimapFrame.BorderSizePixel = 2
 minimapFrame.BorderColor3 = Color3.fromRGB(255, 255, 255)
 minimapFrame.Parent = screenGui
+minimapFrame.ClipsDescendants = false
 
 local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(0, 8)
@@ -87,7 +88,7 @@ corner.Parent = minimapFrame
 local terrainLayer = Instance.new("Frame")
 terrainLayer.Name = "TerrainLayer"
 terrainLayer.Size = UDim2.new(1, 0, 1, 0)
-terrainLayer.BackgroundTransparency = 1
+terrainLayer.BackgroundTransparency = 0.05
 terrainLayer.ClipsDescendants = true
 terrainLayer.ZIndex = 1
 terrainLayer.Parent = minimapFrame
@@ -96,7 +97,7 @@ terrainLayer.Parent = minimapFrame
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Name = "Title"
 titleLabel.Size = UDim2.new(1, 0, 0, 20)
-titleLabel.Position = UDim2.new(0, 0, 0, -25)
+titleLabel.Position = UDim2.new(0, 0, 1, 0)
 titleLabel.BackgroundTransparency = 1
 titleLabel.Text = "MAP [Z: 詳細]"
 titleLabel.TextColor3 = Color3.new(1, 1, 1)
@@ -125,7 +126,6 @@ playerIcon.Image = "rbxassetid://137204683713117" -- 上向
 playerIcon.ImageColor3 = PLAYER_COLOR
 playerIcon.ZIndex = 10
 playerIcon.Parent = minimapFrame
-
 
 -- アイコンを格納するフォルダ
 local monstersFolder = Instance.new("Folder")
@@ -241,7 +241,7 @@ end
 local function isLand(worldX, worldZ)
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Include
-	params.FilterDescendantsInstances = {workspace.Terrain}
+	params.FilterDescendantsInstances = { workspace.Terrain }
 	params.IgnoreWater = false
 
 	local origin = Vector3.new(worldX, 200, worldZ)
@@ -274,10 +274,14 @@ local function updateTerrainMap()
 	end
 
 	local character = player.Character
-	if not character then return end
+	if not character then
+		return
+	end
 
 	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	if not hrp then
+		return
+	end
 
 	local playerPos = hrp.Position
 
@@ -368,26 +372,72 @@ end
 -- プレイヤーアイコンの向きを更新
 local function updatePlayerRotation_debug()
 	local character = player.Character
-	if not character then return end
+	if not character then
+		return
+	end
 
 	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	if not hrp then
+		return
+	end
 
-	if not playerIcon then return end
+	if not playerIcon then
+		return
+	end
 
 	-- プレイヤーの向きを取得
 	local lookVector = hrp.CFrame.LookVector
 
 	-- 8パターン全て試す
 	local patterns = {
-		{name = "パターン1", calc = function() return math.atan2(lookVector.X, lookVector.Z) end},
-		{name = "パターン2", calc = function() return math.atan2(lookVector.Z, lookVector.X) end},
-		{name = "パターン3", calc = function() return math.atan2(-lookVector.X, lookVector.Z) end},
-		{name = "パターン4", calc = function() return math.atan2(lookVector.X, -lookVector.Z) end},
-		{name = "パターン5", calc = function() return math.atan2(-lookVector.Z, lookVector.X) end},
-		{name = "パターン6", calc = function() return math.atan2(lookVector.Z, -lookVector.X) end},
-		{name = "パターン7", calc = function() return math.atan2(-lookVector.X, -lookVector.Z) end},
-		{name = "パターン8", calc = function() return math.atan2(-lookVector.Z, -lookVector.X) end},
+		{
+			name = "パターン1",
+			calc = function()
+				return math.atan2(lookVector.X, lookVector.Z)
+			end,
+		},
+		{
+			name = "パターン2",
+			calc = function()
+				return math.atan2(lookVector.Z, lookVector.X)
+			end,
+		},
+		{
+			name = "パターン3",
+			calc = function()
+				return math.atan2(-lookVector.X, lookVector.Z)
+			end,
+		},
+		{
+			name = "パターン4",
+			calc = function()
+				return math.atan2(lookVector.X, -lookVector.Z)
+			end,
+		},
+		{
+			name = "パターン5",
+			calc = function()
+				return math.atan2(-lookVector.Z, lookVector.X)
+			end,
+		},
+		{
+			name = "パターン6",
+			calc = function()
+				return math.atan2(lookVector.Z, -lookVector.X)
+			end,
+		},
+		{
+			name = "パターン7",
+			calc = function()
+				return math.atan2(-lookVector.X, -lookVector.Z)
+			end,
+		},
+		{
+			name = "パターン8",
+			calc = function()
+				return math.atan2(-lookVector.Z, -lookVector.X)
+			end,
+		},
 	}
 
 	-- パターン1を使用（後で変更できる）
@@ -404,16 +454,21 @@ local function updatePlayerRotation_debug()
 	end
 end
 
-
 -- デバッグ版（方角名も表示）
 local function updatePlayerRotation_news()
 	local character = player.Character
-	if not character then return end
+	if not character then
+		return
+	end
 
 	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	if not hrp then
+		return
+	end
 
-	if not playerIcon then return end
+	if not playerIcon then
+		return
+	end
 
 	local lookVector = hrp.CFrame.LookVector
 
@@ -439,12 +494,18 @@ end
 
 local function updatePlayerRotation()
 	local character = player.Character
-	if not character then return end
+	if not character then
+		return
+	end
 
 	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	if not hrp then
+		return
+	end
 
-	if not playerIcon then return end
+	if not playerIcon then
+		return
+	end
 
 	-- 【変更】CFrameから直接Y軸回転を取得
 	local _, yRotation, _ = hrp.CFrame:ToOrientation()
@@ -453,7 +514,6 @@ local function updatePlayerRotation()
 	-- 座標系を合わせる（地形マップと同じ反転）
 	playerIcon.Rotation = -degrees
 end
-
 
 -- モンスターアイコンを更新
 local lastIconUpdate = 0
@@ -467,10 +527,14 @@ local function updateMonsterIcons()
 	lastIconUpdate = now
 
 	local character = player.Character
-	if not character then return end
+	if not character then
+		return
+	end
 
 	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	if not hrp then
+		return
+	end
 
 	local playerPos = hrp.Position
 
@@ -522,10 +586,14 @@ local portalDebugDone = false
 local function updatePortalIcons()
 	local settings = getCurrentSettings()
 	local character = player.Character
-	if not character then return end
+	if not character then
+		return
+	end
 
 	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	if not hrp then
+		return
+	end
 
 	local playerPos = hrp.Position
 
@@ -600,15 +668,21 @@ end
 
 -- マウスホイール入力
 UserInputService.InputChanged:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
+	if gameProcessed then
+		return
+	end
 
 	if input.UserInputType == Enum.UserInputType.MouseWheel then
 		local mousePos = UserInputService:GetMouseLocation()
 		local framePos = minimapFrame.AbsolutePosition
 		local frameSize = minimapFrame.AbsoluteSize
 
-		if mousePos.X >= framePos.X and mousePos.X <= framePos.X + frameSize.X and
-			mousePos.Y >= framePos.Y and mousePos.Y <= framePos.Y + frameSize.Y then
+		if
+			mousePos.X >= framePos.X
+			and mousePos.X <= framePos.X + frameSize.X
+			and mousePos.Y >= framePos.Y
+			and mousePos.Y <= framePos.Y + frameSize.Y
+		then
 			if input.Position.Z > 0 then
 				changeZoomLevel(-1)
 			else
@@ -620,7 +694,9 @@ end)
 
 -- Zキー入力
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
+	if gameProcessed then
+		return
+	end
 
 	if input.KeyCode == Enum.KeyCode.Z then
 		local nextLevel = currentZoomLevel + 1
@@ -641,14 +717,14 @@ end)
 -- ポータル専用の高速更新ループ（独立）
 task.spawn(function()
 	while true do
-		task.wait(0.1)  -- 0.1秒ごとに更新（高速）
+		task.wait(0.1) -- 0.1秒ごとに更新（高速）
 		updatePortalIcons()
 	end
 end)
 
 -- 初期化時に即座にポータルを検索
 task.spawn(function()
-	task.wait(0.5)  -- 少し待ってからポータル検索
+	task.wait(0.5) -- 少し待ってからポータル検索
 	updatePortalIcons()
 end)
 
@@ -667,14 +743,20 @@ task.spawn(function()
 end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
+	if gameProcessed then
+		return
+	end
 
 	if input.KeyCode == Enum.KeyCode.P then
 		local character = player.Character
-		if not character then return end
+		if not character then
+			return
+		end
 
 		local hrp = character:FindFirstChild("HumanoidRootPart")
-		if not hrp then return end
+		if not hrp then
+			return
+		end
 
 		local position = hrp.Position
 
@@ -687,7 +769,5 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		log.debugf("--------------------------------------")
 	end
 end)
-
-
 
 log.debugf("初期化完了（ズーム機能付き）")

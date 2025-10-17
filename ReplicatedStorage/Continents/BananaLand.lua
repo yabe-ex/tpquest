@@ -64,6 +64,9 @@ return {
 			{ 9934.4, 26.3, 66.2 },
 			{ 9901.0, 26.6, 11.6 },
 			{ 9855.1, 26.6, -7.1 },
+			{ 9927.7, 27.1, 56.1 },
+			{ 9954.1, 26.2, 54.9 },
+			{ 9985.8, 34.5, 48.5 },
 		},
 		width = 24, -- 道の幅（stud）
 		-- method = "terrain", -- "terrain"（地形を塗る） or "parts"（パーツ敷き）
@@ -72,6 +75,8 @@ return {
 		alignToSlope = false, -- 斜面に道面を傾けるか（見た目：true、歩きやすさ：false）
 		groundOffset = 4.8, -- めり込み回避の微小オフセット
 	},
+
+	--
 
 	-- paths = {
 	-- 	{
@@ -110,7 +115,63 @@ return {
 	-- 	alignToSlope = true, -- 斜面に木を傾けたくないならfalse
 	-- },
 
+	fieldObjects = {
+		{
+			model = "box_closed",
+			position = { 9938.7, 26.5, 64.1 },
+			mode = "ground",
+			size = 1,
+			rotation = { 0, 0, 0 },
+			stickToGround = false, -- 省略可（trueが既定）
+			groundOffset = 0, -- 芝生で少し浮かせたい時
+			alignToSlope = false, -- 斜面に木を傾けたくないならfalse
+
+			interaction = {
+				type = "chest", -- インタラクションタイプ
+				action = "開ける", -- ボタンに表示されるテキスト
+				key = "E", -- キーバインド
+				range = 5, -- インタラクション可能距離（スタッド）
+
+				-- 宝箱固有の情報
+				chestId = "banana_chest_01", -- ユニークID
+				openedModel = "box_opened", -- 開いた状態のモデル名
+				rewards = {
+					{ item = "ポーション", count = 1 },
+					{ item = "ゴールド", count = 25 },
+				},
+				displayDuration = 3, -- 報酬表示時間（秒）
+			},
+		},
+		{
+			model = "box_closed",
+			position = { 9963.4, 47.0, 105.5 },
+			mode = "fixed",
+			size = 1,
+			rotation = { 0, 0, 0 },
+			stickToGround = false, -- 省略可（trueが既定）
+			groundOffset = 0, -- 芝生で少し浮かせたい時
+			alignToSlope = false, -- 斜面に木を傾けたくないならfalse
+
+			interaction = {
+				type = "chest", -- インタラクションタイプ
+				action = "開ける", -- ボタンに表示されるテキスト
+				key = "E", -- キーバインド
+				range = 5, -- インタラクション可能距離（スタッド）
+
+				-- 宝箱固有の情報
+				chestId = "banana_chest_02", -- ユニークID
+				openedModel = "box_opened", -- 開いた状態のモデル名
+				rewards = {
+					{ item = "ポーション", count = 1 },
+					{ item = "ゴールド", count = 25 },
+				},
+				displayDuration = 3, -- 報酬表示時間（秒）
+			},
+		},
+	},
+
 	fieldObjects = {},
 	BGM = "",
 	BGMVolume = 0.2,
 }
+--

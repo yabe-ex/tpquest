@@ -12,6 +12,24 @@ return {
 
 	bridges = {},
 
+	paths = {
+		points = {
+			{ 3069.8, 17.0, -54.5 },
+			{ 3126.1, 22.5, -9.5 },
+			{ 3153.8, 24.5, 5.8 },
+			{ 3174.6, 19.9, 34.8 },
+			{ 3209.4, 16.1, 60.0 },
+			{ 3228.9, 16.2, 87.7 },
+			{ 3244.1, 16.1, 111.2 },
+		},
+		width = 24, -- 道の幅（stud）
+		method = "terrain", -- "terrain"（地形を塗る） or "parts"（パーツ敷き）
+		material = Enum.Material.Ground, -- method="terrain"時の塗り材質
+		step = 3, -- サンプリング間隔（小さいほど滑らか＆重い）
+		alignToSlope = false, -- 斜面に道面を傾けるか（見た目：true、歩きやすさ：false）
+		groundOffset = 4.8, -- めり込み回避の微小オフセット
+	},
+
 	-- ★修正: 北海道、四国、九州へのポータルを追加
 	portals = {
 		{
@@ -142,6 +160,18 @@ return {
 				},
 				displayDuration = 3, -- 報酬表示時間（秒）
 			},
+		},
+
+		{
+			model = "ModernHouse",
+			position = { 92.4, 56.5, 30.9 },
+			mode = "ground",
+			size = 1,
+			rotation = { 0, -45, 45 },
+			-- rotation = { 0, 0, 0 },
+			stickToGround = false, -- 省略可（trueが既定）
+			groundOffset = 0, -- 芝生で少し浮かせたい時
+			alignToSlope = false, -- 斜面に木を傾けたくないならfalse
 		},
 
 		{
