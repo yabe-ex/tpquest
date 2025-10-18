@@ -42,16 +42,16 @@ return {
 			color = Color3.fromRGB(200, 200, 255),
 			label = "→ Hokkaido",
 		},
-		{
-			name = "Town_to_Shikoku", -- ★新規ポータル
-			toZone = "ContinentShikoku",
-			islandName = "Town_NE",
-			offsetX = 0,
-			offsetZ = 0,
-			size = Vector3.new(8, 12, 8),
-			color = Color3.fromRGB(150, 255, 150),
-			label = "→ Shikoku",
-		},
+		-- {
+		-- 	name = "Town_to_Shikoku", -- ★新規ポータル
+		-- 	toZone = "ContinentShikoku",
+		-- 	islandName = "Town_NE",
+		-- 	offsetX = 0,
+		-- 	offsetZ = 0,
+		-- 	size = Vector3.new(8, 12, 8),
+		-- 	color = Color3.fromRGB(150, 255, 150),
+		-- 	label = "→ Shikoku",
+		-- },
 		{
 			name = "Town_to_Kyushu", -- ★新規ポータル
 			toZone = "ContinentKyushu",

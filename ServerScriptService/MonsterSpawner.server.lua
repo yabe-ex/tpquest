@@ -59,11 +59,13 @@ local function isSafeZone(zoneName)
 end
 
 -- ユーティリティ関数
-local function resolveTemplate(pathArray: {string}): Model?
+local function resolveTemplate(pathArray: { string }): Model?
 	local node: Instance = game
 	for _, seg in ipairs(pathArray) do
 		node = node:FindFirstChild(seg)
-		if not node then return nil end
+		if not node then
+			return nil
+		end
 	end
 	return (node and node:IsA("Model")) and node or nil
 end
@@ -71,15 +73,56 @@ end
 local function ensureHRP(model: Model): BasePart?
 	local hrp = model:FindFirstChild("HumanoidRootPart")
 	if hrp and hrp:IsA("BasePart") then
-		if not model.PrimaryPart then model.PrimaryPart = hrp end
+		if not model.PrimaryPart then
+			model.PrimaryPart = hrp
+		end
 		return hrp
 	end
 	return nil
 end
 
+-- 島から大陸名を逆引きするマップを作成
+local IslandToContinentMap = {}
+do
+	for _, continent in ipairs(ContinentsRegistry) do
+		if continent and continent.islands then
+			for _, islandName in ipairs(continent.islands) do
+				IslandToContinentMap[islandName] = continent.name
+				print(("[MonsterSpawner] マップ: %s -> %s"):format(islandName, continent.name))
+			end
+		end
+	end
+	local mapCount = 0
+	for _ in pairs(IslandToContinentMap) do
+		mapCount = mapCount + 1
+	end
+
+	print("[MonsterSpawner] IslandToContinentMap 初期化完了 (" .. mapCount .. " 個)")
+end
+
+-- 島名から大陸名を取得
+local function getContinentNameFromIsland(islandName)
+	local result = IslandToContinentMap[islandName]
+	if not result then
+		warn(
+			("[MonsterSpawner] 警告: 島 '%s' が IslandToContinentMap に見つかりません。島名をそのまま使用します"):format(
+				islandName
+			)
+		)
+		return islandName
+	end
+	return result
+end
+-- 島名から大陸名を取得
+local function getContinentNameFromIsland(islandName)
+	return IslandToContinentMap[islandName] or islandName
+end
+
 local function attachLabel(model: Model, maxDist: number)
 	local hrp = model.PrimaryPart or model:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	if not hrp then
+		return
+	end
 
 	local _, bboxSize = model:GetBoundingBox()
 	local labelOffset = math.min(bboxSize.Y * 0.5 + 2, 15)
@@ -165,11 +208,11 @@ function AIState.new(monster, def)
 	self.originalSpeed = self.humanoid.WalkSpeed
 	self.wasInBattle = false
 
-    -- 【修正点1】徘徊ステート管理を整理
-    self.isMoving = false     -- 移動状態か
-    self.isWaiting = false    -- 待機状態か (停止状態)
-    self.waitEndTime = 0      -- 待機終了時刻
-    -- 【修正点1 終わり】
+	-- 【修正点1】徘徊ステート管理を整理
+	self.isMoving = false -- 移動状態か
+	self.isWaiting = false -- 待機状態か (停止状態)
+	self.waitEndTime = 0 -- 待機終了時刻
+	-- 【修正点1 終わり】
 
 	return self
 end
@@ -279,8 +322,7 @@ function AIState:update()
 	local isInWater = self.root.Position.Y < 0 or self.humanoid:GetState() == Enum.HumanoidStateType.Swimming
 
 	-- ラベル更新
-	local label = self.root:FindFirstChild("DebugInfo")
-		and self.root.DebugInfo:FindFirstChild("InfoText")
+	local label = self.root:FindFirstChild("DebugInfo") and self.root.DebugInfo:FindFirstChild("InfoText")
 	if label then
 		local behavior = self.brave and "CHASE" or "FLEE"
 		label.Text = string.format("%s\n%s | %.1fm", self.monster.Name, behavior, dist or 999)
@@ -291,59 +333,58 @@ function AIState:update()
 		gui.Enabled = not isInWater
 	end
 
-    -- 【修正点2】徘徊ロジックを再構築
-    local function wanderLogic()
-        local w = self.def.Wander or {}
-        local minWait = w.MinWait or 2
-        local maxWait = w.MaxWait or 5
-        local minRadius = w.MinRadius or 20
-        local maxRadius = w.MaxRadius or 60
-        local stopDistance = 5 -- 目標到達と見なす距離
+	-- 【修正点2】徘徊ロジックを再構築
+	local function wanderLogic()
+		local w = self.def.Wander or {}
+		local minWait = w.MinWait or 2
+		local maxWait = w.MaxWait or 5
+		local minRadius = w.MinRadius or 20
+		local maxRadius = w.MaxRadius or 60
+		local stopDistance = 5 -- 目標到達と見なす距離
 
-        local isGoalReached = self.wanderGoal and (self.root.Position - self.wanderGoal).Magnitude < stopDistance
-        local isWaitFinished = self.isWaiting and now >= self.waitEndTime
+		local isGoalReached = self.wanderGoal and (self.root.Position - self.wanderGoal).Magnitude < stopDistance
+		local isWaitFinished = self.isWaiting and now >= self.waitEndTime
 
-        if self.isWaiting then
-            -- ステート: 待機中（停止）
-            self.humanoid:MoveTo(self.root.Position) -- 停止を維持
-            self.isMoving = false
+		if self.isWaiting then
+			-- ステート: 待機中（停止）
+			self.humanoid:MoveTo(self.root.Position) -- 停止を維持
+			self.isMoving = false
 
-            if isWaitFinished then
-                -- 待機終了。次の目標設定へ
-                self.isWaiting = false
-                self.wanderGoal = nil
-            end
-        elseif isGoalReached or not self.wanderGoal then
-            -- ステート: 目標到達 or 目標なし -> 新目標設定 & 移動開始
+			if isWaitFinished then
+				-- 待機終了。次の目標設定へ
+				self.isWaiting = false
+				self.wanderGoal = nil
+			end
+		elseif isGoalReached or not self.wanderGoal then
+			-- ステート: 目標到達 or 目標なし -> 新目標設定 & 移動開始
 
-            -- 目標に到達したら待機モードに移行
-            if isGoalReached then
-                self.isWaiting = true
-                self.waitEndTime = now + math.random(minWait * 10, maxWait * 10) / 10
-                self.humanoid:MoveTo(self.root.Position) -- 停止
-                return
-            end
+			-- 目標に到達したら待機モードに移行
+			if isGoalReached then
+				self.isWaiting = true
+				self.waitEndTime = now + math.random(minWait * 10, maxWait * 10) / 10
+				self.humanoid:MoveTo(self.root.Position) -- 停止
+				return
+			end
 
-            -- 新しい目標を設定
-            local ang = math.random() * math.pi * 2
-            local rad = math.random(minRadius, maxRadius)
-            local gx = self.root.Position.X + math.cos(ang) * rad
-            local gz = self.root.Position.Z + math.sin(ang) * rad
+			-- 新しい目標を設定
+			local ang = math.random() * math.pi * 2
+			local rad = math.random(minRadius, maxRadius)
+			local gx = self.root.Position.X + math.cos(ang) * rad
+			local gz = self.root.Position.Z + math.sin(ang) * rad
 
-            local gy = FieldGen.raycastGroundY(gx, gz, 100) or self.root.Position.Y + 5 -- 見つからなければ現在のY+5
+			local gy = FieldGen.raycastGroundY(gx, gz, 100) or self.root.Position.Y + 5 -- 見つからなければ現在のY+5
 
-            self.wanderGoal = Vector3.new(gx, gy, gz)
-            self.isMoving = true
+			self.wanderGoal = Vector3.new(gx, gy, gz)
+			self.isMoving = true
 
-            self.humanoid:MoveTo(self.wanderGoal)
-
-        else
-            -- ステート: 移動中（継続）
-            self.isMoving = true
-            self.humanoid:MoveTo(self.wanderGoal)
-        end
-    end
-    -- 【修正点2 終わり】
+			self.humanoid:MoveTo(self.wanderGoal)
+		else
+			-- ステート: 移動中（継続）
+			self.isMoving = true
+			self.humanoid:MoveTo(self.wanderGoal)
+		end
+	end
+	-- 【修正点2 終わり】
 
 	-- 行動決定
 	if not p then
@@ -352,8 +393,8 @@ function AIState:update()
 	elseif dist < chaseRange then
 		-- 追跡 or 逃走
 		self.wanderGoal = nil
-        self.isMoving = false
-        self.isWaiting = false -- 追跡中は徘徊ステートを強制解除
+		self.isMoving = false
+		self.isWaiting = false -- 追跡中は徘徊ステートを強制解除
 		if self.brave then
 			self.humanoid:MoveTo(p.Character.HumanoidRootPart.Position)
 		else
@@ -386,7 +427,10 @@ local function spawnMonster(template: Model, index: number, def, islandName)
 	m:SetAttribute("IsEnemy", true)
 	m:SetAttribute("MonsterKind", def.Name or "Monster")
 	m:SetAttribute("ChaseDistance", def.ChaseDistance or 60)
-	m:SetAttribute("SpawnZone", islandName)
+
+	-- ★修正点★: SpawnZone に大陸名を設定
+	local continentName = getContinentNameFromIsland(islandName)
+	m:SetAttribute("SpawnZone", continentName)
 	m:SetAttribute("SpawnIsland", islandName)
 
 	local speedMin = def.SpeedMin or 0.7
@@ -437,7 +481,6 @@ local function spawnMonster(template: Model, index: number, def, islandName)
 	local rz = island.centerZ + math.random(-spawnRadius, spawnRadius)
 
 	placeOnGround(m, rx, rz)
-	-- attachLabel(m, def.LabelMaxDistance or 250)
 
 	task.wait(0.05)
 	hrp.Anchored = false
@@ -451,69 +494,75 @@ local function spawnMonster(template: Model, index: number, def, islandName)
 	end
 	MonsterCounts[islandName][monsterName] = (MonsterCounts[islandName][monsterName] or 0) + 1
 
-	-- print(("[MonsterSpawner] %s を %s にスポーン"):format(m.Name, islandName))
+	print(
+		("[MonsterSpawner] %s を %s (%s) にスポーン (大陸: %s)"):format(
+			m.Name,
+			islandName,
+			def.Name,
+			continentName
+		)
+	)
 end
 
 -- ゾーン内のモンスターカウントを取得
 local function getZoneMonsterCounts(zoneName)
-    local counts = {}
+	local counts = {}
 
-    -- 大陸名から島のリストを取得
-    local islandNames = {}
+	-- 大陸名から島のリストを取得
+	local islandNames = {}
 
-    -- ContinentsRegistryをロード（まだロードされていない場合）
-    if not ContinentsRegistry then
-        local ContinentsFolder = ReplicatedStorage:FindFirstChild("Continents")
-        if ContinentsFolder then
-            local RegistryModule = ContinentsFolder:FindFirstChild("Registry")
-            if RegistryModule then
-                ContinentsRegistry = require(RegistryModule)
-                print("[MonsterSpawner] ContinentsRegistryをロードしました")
-            end
-        end
-    end
+	-- ContinentsRegistryをロード（まだロードされていない場合）
+	if not ContinentsRegistry then
+		local ContinentsFolder = ReplicatedStorage:FindFirstChild("Continents")
+		if ContinentsFolder then
+			local RegistryModule = ContinentsFolder:FindFirstChild("Registry")
+			if RegistryModule then
+				ContinentsRegistry = require(RegistryModule)
+				print("[MonsterSpawner] ContinentsRegistryをロードしました")
+			end
+		end
+	end
 
-    -- 大陸の場合は、含まれる島をすべて取得
-    local continent = nil
-    if ContinentsRegistry then
-        for _, cont in ipairs(ContinentsRegistry) do
-            if cont.name == zoneName then
-                continent = cont
-                break
-            end
-        end
-    end
+	-- 大陸の場合は、含まれる島をすべて取得
+	local continent = nil
+	if ContinentsRegistry then
+		for _, cont in ipairs(ContinentsRegistry) do
+			if cont.name == zoneName then
+				continent = cont
+				break
+			end
+		end
+	end
 
-    if continent and continent.islands then
-        -- 大陸内の全島を対象にする
-        for _, islandName in ipairs(continent.islands) do
-            table.insert(islandNames, islandName)
-        end
-        print(("[MonsterSpawner] 大陸 %s の島リスト: %s"):format(
-            zoneName,
-            table.concat(islandNames, ", ")
-        ))
-    else
-        -- 大陸でない場合は、ゾーン名自体を島名とする
-        table.insert(islandNames, zoneName)
-        print(("[MonsterSpawner] %s は島として扱います"):format(zoneName))
-    end
+	if continent and continent.islands then
+		-- 大陸内の全島を対象にする
+		for _, islandName in ipairs(continent.islands) do
+			table.insert(islandNames, islandName)
+		end
+		print(("[MonsterSpawner] 大陸 %s の島リスト: %s"):format(zoneName, table.concat(islandNames, ", ")))
+	else
+		-- 大陸でない場合は、ゾーン名自体を島名とする
+		table.insert(islandNames, zoneName)
+		print(("[MonsterSpawner] %s は島として扱います"):format(zoneName))
+	end
 
-    -- 各島のモンスターカウントを集計
-    for _, islandName in ipairs(islandNames) do
-        if MonsterCounts[islandName] then
-            for monsterName, count in pairs(MonsterCounts[islandName]) do
-                counts[monsterName] = (counts[monsterName] or 0) + count
-            end
-        end
-    end
+	-- 各島のモンスターカウントを集計
+	for _, islandName in ipairs(islandNames) do
+		if MonsterCounts[islandName] then
+			for monsterName, count in pairs(MonsterCounts[islandName]) do
+				counts[monsterName] = (counts[monsterName] or 0) + count
+			end
+		end
+	end
 
-    print(("[MonsterSpawner] ゾーン %s のモンスターカウント: %s"):format(
-        zoneName,
-        game:GetService("HttpService"):JSONEncode(counts)
-    ))
+	print(
+		("[MonsterSpawner] ゾーン %s のモンスターカウント: %s"):format(
+			zoneName,
+			game:GetService("HttpService"):JSONEncode(counts)
+		)
+	)
 
-    return counts
+	return counts
 end
 
 -- 全ゾーンのモンスター数をSharedStateに保存
@@ -535,20 +584,24 @@ end
 -- カスタムカウントでモンスターをスポーン（ロード時用）
 local function spawnMonstersWithCounts(zoneName, customCounts)
 	if isSafeZone(zoneName) then
-		print(("[MonsterSpawner] %s は安全地帯です。モンスターをスポーンしません"):format(zoneName))
+		print(
+			("[MonsterSpawner] %s は安全地帯です。モンスターをスポーンしません"):format(zoneName)
+		)
 		return
 	end
 
 	if not customCounts or type(customCounts) ~= "table" then
-		print(("[MonsterSpawner] カスタムカウントが無効です。通常スポーンを実行: %s"):format(zoneName))
+		print(
+			("[MonsterSpawner] カスタムカウントが無効です。通常スポーンを実行: %s"):format(
+				zoneName
+			)
+		)
 		spawnMonstersForZone(zoneName)
 		return
 	end
 
 	print(("[MonsterSpawner] カスタムカウントでモンスターをスポーン: %s"):format(zoneName))
-	print(("[MonsterSpawner] カウント: %s"):format(
-		game:GetService("HttpService"):JSONEncode(customCounts)
-	))
+	print(("[MonsterSpawner] カウント: %s"):format(game:GetService("HttpService"):JSONEncode(customCounts)))
 
 	-- カスタムカウントに基づいてスポーン
 	for monsterName, count in pairs(customCounts) do
@@ -610,11 +663,17 @@ local function spawnMonstersWithCounts(zoneName, customCounts)
 							spawnMonster(template, i, spawnDef, islandName)
 							count = count - 1
 
-							if count <= 0 then break end
-							if i % 5 == 0 then task.wait() end
+							if count <= 0 then
+								break
+							end
+							if i % 5 == 0 then
+								task.wait()
+							end
 						end
 
-						if count <= 0 then break end
+						if count <= 0 then
+							break
+						end
 					end
 				end
 			end
@@ -632,7 +691,9 @@ end
 -- ゾーンにモンスターをスポーンする（大陸対応版）
 function spawnMonstersForZone(zoneName)
 	if isSafeZone(zoneName) then
-		print(("[MonsterSpawner] %s は安全地帯です。モンスターをスポーンしません"):format(zoneName))
+		print(
+			("[MonsterSpawner] %s は安全地帯です。モンスターをスポーンしません"):format(zoneName)
+		)
 		return
 	end
 
@@ -667,9 +728,14 @@ function spawnMonstersForZone(zoneName)
 
 					if islandsInZone[islandName] then
 						local radiusText = location.radiusPercent or 100
-						print(("[MonsterSpawner] %s を %s に配置中 (数: %d, 範囲: %d%%)"):format(
-							monsterName, islandName, location.count, radiusText
-							))
+						print(
+							("[MonsterSpawner] %s を %s に配置中 (数: %d, 範囲: %d%%)"):format(
+								monsterName,
+								islandName,
+								location.count,
+								radiusText
+							)
+						)
 
 						if not MonsterCounts[islandName] then
 							MonsterCounts[islandName] = {}
@@ -685,12 +751,18 @@ function spawnMonstersForZone(zoneName)
 							spawnDef.spawnRadius = location.spawnRadius
 
 							spawnMonster(template, i, spawnDef, islandName)
-							if i % 5 == 0 then task.wait() end
+							if i % 5 == 0 then
+								task.wait()
+							end
 						end
 					end
 				end
 			else
-				warn(("[MonsterSpawner] %s は旧形式です。SpawnLocations形式に移行してください"):format(monsterName))
+				warn(
+					("[MonsterSpawner] %s は旧形式です。SpawnLocations形式に移行してください"):format(
+						monsterName
+					)
+				)
 			end
 		end
 	end
@@ -699,13 +771,15 @@ end
 -- リスポーン処理（島対応版）
 local function scheduleRespawn(monsterName, def, islandName)
 	local respawnTime = def.RespawnTime or 10
-	if respawnTime <= 0 then return end
+	if respawnTime <= 0 then
+		return
+	end
 
 	local respawnData = {
 		monsterName = monsterName,
 		def = def,
 		islandName = islandName,
-		respawnAt = os.clock() + respawnTime
+		respawnAt = os.clock() + respawnTime,
 	}
 	table.insert(RespawnQueue, respawnData)
 end
@@ -759,9 +833,12 @@ local function startGlobalAILoop()
 						end)
 
 						if not success then
-							warn(("[MonsterSpawner ERROR] AI更新エラー: %s - %s"):format(
-								state.monster.Name, tostring(result)
-								))
+							warn(
+								("[MonsterSpawner ERROR] AI更新エラー: %s - %s"):format(
+									state.monster.Name,
+									tostring(result)
+								)
+							)
 						elseif not result then
 							local monsterDef = state.def
 							local monsterName = monsterDef.Name or "Unknown"
@@ -789,6 +866,7 @@ function despawnMonstersForZone(zoneName)
 
 	local removedCount = 0
 
+	-- ★修正点★: SpawnZone は大陸名で比較
 	for i = #ActiveMonsters, 1, -1 do
 		local state = ActiveMonsters[i]
 		local monsterZone = state.monster:GetAttribute("SpawnZone")
@@ -800,15 +878,34 @@ function despawnMonstersForZone(zoneName)
 		end
 	end
 
+	-- RespawnQueue からも削除
 	for i = #RespawnQueue, 1, -1 do
 		if RespawnQueue[i].zoneName == zoneName then
 			table.remove(RespawnQueue, i)
 		end
 	end
 
-	MonsterCounts[zoneName] = nil
-
 	print(("[MonsterSpawner] %s のモンスターを %d体 削除しました"):format(zoneName, removedCount))
+end
+
+-- ===== MemoryMonitor 用のモンスター詳細表示（更新版）=====
+local function getZoneMonsterDetails(zoneName)
+	local details = {}
+
+	for _, state in ipairs(ActiveMonsters) do
+		local spawnZone = state.monster:GetAttribute("SpawnZone")
+		local spawnIsland = state.monster:GetAttribute("SpawnIsland")
+
+		-- 大陸で比較
+		if spawnZone == zoneName then
+			if not details[spawnIsland] then
+				details[spawnIsland] = 0
+			end
+			details[spawnIsland] = details[spawnIsland] + 1
+		end
+	end
+
+	return details
 end
 
 -- 初期化

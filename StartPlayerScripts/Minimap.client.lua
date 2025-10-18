@@ -11,38 +11,38 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 log.debugf("初期化開始")
 
--- ズームレベル設定
+-- 推奨パラメータ（FPS重視版）
 local ZOOM_LEVELS = {
 	{
 		name = "詳細",
-		scale = 2, -- 既存のまま（座標変換に影響しない）
-		terrainGrid = 45, -- 45 → 120（高精細）
-		terrainUpdateInterval = 0.25, -- 更新間隔は微調整
-		iconUpdateInterval = 0.05,
+		scale = 2,
+		terrainGrid = 25, -- 45 → 25（レイキャスト: 2,025 → 625）
+		terrainUpdateInterval = 0.5, -- 0.25 → 0.5
+		iconUpdateInterval = 0.1, -- 0.05 → 0.1
 		monsterIconSize = 7,
 		portalIconSize = 9,
 	},
 	{
 		name = "中間",
 		scale = 4,
-		terrainGrid = 70, -- 50 → 90
-		terrainUpdateInterval = 0.24,
-		iconUpdateInterval = 0.05,
+		terrainGrid = 35, -- 50 → 35
+		terrainUpdateInterval = 0.4, -- 0.24 → 0.4
+		iconUpdateInterval = 0.1,
 		monsterIconSize = 5,
 		portalIconSize = 7,
 	},
 	{
 		name = "広域",
 		scale = 8,
-		terrainGrid = 50, -- 40 → 60
-		terrainUpdateInterval = 0.35,
-		iconUpdateInterval = 0.08,
+		terrainGrid = 30, -- 40 → 30
+		terrainUpdateInterval = 0.5, -- 0.35 → 0.5
+		iconUpdateInterval = 0.15, -- 0.08 → 0.15
 		monsterIconSize = 3,
 		portalIconSize = 5,
 	},
 }
 
-local currentZoomLevel = 1
+local currentZoomLevel = 2
 
 -- 現在の設定を取得
 local function getCurrentSettings()

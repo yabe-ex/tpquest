@@ -24,27 +24,38 @@ local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "FastTravelUI"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
--- screenGui.ZIndex = 100
 screenGui.Parent = playerGui
 
--- ワープボタン（ミニマップの上）
+-- ★【修正】ワープボタン（黒系ベース、MenuUI と同じデザイン）
 local warpButton = Instance.new("TextButton")
 warpButton.Name = "WarpButton"
-warpButton.Size = UDim2.new(0, 200, 0, 35) -- ミニマップと同じ横幅200、高さ35
-warpButton.Position = UDim2.new(0, 20, 1, -300) -- ミニマップの上に配置
-warpButton.BackgroundColor3 = Color3.fromRGB(50, 120, 200)
-warpButton.BackgroundTransparency = 0.2
-warpButton.BorderSizePixel = 2
-warpButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
-warpButton.Text = "ワープ"
+warpButton.Size = UDim2.new(0, 200, 0, 50)
+warpButton.Position = UDim2.new(0, 20, 1, -280)
+warpButton.BackgroundColor3 = Color3.fromRGB(50, 50, 60) -- 黒系
+warpButton.BackgroundTransparency = 0.2 -- MenuUI と同じ
+warpButton.BorderSizePixel = 0 -- 枠なし
+warpButton.Text = "ファストトラベル"
 warpButton.TextColor3 = Color3.new(1, 1, 1)
-warpButton.TextSize = 18
-warpButton.Font = Enum.Font.SourceSansBold
+warpButton.TextSize = 16
+warpButton.Font = Enum.Font.GothamBold
 warpButton.Parent = screenGui
 
 local warpButtonCorner = Instance.new("UICorner")
-warpButtonCorner.CornerRadius = UDim.new(0, 6)
+warpButtonCorner.CornerRadius = UDim.new(0, 8)
 warpButtonCorner.Parent = warpButton
+
+-- ★【追加】ホバーエフェクト（MenuUI と同じ）
+warpButton.MouseEnter:Connect(function()
+	TweenService:Create(warpButton, TweenInfo.new(0.2), {
+		BackgroundColor3 = Color3.fromRGB(70, 70, 80),
+	}):Play()
+end)
+
+warpButton.MouseLeave:Connect(function()
+	TweenService:Create(warpButton, TweenInfo.new(0.2), {
+		BackgroundColor3 = Color3.fromRGB(50, 50, 60),
+	}):Play()
+end)
 
 -- モーダル背景
 local modalBackground = Instance.new("Frame")
@@ -177,13 +188,13 @@ local function openModal()
 		-- ホバーエフェクト
 		button.MouseEnter:Connect(function()
 			TweenService:Create(button, TweenInfo.new(0.2), {
-				BackgroundTransparency = 0
+				BackgroundTransparency = 0,
 			}):Play()
 		end)
 
 		button.MouseLeave:Connect(function()
 			TweenService:Create(button, TweenInfo.new(0.2), {
-				BackgroundTransparency = 0.2
+				BackgroundTransparency = 0.2,
 			}):Play()
 		end)
 
@@ -204,7 +215,7 @@ local function openModal()
 
 	-- フェードイン
 	TweenService:Create(modalBackground, TweenInfo.new(0.3), {
-		BackgroundTransparency = 0.3
+		BackgroundTransparency = 0.3,
 	}):Play()
 end
 
@@ -213,7 +224,7 @@ function closeModal()
 	print("[FastTravelUI] モーダルを閉じる")
 
 	TweenService:Create(modalBackground, TweenInfo.new(0.3), {
-		BackgroundTransparency = 1
+		BackgroundTransparency = 1,
 	}):Play()
 
 	task.wait(0.3)
@@ -232,8 +243,12 @@ modalBackground.InputBegan:Connect(function(input)
 		local windowPos = modalWindow.AbsolutePosition
 		local windowSize = modalWindow.AbsoluteSize
 
-		if mousePos.X < windowPos.X or mousePos.X > windowPos.X + windowSize.X or
-		   mousePos.Y < windowPos.Y or mousePos.Y > windowPos.Y + windowSize.Y then
+		if
+			mousePos.X < windowPos.X
+			or mousePos.X > windowPos.X + windowSize.X
+			or mousePos.Y < windowPos.Y
+			or mousePos.Y > windowPos.Y + windowSize.Y
+		then
 			closeModal()
 		end
 	end

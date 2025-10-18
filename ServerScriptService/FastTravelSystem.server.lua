@@ -1,15 +1,17 @@
 -- ServerScriptService/FastTravelSystem.server.lua
+-- 改善版：ローディング画面にプレイヤーレベルを送信
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 print("[FastTravel] 初期化開始")
 
--- 依存モジュール
 local ContinentsRegistry = require(ReplicatedStorage:WaitForChild("Continents"):WaitForChild("Registry"))
 local IslandsRegistry = require(ReplicatedStorage:WaitForChild("Islands"):WaitForChild("Registry"))
-local ZoneManager = require(ServerScriptService:WaitForChild("ZoneManager"))
+local ZoneManager = require(game:GetService("ServerScriptService"):WaitForChild("ZoneManager", 10))
+local PlayerStatsModule = require(ServerScriptService:WaitForChild("PlayerStats"))
 
--- 【追加】IslandsRegistryを辞書形式に変換
+-- IslandsRegistry を辞書形式に変換
 local Islands = {}
 for _, island in ipairs(IslandsRegistry) do
 	if island and island.name then
@@ -17,12 +19,13 @@ for _, island in ipairs(IslandsRegistry) do
 	end
 end
 
--- RemoteEvent作成
+-- RemoteEvent 作成
 local FastTravelEvent = ReplicatedStorage:FindFirstChild("FastTravelEvent")
 if not FastTravelEvent then
 	FastTravelEvent = Instance.new("RemoteEvent")
 	FastTravelEvent.Name = "FastTravelEvent"
 	FastTravelEvent.Parent = ReplicatedStorage
+	print("[FastTravel] FastTravelEvent を作成しました")
 end
 
 local GetContinentsEvent = ReplicatedStorage:FindFirstChild("GetContinentsEvent")
@@ -30,6 +33,7 @@ if not GetContinentsEvent then
 	GetContinentsEvent = Instance.new("RemoteFunction")
 	GetContinentsEvent.Name = "GetContinentsEvent"
 	GetContinentsEvent.Parent = ReplicatedStorage
+	print("[FastTravel] GetContinentsEvent を作成しました")
 end
 
 -- 大陸一覧を取得
@@ -39,18 +43,18 @@ local function getContinentsList()
 	for _, continent in ipairs(ContinentsRegistry) do
 		table.insert(continents, {
 			name = continent.name,
-			displayName = continent.displayName or continent.name
+			displayName = continent.displayName or continent.name,
 		})
 	end
 
 	return continents
 end
 
--- ワープ処理
+-- ワープ処理（改善版：プレイヤーレベルをローディング画面に送信）
 local function handleFastTravel(player, continentName)
 	print(("[FastTravel] %s が %s へのワープを要求"):format(player.Name, continentName))
 
-	-- 大陸情報を取得
+	-- バリデーション
 	local continent = nil
 	for _, cont in ipairs(ContinentsRegistry) do
 		if cont.name == continentName then
@@ -64,36 +68,24 @@ local function handleFastTravel(player, continentName)
 		return false
 	end
 
-	-- 最初の島を取得
-	local firstIslandName = continent.islands[1]
-	if not firstIslandName then
-		warn(("[FastTravel] 大陸 '%s' に島がありません"):format(continentName))
-		return false
-	end
+	-- プレイヤーレベルを取得
+	local stats = PlayerStatsModule.getStats(player)
+	local playerLevel = stats and stats.Level or 1
+	print(("[FastTravel] プレイヤー %s のレベル: %d"):format(player.Name, playerLevel))
 
-	-- 辞書から島を取得
-	local island = Islands[firstIslandName]
-	if not island then
-		warn(("[FastTravel] 島 '%s' が見つかりません"):format(firstIslandName))
-		return false
-	end
+	-- クライアントにローディング開始を通知（レベル付き）
+	FastTravelEvent:FireClient(player, "StartLoading", continentName, playerLevel)
+	task.wait(0.2)
 
-	-- ワープ実行
-	local success = ZoneManager.WarpPlayerToZone(
-		player,
-		continentName,
-		island.centerX,
-		island.baseY + 25,
-		island.centerZ,
-		true
-	)
+	-- ZoneManager.WarpPlayerToZone() を呼び出し
+	local success = ZoneManager.WarpPlayerToZone(player, continentName)
 
 	if success then
 		print(("[FastTravel] %s を %s にワープしました"):format(player.Name, continentName))
 
-		-- 【追加】モンスターとポータルを生成
+		-- モンスターとポータルを生成（非同期）
 		task.spawn(function()
-			task.wait(1) -- ゾーンロード完了を待つ
+			task.wait(1)
 
 			-- モンスター生成
 			if _G.SpawnMonstersForZone then
@@ -110,9 +102,13 @@ local function handleFastTravel(player, continentName)
 			else
 				warn("[FastTravel] CreatePortalsForZone が見つかりません")
 			end
+
+			-- 生成完了後、クライアントにローディング終了を通知
+			FastTravelEvent:FireClient(player, "EndLoading", continentName, playerLevel)
 		end)
 	else
 		warn(("[FastTravel] %s のワープに失敗しました"):format(player.Name))
+		FastTravelEvent:FireClient(player, "EndLoading", continentName, playerLevel)
 	end
 
 	return success

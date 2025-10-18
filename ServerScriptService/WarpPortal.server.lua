@@ -1,13 +1,11 @@
--- ===== ./ServerScriptService/WarpPortal.server.lua =====
 -- ServerScriptService/WarpPortal.server.lua
--- ワープ中のバトル開始を防止する修正版
+-- 改善版：ポータルワープにプレイヤーレベルを送信
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 print("[WarpPortal] 初期化開始")
 
--- 【修正】warpEvent の作成を最優先で実行する
 local warpEvent = ReplicatedStorage:FindFirstChild("WarpEvent")
 if not warpEvent then
 	warpEvent = Instance.new("RemoteEvent")
@@ -17,7 +15,7 @@ end
 
 local ZoneManager = require(script.Parent.ZoneManager)
 local BattleSystem = require(script.Parent.BattleSystem)
-
+local PlayerStatsModule = require(script.Parent.PlayerStats)
 
 local warpingPlayers = {}
 local activePortals = {}
@@ -35,31 +33,26 @@ for _, continent in ipairs(ContinentsRegistry) do
 	if continent and continent.name then
 		Continents[continent.name] = continent
 	else
-		warn(("[WarpPortal] 名前が設定されていない大陸定義をスキップしました"):format(continent and continent.name or "nil"))
+		warn("[WarpPortal] 名前が設定されていない大陸定義をスキップしました")
 	end
 end
 
-local function resolveTemplate(pathArray: {string}): Model?
-	local node: Instance = game
-	for _, seg in ipairs(pathArray) do
-		node = node:FindFirstChild(seg)
-		if not node then return nil end
-	end
-	return (node and node:IsA("Model")) and node or nil
-end
-
-local function ensureHRP(model: Model): BasePart?
+local function ensureHRP(model)
 	local hrp = model:FindFirstChild("HumanoidRootPart")
 	if hrp and hrp:IsA("BasePart") then
-		if not model.PrimaryPart then model.PrimaryPart = hrp end
+		if not model.PrimaryPart then
+			model.PrimaryPart = hrp
+		end
 		return hrp
 	end
 	return nil
 end
 
-local function attachLabel(model: Model, maxDist: number)
+local function attachLabel(model, maxDist)
 	local hrp = model.PrimaryPart or model:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	if not hrp then
+		return
+	end
 
 	local _, bboxSize = model:GetBoundingBox()
 	local labelOffset = math.min(bboxSize.Y * 0.5 + 2, 15)
@@ -85,46 +78,7 @@ local function attachLabel(model: Model, maxDist: number)
 	lb.Parent = gui
 end
 
-local function placeOnGround(model: Model, x: number, z: number)
-	local hrp = model.PrimaryPart or model:FindFirstChild("HumanoidRootPart")
-	if not hrp then
-		warn("[MonsterSpawner] HumanoidRootPart が見つかりません: " .. model.Name)
-		return
-	end
-
-	local groundY = FieldGen.raycastGroundY(x, z, 100)
-		or FieldGen.raycastGroundY(x, z, 200)
-		or FieldGen.raycastGroundY(x, z, 50)
-		or 10
-
-	local _, yaw = hrp.CFrame:ToOrientation()
-	model:PivotTo(CFrame.new(x, groundY + 20, z) * CFrame.Angles(0, yaw, 0))
-
-	local bboxCFrame, bboxSize = model:GetBoundingBox()
-	local bottomY = bboxCFrame.Position.Y - (bboxSize.Y * 0.5)
-	local offset = hrp.Position.Y - bottomY
-
-	model:PivotTo(CFrame.new(x, groundY + offset, z) * CFrame.Angles(0, yaw, 0))
-end
-
-local function nearestPlayer(position: Vector3)
-	local best, bestDist = nil, math.huge
-	for _, pl in ipairs(Players:GetPlayers()) do
-		local ch = pl.Character
-		local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
-		if hrp then
-			local d = (position - hrp.Position).Magnitude
-			if d < bestDist then
-				best, bestDist = pl, d
-			end
-		end
-	end
-	return best, bestDist
-end
-
--- 【修正】ポータルタッチ時、即座にワープ中フラグを設定
 local function createPortal(config, fromZone)
-	-- Town大陸の場合、fromZoneはContinentTownだが、ポータル座標はislandNameを参照する必要がある。
 	local islandName = config.islandName or fromZone
 	local zoneConfig = Islands[islandName]
 
@@ -133,9 +87,8 @@ local function createPortal(config, fromZone)
 		return nil
 	end
 
-	-- ポータルサイズを確定。設定がnilの場合、Vector3.new(8, 12, 8)を使用する。
-    local portalSize = config.size or Vector3.new(8, 12, 8)
-    local portalHeight = portalSize.Y -- 修正後、portalSizeがnilになることはない
+	local portalSize = config.size or Vector3.new(8, 12, 8)
+	local portalHeight = portalSize.Y
 
 	local portalX = zoneConfig.centerX + (config.offsetX or 0)
 	local portalZ = zoneConfig.centerZ + (config.offsetZ or 0)
@@ -145,18 +98,24 @@ local function createPortal(config, fromZone)
 	local maxRetries = 2
 
 	for attempt = 1, maxRetries do
-		-- TownのBaseYではなく、推定高度からレイキャスト開始
 		local rayStartY = zoneConfig.baseY + (zoneConfig.hillAmplitude or 20) + 100
 		groundY = FieldGen.raycastGroundY(portalX, portalZ, rayStartY)
-		if groundY then break end
+		if groundY then
+			break
+		end
 		task.wait(0.05)
 	end
 
 	local portalY
 	if groundY then
-		-- ポータルの底面 (Y) が地面 (groundY) になるように設定
 		portalY = groundY + portalHeight / 2
-		print(("[WarpPortal DEBUG] %s: 地面検出成功 (Y=%.1f), ポータルY=%.1f"):format(config.name, groundY, portalY))
+		print(
+			("[WarpPortal DEBUG] %s: 地面検出成功 (Y=%.1f), ポータルY=%.1f"):format(
+				config.name,
+				groundY,
+				portalY
+			)
+		)
 	else
 		local estimatedHeight = zoneConfig.baseY + ((zoneConfig.hillAmplitude or 20) * 0.5)
 		portalY = estimatedHeight + portalHeight / 2
@@ -167,7 +126,7 @@ local function createPortal(config, fromZone)
 
 	local portal = Instance.new("Part")
 	portal.Name = config.name
-	portal.Size = portalSize -- 確定したサイズを使用
+	portal.Size = portalSize
 	portal.Position = portalPosition
 	portal.Anchored = true
 	portal.CanCollide = false
@@ -210,20 +169,24 @@ local function createPortal(config, fromZone)
 
 	portal.Parent = worldFolder
 
-	-- 【重要】ポータルタッチ処理
+	-- ポータルタッチ処理
 	portal.Touched:Connect(function(hit)
 		local character = hit.Parent
-		if not character then return end
+		if not character then
+			return
+		end
 
 		local player = Players:GetPlayerFromCharacter(character)
-		if not player then return end
+		if not player then
+			return
+		end
 
-		-- 【修正1】ワープ中チェック
+		-- ワープ中チェック
 		if warpingPlayers[player.UserId] then
 			return
 		end
 
-		-- 【修正2】バトル中チェック
+		-- バトル中チェック
 		if BattleSystem and BattleSystem.isInBattle and BattleSystem.isInBattle(player) then
 			return
 		end
@@ -241,11 +204,11 @@ local function createPortal(config, fromZone)
 
 		print(("[WarpPortal] %s が %s に入りました"):format(player.Name, config.name))
 
-		-- 【修正3】即座にワープ中フラグを設定（最優先）
+		-- ワープ中フラグを設定
 		warpingPlayers[player.UserId] = true
 		character:SetAttribute("IsWarping", true)
 
-		-- 【修正4-改3】キャラクターを即座に透明化（上空移動なし）
+		-- キャラクターを透明化
 		local originalTransparencies = {}
 		for _, part in ipairs(character:GetDescendants()) do
 			if part:IsA("BasePart") then
@@ -257,8 +220,13 @@ local function createPortal(config, fromZone)
 			end
 		end
 
-		-- 画面を暗転
-		warpEvent:FireClient(player, "StartLoading", config.toZone)
+		-- プレイヤーレベルを取得
+		local stats = PlayerStatsModule.getStats(player)
+		local playerLevel = stats and stats.Level or 1
+		print(("[WarpPortal] プレイヤー %s のレベル: %d"):format(player.Name, playerLevel))
+
+		-- レベル付きでローディング開始を通知
+		warpEvent:FireClient(player, "StartLoading", config.toZone, playerLevel)
 		task.wait(0.5)
 
 		-- バトルシステムリセット
@@ -266,43 +234,35 @@ local function createPortal(config, fromZone)
 			BattleSystem.resetAllBattles()
 		end
 
-		-- destroyPortalsForZone(actualFromZone)
-
-		-- 前のゾーンのモンスターを削除
-		local IS_TOWN = actualFromZone == "ContinentTown"
-		if not IS_TOWN and _G.DespawnMonstersForZone then
-			_G.DespawnMonstersForZone(actualFromZone)
-		end
-
-		-- ゾーン切り替え
+		-- ワープ実行
 		local success = ZoneManager.WarpPlayerToZone(player, config.toZone)
 
 		if success then
-			-- 透明度を元に戻す
+			-- 透明度を戻す
 			for part, transparency in pairs(originalTransparencies) do
 				if part and part.Parent then
 					part.Transparency = transparency
 				end
 			end
 
-			-- 新しいゾーンのポータルを作成
+			-- 新しいゾーンのポータルを生成
 			createPortalsForZone(config.toZone)
 
-			-- 新しいゾーンのモンスターをスポーン
+			-- 新しいゾーンのモンスターを生成
 			local TO_IS_TOWN = config.toZone == "ContinentTown"
 			if not TO_IS_TOWN and _G.SpawnMonstersForZone then
 				_G.SpawnMonstersForZone(config.toZone)
 			end
 
 			task.wait(0.5)
-			warpEvent:FireClient(player, "EndLoading")
+			warpEvent:FireClient(player, "EndLoading", config.toZone, playerLevel)
 		else
 			warn(("[WarpPortal] %s のワープに失敗"):format(player.Name))
-			warpEvent:FireClient(player, "EndLoading")
+			warpEvent:FireClient(player, "EndLoading", config.toZone, playerLevel)
 		end
 
-		-- 【修正5】ワープ中フラグを解除
-		task.wait(1) -- 追加の安全マージン
+		-- ワープ中フラグを解除
+		task.wait(1)
 		warpingPlayers[player.UserId] = nil
 		if character and character.Parent then
 			character:SetAttribute("IsWarping", false)
@@ -313,46 +273,55 @@ local function createPortal(config, fromZone)
 end
 
 function createPortalsForZone(zoneName)
-    if activePortals[zoneName] then
-        print(("[WarpPortal] %s のポータルは既に存在します"):format(zoneName))
-        return
-    end
+	if activePortals[zoneName] then
+		print(("[WarpPortal] %s のポータルは既に存在します"):format(zoneName))
+		return
+	end
 
-    activePortals[zoneName] = {}
+	activePortals[zoneName] = {}
 
-    local continent = Continents[zoneName]
-    if continent and continent.portals then
-        print(("[WarpPortal] %s のポータルを並列生成中..."):format(zoneName))
+	local continent = Continents[zoneName]
+	if continent and continent.portals then
+		print(("[WarpPortal] %s のポータルを並列生成中..."):format(zoneName))
 
-        for _, portalConfig in ipairs(continent.portals) do
-            task.spawn(function()
-                local islandName = portalConfig.islandName
-                if not Islands[islandName] then
-                    warn(("[WarpPortal] 島 '%s' が見つかりません"):format(islandName))
-                else
-                    -- createPortalの第2引数はポータルが属する大陸名（zoneName）
-                    local portal = createPortal(portalConfig, zoneName)
-                    if portal then
-                        portal:SetAttribute("FromZone", zoneName)
-                        table.insert(activePortals[zoneName], portal)
-                        print(("[WarpPortal] ポータル作成: %s (配置: %s)"):format(portalConfig.name, islandName))
-                    end
-                end
-            end)
-        end
-    else
-        print(("[WarpPortal] %s のポータル設定が見つかりません"):format(zoneName))
-    end
+		for _, portalConfig in ipairs(continent.portals) do
+			task.spawn(function()
+				local islandName = portalConfig.islandName
+				if not Islands[islandName] then
+					warn(("[WarpPortal] 島 '%s' が見つかりません"):format(islandName))
+				else
+					local portal = createPortal(portalConfig, zoneName)
+					if portal then
+						portal:SetAttribute("FromZone", zoneName)
+						table.insert(activePortals[zoneName], portal)
+						print(
+							("[WarpPortal] ポータル作成: %s (配置: %s)"):format(portalConfig.name, islandName)
+						)
+					end
+				end
+			end)
+		end
+	else
+		print(("[WarpPortal] %s のポータル設定が見つかりません"):format(zoneName))
+	end
 end
 
 function destroyPortalsForZone(zoneName)
-	if not activePortals[zoneName] then return end
+	local actualZoneName = zoneName
+	if actualZoneName == "StartTown" then
+		actualZoneName = "ContinentTown"
+	end
 
-	-- 万が一島名が渡された場合、大陸名に変換して削除
-    local actualZoneName = zoneName
-    if actualZoneName == "StartTown" then
-        actualZoneName = "ContinentTown"
-    end
+	if not activePortals[actualZoneName] then
+		print(
+			("[WarpPortal] %s のポータルはありません（既に削除済みか未作成）"):format(
+				actualZoneName
+			)
+		)
+		return
+	end
+
+	print(("[WarpPortal] %s のポータルを削除中..."):format(actualZoneName))
 
 	for _, portal in ipairs(activePortals[actualZoneName] or {}) do
 		if portal and portal.Parent then
@@ -361,7 +330,7 @@ function destroyPortalsForZone(zoneName)
 	end
 
 	activePortals[actualZoneName] = nil
-	print(("[WarpPortal] %s のポータルを削除しました-"):format(actualZoneName))
+	print(("[WarpPortal] %s のポータルを削除完了"):format(actualZoneName))
 end
 
 task.spawn(function()
@@ -381,7 +350,7 @@ task.spawn(function()
 end)
 
 task.wait(0.3)
-createPortalsForZone("ContinentTown") -- ★修正: StartTownからContinentTownに変更
+createPortalsForZone("ContinentTown")
 
 Players.PlayerRemoving:Connect(function(player)
 	warpingPlayers[player.UserId] = nil

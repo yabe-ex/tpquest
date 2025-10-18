@@ -1,10 +1,9 @@
 -- ServerScriptService/ZoneManager.lua
--- あなたが送ってくれた版をベースに、DisplayConfig注入＋paths単体互換のみ最小改修
+-- 改善版：古い大陸を削除 + Town常駐 + ワープロジック統一
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
--- フィールド生成ユーティリティ（ラベルや道の生成で使用）
 local FieldGen = require(ReplicatedStorage:WaitForChild("FieldGen"))
 
 local ZoneManager = {}
@@ -12,7 +11,6 @@ local ZoneManager = {}
 ZoneManager.ActiveZones = {}
 ZoneManager.PlayerZones = {}
 
--- 島と大陸の設定を読み込み
 local IslandsRegistry = require(ReplicatedStorage.Islands.Registry)
 local ContinentsRegistry = require(ReplicatedStorage.Continents.Registry)
 
@@ -34,7 +32,7 @@ end
 
 print("[ZoneManager] 初期化完了。島数:", #IslandsRegistry, "大陸数:", #ContinentsRegistry)
 
--- ▼ 追加：DisplayConfig を任意読み込み（無くても動作継続）
+-- DisplayConfig（任意）
 local DisplayConfig
 do
 	local ok, cfg = pcall(function()
@@ -55,7 +53,7 @@ do
 	end
 end
 
--- ZoneChangeイベントを作成（クライアントへの通知用）
+-- ZoneChangeイベント（クライアント通知用）
 local ZoneChangeEvent = ReplicatedStorage:FindFirstChild("ZoneChange")
 if not ZoneChangeEvent then
 	ZoneChangeEvent = Instance.new("RemoteEvent")
@@ -64,17 +62,16 @@ if not ZoneChangeEvent then
 	print("[ZoneManager] ZoneChangeイベントを作成しました")
 end
 
+-- 定数
+local TOWN_ZONE_NAME = "ContinentTown"
+local PERMANENT_ZONES = { TOWN_ZONE_NAME }
+
 -- ゾーンが大陸かチェック
 local function isContinent(zoneName)
 	return Continents[zoneName] ~= nil
 end
 
--- ゾーンが島かチェック (Townが大陸化されたため、この関数は実質未使用に)
-local function isIsland(zoneName)
-	return Islands[zoneName] ~= nil and not isContinent(zoneName)
-end
-
--- プレイヤーのゾーンを更新 (ワープポータルで使用)
+-- プレイヤーのゾーンを更新
 local function updatePlayerZone(player, newZone)
 	local oldZone = ZoneManager.PlayerZones[player]
 
@@ -82,13 +79,11 @@ local function updatePlayerZone(player, newZone)
 		return
 	end
 
-	-- 古いゾーンから出た
 	if oldZone then
 		print(("[ZoneManager] %s が %s から出ました"):format(player.Name, oldZone))
 		ZoneChangeEvent:FireClient(player, oldZone, false)
 	end
 
-	-- 新しいゾーンに入った
 	if newZone then
 		print(("[ZoneManager] %s が %s に入りました"):format(player.Name, newZone))
 		ZoneManager.PlayerZones[player] = newZone
@@ -111,14 +106,12 @@ local function createIslandLabel(cfg)
 		worldFolder.Parent = workspace
 	end
 
-	-- 重複掃除（同名があれば消す）
 	local anchorName = (cfg.name or "Island") .. "_LabelAnchor"
 	local old = worldFolder:FindFirstChild(anchorName)
 	if old then
 		old:Destroy()
 	end
 
-	-- 透明アンカー
 	local anchor = Instance.new("Part")
 	anchor.Name = anchorName
 	anchor.Size = Vector3.new(0.2, 0.2, 0.2)
@@ -134,7 +127,6 @@ local function createIslandLabel(cfg)
 	anchor.Position = Vector3.new(cfg.centerX, baseY + thickness + labelOffset, cfg.centerZ)
 	anchor.Parent = worldFolder
 
-	-- BillboardGui（Part配下に置けば Adornee 不要）
 	local bb = Instance.new("BillboardGui")
 	bb.Name = "Nameplate"
 	bb.AlwaysOnTop = true
@@ -172,7 +164,7 @@ local function createIslandLabel(cfg)
 	pad.Parent = bg
 end
 
--- 大陸をロード（複数の島と橋を生成）
+-- 大陸をロード
 local function loadContinent(continentName)
 	local continent = Continents[continentName]
 	if not continent then
@@ -182,7 +174,6 @@ local function loadContinent(continentName)
 
 	print(("[ZoneManager] 大陸生成開始: %s"):format(continentName))
 
-	-- ▼ 追加：DisplayConfig によるラベル表示可否＆既定値の取得
 	local showForThisContinent = false
 	local labelParams = nil
 	if DisplayConfig and DisplayConfig.isEnabledFor and DisplayConfig.getParamsFor then
@@ -194,26 +185,19 @@ local function loadContinent(continentName)
 	for _, islandName in ipairs(continent.islands) do
 		local islandConfig = Islands[islandName]
 		if islandConfig then
-			-- ▼ 追加：DisplayConfigが有効なら各島にラベル設定を注入（FieldGen.generateIsland が参照）
 			if showForThisContinent and labelParams then
 				islandConfig.showIslandLabel = (labelParams.showIslandLabel ~= false)
 				islandConfig.labelOffsetY = labelParams.labelOffsetY
 				islandConfig.labelMaxDistance = labelParams.labelMaxDistance
-				-- 見た目パラメータ（任意）
 				islandConfig._labelFont = labelParams.font
 				islandConfig._labelTextSize = labelParams.textSize
 				islandConfig._labelBgTrans = labelParams.backgroundTransparency
 			end
 
 			print(("[ZoneManager]   - 島を生成: %s"):format(islandName))
-
 			FieldGen.generateIsland(islandConfig)
 		else
-			warn(
-				("[ZoneManager]   - 島が見つかりません: %s (Island/Registryを確認してください)"):format(
-					islandName
-				)
-			)
+			warn(("[ZoneManager]   - 島が見つかりません: %s"):format(islandName))
 		end
 	end
 
@@ -238,30 +222,20 @@ local function loadContinent(continentName)
 	}
 
 	-- 追加オブジェクト
-	do
-		local RS = game:GetService("ReplicatedStorage")
-		local FieldGenLocal = require(RS:WaitForChild("FieldGen"))
-		if continent.fieldObjects and #continent.fieldObjects > 0 then
-			print(("[ZoneManager] 追加オブジェクトを配置: %d 個"):format(#continent.fieldObjects))
-			FieldGenLocal.placeFieldObjects(continent.name, continent.fieldObjects) -- player引数なし
-		end
+	if continent.fieldObjects and #continent.fieldObjects > 0 then
+		print(("[ZoneManager] 追加オブジェクトを配置: %d 個"):format(#continent.fieldObjects))
+		FieldGen.placeFieldObjects(continent.name, continent.fieldObjects)
 	end
 
-	-- 道（paths）…単一オブジェクト互換あり
-	do
-		local RS = game:GetService("ReplicatedStorage")
-		local FieldGenLocal = require(RS:WaitForChild("FieldGen"))
-
-		if continent.paths then
-			local arr = continent.paths
-			if #arr == 0 and arr.points then
-				-- 単一オブジェクト形式に対応（後方互換）
-				arr = { continent.paths }
-			end
-			if #arr > 0 then
-				print(" 道をひきます")
-				FieldGenLocal.buildPaths(continent.name, arr)
-			end
+	-- 道
+	if continent.paths then
+		local arr = continent.paths
+		if #arr == 0 and arr.points then
+			arr = { continent.paths }
+		end
+		if #arr > 0 then
+			print("[ZoneManager] 道を引きます")
+			FieldGen.buildPaths(continent.name, arr)
 		end
 	end
 
@@ -269,7 +243,7 @@ local function loadContinent(continentName)
 	return true
 end
 
--- ゾーンをロード（島または大陸をロード）
+-- ゾーンをロード
 function ZoneManager.LoadZone(zoneName)
 	if ZoneManager.ActiveZones[zoneName] then
 		print(("[ZoneManager] %s は既に生成済みです"):format(zoneName))
@@ -279,17 +253,12 @@ function ZoneManager.LoadZone(zoneName)
 	if isContinent(zoneName) then
 		return loadContinent(zoneName)
 	else
-		-- 島単独ロードは未対応（大陸経由で生成）
-		warn(
-			("[ZoneManager] ゾーン '%s' は大陸ではありません。ロードをスキップしました。"):format(
-				zoneName
-			)
-		)
+		warn(("[ZoneManager] ゾーン '%s' は大陸ではありません"):format(zoneName))
 		return false
 	end
 end
 
--- ゾーンをアンロード
+-- ゾーンをアンロード（完全削除）
 function ZoneManager.UnloadZone(zoneName)
 	if not ZoneManager.ActiveZones[zoneName] then
 		return
@@ -297,41 +266,35 @@ function ZoneManager.UnloadZone(zoneName)
 
 	print(("[ZoneManager] ゾーン削除開始: %s"):format(zoneName))
 
-	local terrain = workspace.Terrain
-	local configsToUnload = {}
-
-	-- 大陸としてのみ処理
-	if isContinent(zoneName) then
-		-- 大陸の場合は含まれる全ての島を削除
-		local continent = Continents[zoneName]
-		for _, islandName in ipairs(continent.islands) do
-			table.insert(configsToUnload, Islands[islandName])
-		end
-	else
-		warn(
-			("[ZoneManager] ゾーン '%s' は大陸ではありません。アンロードをスキップしました。"):format(
-				zoneName
-			)
-		)
+	if not isContinent(zoneName) then
+		warn(("[ZoneManager] ゾーン '%s' は大陸ではありません"):format(zoneName))
 		return
 	end
 
-	-- 各島の地形を削除
+	local continent = Continents[zoneName]
+	local terrain = workspace.Terrain
+
+	-- ステップ1: Terrain（地形）を削除
+	local configsToUnload = {}
+	for _, islandName in ipairs(continent.islands) do
+		table.insert(configsToUnload, Islands[islandName])
+	end
+
 	for _, config in ipairs(configsToUnload) do
 		if config then
 			local halfSize = config.sizeXZ / 2 + 50
+			-- 山の頂上まで削除するため、hillAmplitude を考慮
+			local maxHeight = config.baseY + (config.hillAmplitude or 20) + 50
 			local region = Region3.new(
 				Vector3.new(config.centerX - halfSize, config.baseY - 50, config.centerZ - halfSize),
-				Vector3.new(config.centerX + halfSize, config.baseY + 100, config.centerZ + halfSize)
+				Vector3.new(config.centerX + halfSize, maxHeight, config.centerZ + halfSize)
 			)
 			region = region:ExpandToGrid(4)
 			terrain:FillRegion(region, 4, Enum.Material.Air)
-
-			-- マーカ削除は FieldGen.lua 側で行うためZoneManagerからは削除
 		end
 	end
 
-	-- モンスター削除
+	-- ステップ2: モンスター削除
 	for _, model in ipairs(workspace:GetChildren()) do
 		if model:IsA("Model") and model:GetAttribute("IsEnemy") then
 			local spawnZone = model:GetAttribute("SpawnZone")
@@ -341,16 +304,32 @@ function ZoneManager.UnloadZone(zoneName)
 		end
 	end
 
+	-- ステップ3: ポータル削除
+	if _G.DestroyPortalsForZone then
+		_G.DestroyPortalsForZone(zoneName)
+	end
+
+	-- ステップ4: フィールドオブジェクト削除
+	local fieldObjectsFolder = workspace:FindFirstChild("FieldObjects")
+	if fieldObjectsFolder then
+		local zoneFolder = fieldObjectsFolder:FindFirstChild(zoneName)
+		if zoneFolder then
+			zoneFolder:Destroy()
+		end
+	end
+
 	ZoneManager.ActiveZones[zoneName] = nil
 	print(("[ZoneManager] ゾーン削除完了: %s"):format(zoneName))
 end
 
--- プレイヤーをワープ
+-- プレイヤーをワープ（改善版）
 function ZoneManager.WarpPlayerToZone(player, zoneName)
 	print(("[ZoneManager] %s を %s にワープ中..."):format(player.Name, zoneName))
 
-	-- ワープ先に地形がない場合はロード
-	ZoneManager.LoadZone(zoneName)
+	if not isContinent(zoneName) then
+		warn(("[ZoneManager] ゾーン '%s' は大陸ではありません"):format(player.Name))
+		return false
+	end
 
 	local character = player.Character
 	if not character then
@@ -363,55 +342,65 @@ function ZoneManager.WarpPlayerToZone(player, zoneName)
 		return false
 	end
 
-	-- ワープ先の座標を決定 (常に大陸の最初の島を参照するように統一)
-	local targetX, targetZ, baseY, hillAmplitude
+	-- ========== 改善: ワープフロー ==========
 
-	if isContinent(zoneName) then
-		-- 大陸の場合（Townも含む）
-		local continent = Continents[zoneName]
-		local firstIslandName = continent.islands[1]
-		local firstIsland = Islands[firstIslandName]
+	-- フェーズ1: 現在のゾーンを取得
+	local currentZone = ZoneManager.GetPlayerZone(player)
+	print(("[ZoneManager] 現在のゾーン: %s"):format(currentZone or "nil"))
 
-		if not firstIsland then
-			warn(
-				("[ZoneManager] 大陸 '%s' の最初の島 '%s' が見つかりません。"):format(
-					zoneName,
-					firstIslandName
-				)
-			)
-			return false
-		end
+	-- フェーズ2: 古い大陸をアンロード（Town は除外）
+	if currentZone and currentZone ~= zoneName and not table.find(PERMANENT_ZONES, currentZone) then
+		print(("[ZoneManager] 古い大陸をアンロード: %s"):format(currentZone))
+		ZoneManager.UnloadZone(currentZone)
+	end
 
-		targetX = firstIsland.centerX
-		targetZ = firstIsland.centerZ
-		baseY = firstIsland.baseY
-		hillAmplitude = firstIsland.hillAmplitude or 20
-	else
+	-- フェーズ3: Town を常駐させる
+	if zoneName ~= TOWN_ZONE_NAME and not ZoneManager.ActiveZones[TOWN_ZONE_NAME] then
+		print(("[ZoneManager] Town をロード（常駐）"):format())
+		ZoneManager.LoadZone(TOWN_ZONE_NAME)
+	end
+
+	-- フェーズ4: 目的地ゾーンをロード
+	if not ZoneManager.ActiveZones[zoneName] then
+		print(("[ZoneManager] 目的地ゾーンをロード: %s"):format(zoneName))
+		ZoneManager.LoadZone(zoneName)
+	end
+
+	-- フェーズ5: ワープ先座標を決定
+	local continent = Continents[zoneName]
+	local firstIslandName = continent.islands[1]
+	local firstIsland = Islands[firstIslandName]
+
+	if not firstIsland then
 		warn(
-			("[ZoneManager] ゾーン '%s' は大陸ではありません。ワープできません。"):format(
-				zoneName
+			("[ZoneManager] 大陸 '%s' の最初の島 '%s' が見つかりません"):format(
+				zoneName,
+				firstIslandName
 			)
 		)
 		return false
 	end
 
-	-- 十分に高い位置からレイキャスト
-	local FieldGenLocal = require(ReplicatedStorage:WaitForChild("FieldGen"))
+	local targetX = firstIsland.centerX
+	local targetZ = firstIsland.centerZ
+	local baseY = firstIsland.baseY
+	local hillAmplitude = firstIsland.hillAmplitude or 20
+
+	-- フェーズ6: 地面検出
 	local rayStartY = baseY + hillAmplitude + 100
-	local groundY = FieldGenLocal.raycastGroundY(targetX, targetZ, rayStartY)
+	local groundY = FieldGen.raycastGroundY(targetX, targetZ, rayStartY)
 
 	local spawnY
 	if groundY then
 		spawnY = groundY + 5
 		print(("[ZoneManager] 地面検出成功: Y=%.1f"):format(groundY))
 	else
-		-- 安全な高度：baseY + hillAmplitude * 0.6 + 10 に固定
 		spawnY = baseY + (hillAmplitude * 0.6) + 10
 		warn(("[ZoneManager] 地面検出失敗、予想高度使用: Y=%.1f"):format(spawnY))
 	end
 
+	-- フェーズ7: プレイヤーをワープ
 	hrp.CFrame = CFrame.new(targetX, spawnY, targetZ)
-
 	updatePlayerZone(player, zoneName)
 
 	print(
@@ -423,6 +412,7 @@ function ZoneManager.WarpPlayerToZone(player, zoneName)
 			targetZ
 		)
 	)
+
 	return true
 end
 
@@ -430,7 +420,7 @@ function ZoneManager.GetPlayerZone(player)
 	return ZoneManager.PlayerZones[player]
 end
 
--- プレイヤーが退出した時の処理
+-- プレイヤー退出時の処理
 Players.PlayerRemoving:Connect(function(player)
 	local oldZone = ZoneManager.PlayerZones[player]
 	if oldZone then
