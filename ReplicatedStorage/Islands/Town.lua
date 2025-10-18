@@ -4,7 +4,7 @@ return {
 	-- 1. StartTown (North-West, メインスポーン地点)
 	{
 		name = "StartTown",
-		centerX = -50, -- ★修正: -100から-50へ (X:-150〜150)
+		centerX = 10050, -- ★修正: -100から-50へ (X:-150〜150)
 		centerZ = 50, -- ★修正: 100から50へ (Z:-150〜150)
 		sizeXZ = 200,
 		baseY = 50,
@@ -21,7 +21,7 @@ return {
 	-- 2. Town_NE (North-East)
 	{
 		name = "Town_NE",
-		centerX = 50, -- ★修正: 100から50へ
+		centerX = 11100, -- ★修正: 100から50へ
 		centerZ = 50, -- ★修正: 100から50へ
 		sizeXZ = 200,
 		baseY = 50,
@@ -38,7 +38,7 @@ return {
 	-- 3. Town_SW (South-West)
 	{
 		name = "Town_SW",
-		centerX = -50, -- ★修正: -100から-50へ
+		centerX = 10050, -- ★修正: -100から-50へ
 		centerZ = -50, -- ★修正: -100から-50へ
 		sizeXZ = 200,
 		baseY = 50,
@@ -55,7 +55,7 @@ return {
 	-- 4. Town_SE (South-East)
 	{
 		name = "Town_SE",
-		centerX = 50, -- ★修正: 100から50へ
+		centerX = 10100, -- ★修正: 100から50へ
 		centerZ = -50, -- ★修正: -100から-50へ
 		sizeXZ = 200,
 		baseY = 50,

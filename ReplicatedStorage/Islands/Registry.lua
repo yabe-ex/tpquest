@@ -13,6 +13,7 @@ local islandModules = {
 	IslandsFolder:WaitForChild("KyushuIslands"),
 	IslandsFolder:WaitForChild("Snowland"),
 	IslandsFolder:WaitForChild("BananaLand"),
+	IslandsFolder:WaitForChild("Vendant"),
 }
 
 -- 各モジュールを読み込み

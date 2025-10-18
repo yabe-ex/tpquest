@@ -1,0 +1,36 @@
+return {
+	name = "VerdantContinent",
+	displayName = "Verdant Continent",
+	islands = {
+		"Town_01",
+		"Town_02",
+		"Town_03",
+		"Town_04",
+		"Town_05",
+	},
+	-- paths = {
+	-- 	{
+	-- 		name = "MainTrail01",
+	-- 		points = {
+	-- 			{ 2820, 12, 0 },
+	-- 			{ 2920, 12, 90 },
+	-- 			{ 3000, 12, 180 },
+	-- 			{ 3080, 12, 90 },
+	-- 			{ 3180, 12, 0 },
+	-- 			{ 3080, 12, -90 },
+	-- 			{ 3000, 12, -180 },
+	-- 			{ 2920, 12, -90 },
+	-- 			{ 2820, 12, 0 },
+	-- 		},
+	-- 		width = 18,
+	-- 		method = "terrain",
+	-- 		material = Enum.Material.Ground,
+	-- 		step = 3,
+	-- 		alignToSlope = false,
+	-- 		groundOffset = 0.05,
+	-- 	},
+	-- },
+	fieldObjects = {},
+	BGM = "",
+	BGMVolume = 0.2,
+}

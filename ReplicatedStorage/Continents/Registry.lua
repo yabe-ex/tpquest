@@ -9,4 +9,5 @@ return {
 	require(ContinentsFolder.ContinentKyushu),
 	require(ContinentsFolder.Snowland),
 	require(ContinentsFolder.BananaLand),
+	require(ContinentsFolder.ContinentVendant),
 }

@@ -11,9 +11,10 @@ M.enabled = true
 -- ▼ ラベルを出す大陸名（複数OK）
 --   例: { "BananaLand", "Hokkaido", "Kyushu" }
 M.continents = {
-	"BananaLand",
-	"ContinentHokkaido",
-	"ContinentKyushu",
+	-- "BananaLand",
+	-- "ContinentHokkaido",
+	-- "ContinentKyushu",
+	"VerdantContinent",
 }
 
 -- ▼ 既定の表示パラメータ
