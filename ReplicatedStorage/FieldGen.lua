@@ -832,6 +832,7 @@ local function getPoint(points, i)
 end
 
 -- 道ブロック1枚をTerrainに塗る
+-- ===== Road/Path Slice Fill =====
 local function fillRoadSlice(
 	terrain,
 	centerPos: Vector3,
@@ -842,26 +843,57 @@ local function fillRoadSlice(
 	thickness: number,
 	material
 )
-	-- 直交基底
+	-- ★【修正】ベクトルの正規化と安全性確保
 	local fwd = forward.Magnitude > 0 and forward.Unit or Vector3.zAxis
 	local upv = up.Magnitude > 0 and up.Unit or Vector3.yAxis
+
+	-- fwdとupvが平行でないことを確認
+	local dot = math.abs(fwd:Dot(upv))
+	if dot > 0.99 then
+		-- ほぼ平行な場合は upv を修正
+		upv = Vector3.yAxis
+	end
+
+	-- 右ベクトル計算
 	local right = fwd:Cross(upv)
-	if right.Magnitude < 1e-6 then
-		-- ほぼ平行なら右をX軸にフォールバック
-		right = Vector3.xAxis
+	if right.Magnitude < 0.01 then
+		-- Cross積が小さすぎる場合の回避
+		right = if fwd:Dot(Vector3.yAxis) > 0.9 then Vector3.xAxis else Vector3.yAxis
 	end
 	right = right.Unit
+
+	-- upvを再計算（正規直交基底を確保）
 	upv = right:Cross(fwd).Unit
 
-	-- CFrame.fromMatrix(pos, right, up, back)
-	local cf = CFrame.fromMatrix(centerPos, right, upv, -fwd)
+	-- ★【重要】CFrame.fromMatrix(pos, rightVector, upVector)
+	-- 第3引数は自動計算される（-right:Cross(up)）
+	local cf = CFrame.fromMatrix(centerPos, right, upv)
+
+	-- Size: (length, thickness, width)
+	-- = (forward方向, 上下方向, 左右方向)
 	local size = Vector3.new(length, thickness, width)
+
+	print(
+		string.format(
+			"[fillRoadSlice] pos=(%.1f, %.1f, %.1f), size=(%.1f, %.1f, %.1f), mat=%s",
+			centerPos.X,
+			centerPos.Y,
+			centerPos.Z,
+			length,
+			thickness,
+			width,
+			tostring(material)
+		)
+	)
+
 	terrain:FillBlock(cf, size, material)
 end
 
--- 公開API：大陸名（ログ/親フォルダ名用）と paths 配列を受け取り、道をTerrainに塗る
 function FieldGen.buildPaths(continentName: string?, paths: { any })
+	print("[FieldGen/Paths] ===== パス生成開始 =====")
+
 	if not paths or #paths == 0 then
+		print("[FieldGen/Paths] パスが指定されていません")
 		return
 	end
 
@@ -870,29 +902,74 @@ function FieldGen.buildPaths(continentName: string?, paths: { any })
 
 	for _, path in ipairs(paths) do
 		local pts = path.points or {}
+
+		print("[FieldGen/Paths] ===== パス生成中 =====")
+		print("[FieldGen/Paths] パス名: " .. tostring(path.name))
+
 		if #pts < 2 then
 			warn(logPrefix .. "points が不足（最低2点）: " .. tostring(path.name))
 			continue
 		end
 
+		for i, pt in ipairs(pts) do
+			print(
+				string.format("[FieldGen/Paths] 入力ポイント %d: X=%.1f, Y=%.1f, Z=%.1f", i, pt[1], pt[2], pt[3])
+			)
+		end
+
 		-- 既定値
 		local width = tonumber(path.width) or 12
-		local step = tonumber(path.step) or 3 -- サンプリング間隔（目安）
+		local step = tonumber(path.step) or 3
 		local mat = path.material or Enum.Material.Ground
-		local stick = (path.stickToGround ~= false) -- 既定true
-		local align = (path.alignToSlope == true) -- 既定false
+		local stick = (path.stickToGround ~= false)
+		local align = (path.alignToSlope == true)
 		local yOffset = tonumber(path.groundOffset) or 0.05
-		local thick = 2 -- 地形塗り厚み（埋め漏れ防止）
+		local thick = 2
 
-		-- Vector3列に変換（Yは適当でもOK。下で吸着する）
+		-- レイキャスト用ヘルパー
+		local function getGroundHeightAtXZ(x, z, hintY)
+			local startY = math.max(hintY + 600, 3000)
+
+			local params = RaycastParams.new()
+			params.FilterType = Enum.RaycastFilterType.Include
+			params.FilterDescendantsInstances = { workspace.Terrain }
+			params.IgnoreWater = false
+
+			local hit = workspace:Raycast(Vector3.new(x, startY, z), Vector3.new(0, -(startY + 2000), 0), params)
+
+			if hit then
+				return hit.Position.Y, hit.Normal
+			else
+				return hintY, Vector3.yAxis
+			end
+		end
+
+		-- ★【修正】各ポイントを Vector3 に変換し、Yを地面から自動取得
 		local P = table.create(#pts)
 		for i = 1, #pts do
-			P[i] = v3(pts[i])
+			local pt = pts[i]
+			local x = pt[1] or 0
+			local y = pt[2] or 0
+			local z = pt[3] or 0
+
+			local groundY, normal = getGroundHeightAtXZ(x, z, y)
+			P[i] = Vector3.new(x, groundY + yOffset, z)
+
+			print(
+				string.format(
+					"[FieldGen/Paths] ポイント %d: (%.1f, %.1f, %.1f) → 地面Y: %.1f (オフセット後: %.1f)",
+					i,
+					x,
+					y,
+					z,
+					groundY,
+					groundY + yOffset
+				)
+			)
 		end
 
 		local slices = 0
 		for seg = 1, #P - 1 do
-			-- セグメント p1->p2 をCatmull-Romで補間
 			local p0 = getPoint(P, seg - 1)
 			local p1 = getPoint(P, seg)
 			local p2 = getPoint(P, seg + 1)
@@ -907,33 +984,19 @@ function FieldGen.buildPaths(continentName: string?, paths: { any })
 				local b = catmullRom(p0, p1, p2, p3, t1)
 				local mid = (a + b) * 0.5
 				local dir = (b - a)
+
 				if dir.Magnitude < 1e-6 then
 					dir = Vector3.zAxis
 				end
 
-				-- 地面に吸着（サンプル区間の中心点）
-				local useY = mid.Y
+				-- ★【重要】補間ポイントでも地面を検出して調整
+				local midGroundY = getGroundHeightAtXZ(mid.X, mid.Z, mid.Y)
+				local useY = midGroundY + yOffset
 				local up = Vector3.yAxis
-				if stick then
-					local startY = 1000
-					local params = RaycastParams.new()
-					params.FilterType = Enum.RaycastFilterType.Include
-					params.FilterDescendantsInstances = { workspace.Terrain }
-					params.IgnoreWater = false
 
-					local res = workspace:Raycast(Vector3.new(mid.X, startY, mid.Z), Vector3.new(0, -2000, 0), params)
-					if res then
-						useY = res.Position.Y + (yOffset or -3)
-						if align then
-							up = res.Normal
-						end
-					else
-						warn(("地面未検出: (%.1f, %.1f)"):format(mid.X, mid.Z))
-					end
-				end
+				-- ブロックの中心を配置
+				local centerY = useY - (thick / 2)
 
-				-- ブロックの中心を半分沈めて設置
-				local centerY = useY - (thick / 2) - 5
 				fillRoadSlice(
 					terrain,
 					Vector3.new(mid.X, centerY, mid.Z),
@@ -961,5 +1024,110 @@ function FieldGen.buildPaths(continentName: string?, paths: { any })
 		)
 	end
 end
+
+-- 公開API：大陸名（ログ/親フォルダ名用）と paths 配列を受け取り、道をTerrainに塗る
+-- function FieldGen.buildPaths(continentName: string?, paths: { any })
+-- 	if not paths or #paths == 0 then
+-- 		return
+-- 	end
+
+-- 	local terrain = workspace.Terrain
+-- 	local logPrefix = ("[FieldGen/Paths]%s "):format(continentName and ("[" .. continentName .. "]") or "")
+
+-- 	for _, path in ipairs(paths) do
+-- 		local pts = path.points or {}
+-- 		if #pts < 2 then
+-- 			warn(logPrefix .. "points が不足（最低2点）: " .. tostring(path.name))
+-- 			continue
+-- 		end
+
+-- 		-- 既定値
+-- 		local width = tonumber(path.width) or 12
+-- 		local step = tonumber(path.step) or 3 -- サンプリング間隔（目安）
+-- 		local mat = path.material or Enum.Material.Ground
+-- 		local stick = (path.stickToGround ~= false) -- 既定true
+-- 		local align = (path.alignToSlope == true) -- 既定false
+-- 		local yOffset = tonumber(path.groundOffset) or 0.05
+-- 		local thick = 2 -- 地形塗り厚み（埋め漏れ防止）
+
+-- 		-- Vector3列に変換（Yは適当でもOK。下で吸着する）
+-- 		local P = table.create(#pts)
+-- 		for i = 1, #pts do
+-- 			P[i] = v3(pts[i])
+-- 		end
+
+-- 		local slices = 0
+-- 		for seg = 1, #P - 1 do
+-- 			-- セグメント p1->p2 をCatmull-Romで補間
+-- 			local p0 = getPoint(P, seg - 1)
+-- 			local p1 = getPoint(P, seg)
+-- 			local p2 = getPoint(P, seg + 1)
+-- 			local p3 = getPoint(P, seg + 2)
+
+-- 			local n = sampleSegment(p1, p2, step)
+-- 			for j = 0, n - 1 do
+-- 				local t0 = j / n
+-- 				local t1 = (j + 1) / n
+
+-- 				local a = catmullRom(p0, p1, p2, p3, t0)
+-- 				local b = catmullRom(p0, p1, p2, p3, t1)
+-- 				local mid = (a + b) * 0.5
+-- 				local dir = (b - a)
+-- 				if dir.Magnitude < 1e-6 then
+-- 					dir = Vector3.zAxis
+-- 				end
+
+-- 				-- 地面に吸着（サンプル区間の中心点）
+-- 				local useY = mid.Y
+-- 				local up = Vector3.yAxis
+-- 				if stick then
+-- 					local startY = 1000
+-- 					local params = RaycastParams.new()
+-- 					params.FilterType = Enum.RaycastFilterType.Include
+-- 					params.FilterDescendantsInstances = { workspace.Terrain }
+-- 					params.IgnoreWater = false
+
+-- 					local res = workspace:Raycast(Vector3.new(mid.X, startY, mid.Z), Vector3.new(0, -2000, 0), params)
+-- 					if res then
+-- 						useY = res.Position.Y + (yOffset or -3)
+-- 						if align then
+-- 							up = res.Normal
+-- 						end
+-- 					else
+-- 						warn(("地面未検出: (%.1f, %.1f)"):format(mid.X, mid.Z))
+-- 					end
+-- 				end
+
+-- 				-- ブロックの中心を半分沈めて設置
+-- 				local centerY = useY - (thick / 2) - 5
+-- 				fillRoadSlice(
+-- 					terrain,
+-- 					Vector3.new(mid.X, centerY, mid.Z),
+-- 					dir.Unit,
+-- 					up,
+-- 					width,
+-- 					(b - a).Magnitude,
+-- 					thick,
+-- 					mat
+-- 				)
+
+-- 				slices += 1
+-- 			end
+-- 		end
+
+-- 		print(
+-- 			("%sdraw path '%s': points=%d, slices=%d, width=%.1f, step=%.1f"):format(
+-- 				logPrefix,
+-- 				tostring(path.name or "?"),
+-- 				#P,
+-- 				slices,
+-- 				width,
+-- 				step
+-- 			)
+-- 		)
+-- 	end
+-- end
+
+-- FieldGen.lua の buildPaths 関数を置き換え
 
 return FieldGen

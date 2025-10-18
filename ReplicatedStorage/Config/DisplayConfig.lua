@@ -14,7 +14,7 @@ M.continents = {
 	-- "BananaLand",
 	-- "ContinentHokkaido",
 	-- "ContinentKyushu",
-	"VerdantContinent",
+	-- "VerdantContinent",
 }
 
 -- ▼ 既定の表示パラメータ

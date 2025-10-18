@@ -227,7 +227,11 @@ local function loadContinent(continentName)
 		FieldGen.placeFieldObjects(continent.name, continent.fieldObjects)
 	end
 
-	-- 道
+	-- ▼ 【重要】ここで待機してから道を生成
+	task.wait(0.5) -- ← Terrain生成完了を待つ
+	print("[ZoneManager] Terrain生成完了、パス生成を開始")
+
+	-- ▼ 道を生成
 	if continent.paths then
 		local arr = continent.paths
 		if #arr == 0 and arr.points then
@@ -240,6 +244,36 @@ local function loadContinent(continentName)
 	end
 
 	print(("[ZoneManager] 大陸生成完了: %s"):format(continentName))
+
+	-- ZoneManager.lua の loadContinent 関数内の最後に追加
+
+	-- ===== 【診断】buildPaths 前のレイキャストテスト =====
+	print("[ZoneManager診断] Terrain レイキャストテスト開始...")
+
+	local testX, testZ = 405.2, 719.5
+	local testStartY = 3600
+	local testParams = RaycastParams.new()
+	testParams.FilterType = Enum.RaycastFilterType.Include
+	testParams.FilterDescendantsInstances = { workspace.Terrain }
+	testParams.IgnoreWater = false
+
+	local testHit = workspace:Raycast(Vector3.new(testX, testStartY, testZ), Vector3.new(0, -5000, 0), testParams)
+
+	if testHit then
+		print(string.format("[ZoneManager診断] ✓ レイキャスト成功: Y=%.1f", testHit.Position.Y))
+	else
+		print(string.format("[ZoneManager診断] ✗ レイキャスト失敗: Terrain が見つかりません"))
+		print(string.format("[ZoneManager診断] テスト座標: (%.1f, _, %.1f)", testX, testZ))
+
+		-- Terrain の存在確認
+		local terrain = workspace.Terrain
+		print(string.format("[ZoneManager診断] Terrain 存在: %s", terrain ~= nil))
+		print(string.format("[ZoneManager診断] Terrain の大きさ: %s", tostring(terrain.Size)))
+	end
+
+	print("[ZoneManager診断] Terrain レイキャストテスト終了")
+	-- ===== 診断ここまで =====
+
 	return true
 end
 
