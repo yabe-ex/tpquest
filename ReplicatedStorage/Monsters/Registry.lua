@@ -6,6 +6,6 @@ return {
 	require(Monsters.Slime_pink),
 	require(Monsters.golem),
 	-- 将来追加するモンスター:
-	-- require(Monsters.Dragon),
+	require(Monsters.CuteSlime),
 	-- require(Monsters.Goblin),
 }

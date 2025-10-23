@@ -68,12 +68,14 @@ end
 print("[OceanSafety] 初期化完了")
 
 -- プレイヤーの監視
-local function monitorPlayer(player)
+local monitorPlayer = function(player)
 	player.CharacterAdded:Connect(function(character)
 		local hrp = character:WaitForChild("HumanoidRootPart")
 		local humanoid = character:WaitForChild("Humanoid")
 
 		local lastCheck = 0
+		local spawnTime = os.clock() -- ★ スポーン時刻記録
+		local SPAWN_GRACE_PERIOD = 2 -- ★ 2秒間は海判定を無視
 
 		RunService.Heartbeat:Connect(function()
 			if not character.Parent or not hrp.Parent then
@@ -81,6 +83,12 @@ local function monitorPlayer(player)
 			end
 
 			local now = os.clock()
+
+			-- ★ スポーン直後は処理をスキップ
+			if now - spawnTime < SPAWN_GRACE_PERIOD then
+				return
+			end
+
 			if now - lastCheck < CHECK_INTERVAL then
 				return
 			end
@@ -102,9 +110,9 @@ local function monitorPlayer(player)
 				hrp.CFrame = CFrame.new(spawnPos)
 
 				-- 体力を少し減らす（ペナルティ）
-				if humanoid.Health > 10 then
-					humanoid.Health = humanoid.Health - 10
-				end
+				-- if humanoid.Health > 10 then
+				-- 	humanoid.Health = humanoid.Health - 10
+				-- end
 
 				print(
 					("[OceanSafety] %s をリスポーン完了: (%.1f, %.1f, %.1f)"):format(

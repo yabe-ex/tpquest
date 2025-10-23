@@ -763,10 +763,11 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		local continent = player:GetAttribute("ContinentName") or "?"
 		local island = player:GetAttribute("IslandName") or "?"
 
-		log.debugf("📍 現在地情報 -------------------------")
-		log.debugf("🗺️ 大陸名: " .. continent)
-		log.debugf(string.format("📌 座標: (%.1f, %.1f, %.1f)", position.X, position.Y, position.Z))
-		log.debugf("--------------------------------------")
+		-- log.debugf("📍 現在地情報 -------------------------")
+		-- log.debugf("🗺️ 大陸名: " .. continent)
+		-- log.debugf(string.format("📌 座標: (%.1f, %.1f, %.1f)", position.X, position.Y, position.Z))
+		-- log.debugf("--------------------------------------")
+		print(string.format("{%.1f, %.1f, %.1f}", position.X, position.Y, position.Z))
 	end
 end)
 

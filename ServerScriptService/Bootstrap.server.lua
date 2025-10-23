@@ -203,8 +203,9 @@ local function setupPlayerSpawn(player)
 				end
 
 				-- ワープ実行
-				hrp.CFrame = CFrame.new(loadedLocation.X, loadedLocation.Y, loadedLocation.Z)
-				ZoneManager.PlayerZones[player] = targetZone
+				-- hrp.CFrame = CFrame.new(loadedLocation.X, loadedLocation.Y, loadedLocation.Z)
+				ZoneManager.WarpPlayerToZone(player, targetZone)
+				-- ZoneManager.PlayerZones[player] = targetZone
 
 				print(
 					("[Bootstrap] ✓ %s をワープ完了 (%.0f, %.0f, %.0f)"):format(

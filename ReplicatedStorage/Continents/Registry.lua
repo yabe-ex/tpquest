@@ -10,4 +10,7 @@ return {
 	require(ContinentsFolder.Snowland),
 	require(ContinentsFolder.BananaLand),
 	require(ContinentsFolder.ContinentVendant),
+	require(ContinentsFolder.ContinentVendant2),
+	require(ContinentsFolder.ContinentVendant3),
+	require(ContinentsFolder.Hokkaido_C),
 }

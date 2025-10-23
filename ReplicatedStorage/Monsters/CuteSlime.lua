@@ -3,8 +3,8 @@
 -- スライムの定義（ステータス拡張版）
 
 return {
-	Name = "Slime",
-	TemplatePath = { "ServerStorage", "EnemyTemplates", "Slime" },
+	Name = "CuteSlime",
+	TemplatePath = { "ServerStorage", "EnemyTemplates", "CuteSlime" },
 	WalkSpeed = 10,
 	RespawnTime = 10,
 

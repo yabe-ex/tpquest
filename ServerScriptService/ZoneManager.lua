@@ -201,6 +201,14 @@ local function loadContinent(continentName)
 		end
 	end
 
+	-- 湖を生成
+	if continent.lakes then
+		print(("[ZoneManager] 湖を生成: %d 個"):format(#continent.lakes))
+		for _, lakeConfig in ipairs(continent.lakes) do
+			FieldGen.generateLake(lakeConfig)
+		end
+	end
+
 	-- 橋を生成
 	if continent.bridges then
 		for _, bridgeConfig in ipairs(continent.bridges) do
@@ -238,7 +246,7 @@ local function loadContinent(continentName)
 			arr = { continent.paths }
 		end
 		if #arr > 0 then
-			print("[ZoneManager] 道を引きます")
+			print("[ZoneManager] 道を引きます: " .. tostring(#arr) .. " 個のパス")
 			FieldGen.buildPaths(continent.name, arr)
 		end
 	end
@@ -248,30 +256,30 @@ local function loadContinent(continentName)
 	-- ZoneManager.lua の loadContinent 関数内の最後に追加
 
 	-- ===== 【診断】buildPaths 前のレイキャストテスト =====
-	print("[ZoneManager診断] Terrain レイキャストテスト開始...")
+	-- print("[ZoneManager診断] Terrain レイキャストテスト開始...")
 
-	local testX, testZ = 405.2, 719.5
-	local testStartY = 3600
-	local testParams = RaycastParams.new()
-	testParams.FilterType = Enum.RaycastFilterType.Include
-	testParams.FilterDescendantsInstances = { workspace.Terrain }
-	testParams.IgnoreWater = false
+	-- local testX, testZ = 405.2, 719.5
+	-- local testStartY = 3600
+	-- local testParams = RaycastParams.new()
+	-- testParams.FilterType = Enum.RaycastFilterType.Include
+	-- testParams.FilterDescendantsInstances = { workspace.Terrain }
+	-- testParams.IgnoreWater = false
 
-	local testHit = workspace:Raycast(Vector3.new(testX, testStartY, testZ), Vector3.new(0, -5000, 0), testParams)
+	-- -- local testHit = workspace:Raycast(Vector3.new(testX, testStartY, testZ), Vector3.new(0, -5000, 0), testParams)
 
-	if testHit then
-		print(string.format("[ZoneManager診断] ✓ レイキャスト成功: Y=%.1f", testHit.Position.Y))
-	else
-		print(string.format("[ZoneManager診断] ✗ レイキャスト失敗: Terrain が見つかりません"))
-		print(string.format("[ZoneManager診断] テスト座標: (%.1f, _, %.1f)", testX, testZ))
+	-- -- if testHit then
+	-- -- 	print(string.format("[ZoneManager診断] ✓ レイキャスト成功: Y=%.1f", testHit.Position.Y))
+	-- -- else
+	-- -- 	print(string.format("[ZoneManager診断] ✗ レイキャスト失敗: Terrain が見つかりません"))
+	-- -- 	print(string.format("[ZoneManager診断] テスト座標: (%.1f, _, %.1f)", testX, testZ))
 
-		-- Terrain の存在確認
-		local terrain = workspace.Terrain
-		print(string.format("[ZoneManager診断] Terrain 存在: %s", terrain ~= nil))
-		print(string.format("[ZoneManager診断] Terrain の大きさ: %s", tostring(terrain.Size)))
-	end
+	-- -- 	-- Terrain の存在確認
+	-- -- 	local terrain = workspace.Terrain
+	-- -- 	-- print(string.format("[ZoneManager診断] Terrain 存在: %s", terrain ~= nil))
+	-- -- 	print(string.format("[ZoneManager診断] Terrain の大きさ: %s", tostring(terrain.Size)))
+	-- -- end
 
-	print("[ZoneManager診断] Terrain レイキャストテスト終了")
+	-- print("[ZoneManager診断] Terrain レイキャストテスト終了")
 	-- ===== 診断ここまで =====
 
 	return true

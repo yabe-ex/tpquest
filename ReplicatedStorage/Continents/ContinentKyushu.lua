@@ -101,6 +101,16 @@ return {
 				},
 				displayDuration = 2, -- 報酬表示時間（秒）
 			},
+		}, --{2994.3, 64.1, -424.8
+		{
+			model = "StoneTower",
+			position = { 2994.3, 64.1, -424.8 },
+			mode = "ground",
+			size = 1,
+			rotation = { 0, 0, 0 },
+			stickToGround = false, -- 省略可（trueが既定）
+			groundOffset = 0, -- 芝生で少し浮かせたい時
+			alignToSlope = false, -- 斜面に木を傾けたくないならfalse
 		},
 	},
 

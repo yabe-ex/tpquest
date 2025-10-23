@@ -14,6 +14,9 @@ local islandModules = {
 	IslandsFolder:WaitForChild("Snowland"),
 	IslandsFolder:WaitForChild("BananaLand"),
 	IslandsFolder:WaitForChild("Vendant"),
+	IslandsFolder:WaitForChild("Vendant2"),
+	IslandsFolder:WaitForChild("Vendant3"),
+	IslandsFolder:WaitForChild("Hokkaido"),
 }
 
 -- 各モジュールを読み込み
