@@ -1,11 +1,14 @@
 -- ServerScriptService/MonsterSpawner.server.lua
--- ゾーン対応版モンスター配置システム（バトル高速化版、徘徊AI修正版）
+-- ゾーン対応版モンスター配置システム（新AI行動システム対応版 + デバッグログ強化版）
 
 local ServerStorage = game:GetService("ServerStorage")
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+
+-- ★【新】AIBehaviorSystem の読み込み
+local AIBehaviorSystem = require(ReplicatedStorage:WaitForChild("AIBehaviorSystem"))
 
 local FieldGen = require(ReplicatedStorage:WaitForChild("FieldGen"))
 local ZoneManager = require(script.Parent.ZoneManager)
@@ -35,11 +38,23 @@ end
 local MonstersFolder = ReplicatedStorage:WaitForChild("Monsters")
 local Registry = require(MonstersFolder:WaitForChild("Registry"))
 
+print("[MonsterSpawner] ★【デバッグ】Registry 読み込み完了")
+print(("[MonsterSpawner] ★【デバッグ】Registry 内のモンスター数: %d"):format(#Registry))
+for i, def in ipairs(Registry) do
+	print(("[MonsterSpawner] ★【デバッグ】  [%d] %s"):format(i, def.Name or "Unknown"))
+end
+
 -- 島の設定を読み込み
 local IslandsRegistry = require(ReplicatedStorage.Islands.Registry)
 local Islands = {}
 for _, island in ipairs(IslandsRegistry) do
 	Islands[island.name] = island
+end
+
+print("[MonsterSpawner] ★【デバッグ】Islands 読み込み完了")
+print(("[MonsterSpawner] ★【デバッグ】Islands 内の島数: %d"):format(#IslandsRegistry))
+for i, island in ipairs(IslandsRegistry) do
+	print(("[MonsterSpawner] ★【デバッグ】  [%d] %s"):format(i, island.name))
 end
 
 -- グローバル変数
@@ -48,6 +63,9 @@ local UpdateInterval = 0.05
 local MonsterCounts = {}
 local TemplateCache = {}
 local RespawnQueue = {}
+
+-- ★【新】AIState を AIBehaviorSystem から取得
+local AIState = AIBehaviorSystem.AIState
 
 -- 安全地帯チェック
 local function isSafeZone(zoneName)
@@ -62,11 +80,20 @@ end
 local function resolveTemplate(pathArray: { string }): Model?
 	local node: Instance = game
 	for _, seg in ipairs(pathArray) do
+		print(
+			("[MonsterSpawner] ★【デバッグ】テンプレート解決中: %s > %s"):format(tostring(node), seg)
+		)
 		node = node:FindFirstChild(seg)
 		if not node then
+			print(
+				("[MonsterSpawner] ★【デバッグ】テンプレート解決失敗: %s が見つかりません"):format(
+					seg
+				)
+			)
 			return nil
 		end
 	end
+	print(("[MonsterSpawner] ★【デバッグ】テンプレート解決成功: %s"):format(tostring(node)))
 	return (node and node:IsA("Model")) and node or nil
 end
 
@@ -76,8 +103,10 @@ local function ensureHRP(model: Model): BasePart?
 		if not model.PrimaryPart then
 			model.PrimaryPart = hrp
 		end
+		print(("[MonsterSpawner] ★【デバッグ】HRP確認OK: %s"):format(model.Name))
 		return hrp
 	end
+	print(("[MonsterSpawner] ★【デバッグ】HRP確認失敗: %s"):format(model.Name))
 	return nil
 end
 
@@ -113,12 +142,8 @@ local function getContinentNameFromIsland(islandName)
 	end
 	return result
 end
--- 島名から大陸名を取得
-local function getContinentNameFromIsland(islandName)
-	return IslandToContinentMap[islandName] or islandName
-end
 
-local function attachLabel(model: Model, maxDist: number)
+local function attachAILabel(model: Model, aiState)
 	local hrp = model.PrimaryPart or model:FindFirstChild("HumanoidRootPart")
 	if not hrp then
 		return
@@ -128,12 +153,12 @@ local function attachLabel(model: Model, maxDist: number)
 	local labelOffset = math.min(bboxSize.Y * 0.5 + 2, 15)
 
 	local gui = Instance.new("BillboardGui")
-	gui.Name = "DebugInfo"
+	gui.Name = "AIDebugInfo"
 	gui.Adornee = hrp
 	gui.AlwaysOnTop = true
 	gui.Size = UDim2.new(0, 150, 0, 50)
 	gui.StudsOffset = Vector3.new(0, labelOffset, 0)
-	gui.MaxDistance = maxDist
+	gui.MaxDistance = 100
 	gui.Parent = hrp
 
 	local lb = Instance.new("TextLabel")
@@ -144,21 +169,28 @@ local function attachLabel(model: Model, maxDist: number)
 	lb.TextColor3 = Color3.new(1, 1, 1)
 	lb.TextStrokeTransparency = 0.5
 	lb.Size = UDim2.fromScale(1, 1)
-	lb.Text = "Ready"
+	lb.Text = string.format("Brave:%.1f\n%s", aiState.brave, aiState.modeType or "INIT")
 	lb.Parent = gui
+
+	print(("[MonsterSpawner] ★【デバッグ】AIラベル追加: %s"):format(model.Name))
 end
 
 local function placeOnGround(model: Model, x: number, z: number)
 	local hrp = model.PrimaryPart or model:FindFirstChild("HumanoidRootPart")
 	if not hrp then
 		warn("[MonsterSpawner] HumanoidRootPart が見つかりません: " .. model.Name)
+		print(("[MonsterSpawner] ★【デバッグ】地面配置失敗（HRP未検出）: %s"):format(model.Name))
 		return
 	end
+
+	print(("[MonsterSpawner] ★【デバッグ】地面配置開始: %s (%.1f, %.1f)"):format(model.Name, x, z))
 
 	local groundY = FieldGen.raycastGroundY(x, z, 100)
 		or FieldGen.raycastGroundY(x, z, 200)
 		or FieldGen.raycastGroundY(x, z, 50)
 		or 10
+
+	print(("[MonsterSpawner] ★【デバッグ】レイキャスト結果: Y=%.1f"):format(groundY))
 
 	local _, yaw = hrp.CFrame:ToOrientation()
 	model:PivotTo(CFrame.new(x, groundY + 20, z) * CFrame.Angles(0, yaw, 0))
@@ -168,6 +200,13 @@ local function placeOnGround(model: Model, x: number, z: number)
 	local offset = hrp.Position.Y - bottomY
 
 	model:PivotTo(CFrame.new(x, groundY + offset, z) * CFrame.Angles(0, yaw, 0))
+
+	print(
+		("[MonsterSpawner] ★【デバッグ】地面配置完了: %s (最終Y: %.1f)"):format(
+			model.Name,
+			groundY + offset
+		)
+	)
 end
 
 local function nearestPlayer(position: Vector3)
@@ -185,239 +224,27 @@ local function nearestPlayer(position: Vector3)
 	return best, bestDist
 end
 
--- AI状態管理（高速化版）
-local AIState = {}
-AIState.__index = AIState
-
-function AIState.new(monster, def)
-	local self = setmetatable({}, AIState)
-	self.monster = monster
-	self.def = def
-	self.humanoid = monster:FindFirstChildOfClass("Humanoid")
-	self.root = monster.PrimaryPart
-	self.courage = math.random()
-	self.brave = (self.courage > 0.5)
-	self.wanderGoal = nil
-	self.nextWanderAt = 0
-	self.lastUpdateTime = 0
-	self.lastDistanceLog = 0
-	self.updateRate = def.AiTickRate or 0.3
-	self.nearUpdateRate = 0.05 -- 0.05秒に高速化（バトル判定が速くなる）
-	self.farUpdateRate = 0.5 -- 0.5秒に高速化
-
-	self.originalSpeed = self.humanoid.WalkSpeed
-	self.wasInBattle = false
-
-	-- 【修正点1】徘徊ステート管理を整理
-	self.isMoving = false -- 移動状態か
-	self.isWaiting = false -- 待機状態か (停止状態)
-	self.waitEndTime = 0 -- 待機終了時刻
-	-- 【修正点1 終わり】
-
-	return self
-end
-
-function AIState:shouldUpdate(currentTime)
-	local _, dist = nearestPlayer(self.root.Position)
-	-- 近距離判定を150スタッドに拡大（バトル判定をより頻繁に）
-	local rate = dist < 150 and self.nearUpdateRate or self.farUpdateRate
-	return (currentTime - self.lastUpdateTime) >= rate
-end
-
-function AIState:update()
-	if not self.monster.Parent or not self.humanoid or not self.root then
-		return false
-	end
-
-	if self.monster:GetAttribute("Defeated") then
-		if not self.loggedDefeated then
-			-- print(("[AI DEBUG] %s - Defeated状態のためスキップ"):format(self.monster.Name))
-			self.loggedDefeated = true
-		end
-		return false
-	end
-
-	-- バトル状態を確認
-	local isGlobalBattle = BattleSystem and BattleSystem.isAnyBattleActive and BattleSystem.isAnyBattleActive()
-	local isThisMonsterInBattle = self.monster:GetAttribute("InBattle")
-	local isAnyBattle = isGlobalBattle or isThisMonsterInBattle
-
-	-- いずれかのバトルが進行中なら停止
-	if isAnyBattle then
-		self.humanoid.WalkSpeed = 0
-		self.humanoid:MoveTo(self.root.Position)
-		self.wasInBattle = true
-		return true
-	end
-
-	-- バトルが終了したら速度を復元
-	if self.wasInBattle and not isAnyBattle then
-		-- print(("[AI DEBUG] %s - バトル終了、速度復元: %.1f"):format(self.monster.Name, self.originalSpeed))
-		self.humanoid.WalkSpeed = self.originalSpeed
-		self.wasInBattle = false
-		self.loggedDefeated = false
-	end
-
-	local p, dist = nearestPlayer(self.root.Position)
-	local chaseRange = self.def.ChaseDistance or 60
-	local now = os.clock()
-
-	-- バトル判定（高速化・距離拡大）
-	if BattleSystem and p and dist <= 7 then -- 7スタッドに拡大
-		-- print(("[AI DEBUG] %s - 接触検出！距離=%.1f"):format(self.monster.Name, dist))
-
-		if BattleSystem.isInBattle(p) then
-			self.humanoid:MoveTo(self.root.Position)
-			return true
-		end
-
-		if BattleSystem.isAnyBattleActive and BattleSystem.isAnyBattleActive() then
-			self.humanoid:MoveTo(self.root.Position)
-			return true
-		end
-
-		if self.monster:GetAttribute("InBattle") then
-			return true
-		end
-
-		local character = p.Character
-		if character then
-			-- 【重要】即座にプレイヤーを停止（バトル開始前）
-			local playerHumanoid = character:FindFirstChildOfClass("Humanoid")
-			local playerHrp = character:FindFirstChild("HumanoidRootPart")
-
-			if playerHumanoid and playerHrp then
-				-- プレイヤーを即座に停止
-				playerHumanoid.WalkSpeed = 0
-				playerHumanoid.JumpPower = 0
-				playerHrp.Anchored = true
-			end
-
-			self.monster:SetAttribute("InBattle", true)
-			self.humanoid.WalkSpeed = 0
-			self.humanoid:MoveTo(self.root.Position)
-
-			local battleStarted = BattleSystem.startBattle(p, self.monster)
-			-- print(("[AI DEBUG] バトル開始結果: %s"):format(tostring(battleStarted)))
-
-			if not battleStarted then
-				-- バトル開始失敗時はプレイヤーも解放
-				self.monster:SetAttribute("InBattle", false)
-				self.humanoid.WalkSpeed = self.originalSpeed
-
-				if playerHumanoid and playerHrp then
-					playerHumanoid.WalkSpeed = 16
-					playerHumanoid.JumpPower = 50
-					playerHrp.Anchored = false
-				end
-			end
-
-			return true
-		else
-			self.monster:SetAttribute("InBattle", false)
-		end
-	end
-
-	-- 海チェック
-	local isInWater = self.root.Position.Y < 0 or self.humanoid:GetState() == Enum.HumanoidStateType.Swimming
-
-	-- ラベル更新
-	local label = self.root:FindFirstChild("DebugInfo") and self.root.DebugInfo:FindFirstChild("InfoText")
-	if label then
-		local behavior = self.brave and "CHASE" or "FLEE"
-		label.Text = string.format("%s\n%s | %.1fm", self.monster.Name, behavior, dist or 999)
-	end
-
-	local gui = self.root:FindFirstChild("DebugInfo")
-	if gui then
-		gui.Enabled = not isInWater
-	end
-
-	-- 【修正点2】徘徊ロジックを再構築
-	local function wanderLogic()
-		local w = self.def.Wander or {}
-		local minWait = w.MinWait or 2
-		local maxWait = w.MaxWait or 5
-		local minRadius = w.MinRadius or 20
-		local maxRadius = w.MaxRadius or 60
-		local stopDistance = 5 -- 目標到達と見なす距離
-
-		local isGoalReached = self.wanderGoal and (self.root.Position - self.wanderGoal).Magnitude < stopDistance
-		local isWaitFinished = self.isWaiting and now >= self.waitEndTime
-
-		if self.isWaiting then
-			-- ステート: 待機中（停止）
-			self.humanoid:MoveTo(self.root.Position) -- 停止を維持
-			self.isMoving = false
-
-			if isWaitFinished then
-				-- 待機終了。次の目標設定へ
-				self.isWaiting = false
-				self.wanderGoal = nil
-			end
-		elseif isGoalReached or not self.wanderGoal then
-			-- ステート: 目標到達 or 目標なし -> 新目標設定 & 移動開始
-
-			-- 目標に到達したら待機モードに移行
-			if isGoalReached then
-				self.isWaiting = true
-				self.waitEndTime = now + math.random(minWait * 10, maxWait * 10) / 10
-				self.humanoid:MoveTo(self.root.Position) -- 停止
-				return
-			end
-
-			-- 新しい目標を設定
-			local ang = math.random() * math.pi * 2
-			local rad = math.random(minRadius, maxRadius)
-			local gx = self.root.Position.X + math.cos(ang) * rad
-			local gz = self.root.Position.Z + math.sin(ang) * rad
-
-			local gy = FieldGen.raycastGroundY(gx, gz, 100) or self.root.Position.Y + 5 -- 見つからなければ現在のY+5
-
-			self.wanderGoal = Vector3.new(gx, gy, gz)
-			self.isMoving = true
-
-			self.humanoid:MoveTo(self.wanderGoal)
-		else
-			-- ステート: 移動中（継続）
-			self.isMoving = true
-			self.humanoid:MoveTo(self.wanderGoal)
-		end
-	end
-	-- 【修正点2 終わり】
-
-	-- 行動決定
-	if not p then
-		-- プレイヤーがいない：徘徊のみ
-		wanderLogic()
-	elseif dist < chaseRange then
-		-- 追跡 or 逃走
-		self.wanderGoal = nil
-		self.isMoving = false
-		self.isWaiting = false -- 追跡中は徘徊ステートを強制解除
-		if self.brave then
-			self.humanoid:MoveTo(p.Character.HumanoidRootPart.Position)
-		else
-			local away = (self.root.Position - p.Character.HumanoidRootPart.Position).Unit
-			self.humanoid:MoveTo(self.root.Position + away * 80)
-		end
-	else
-		-- プレイヤーが遠い：徘徊
-		wanderLogic()
-	end
-
-	self.lastUpdateTime = now
-	return true
-end
-
 -- スポーン処理（島指定版）
 local function spawnMonster(template: Model, index: number, def, islandName)
+	print(
+		("[MonsterSpawner] ★【デバッグ】spawnMonster呼び出し: template=%s, index=%d, def=%s, island=%s"):format(
+			template.Name,
+			index,
+			def.Name or "Unknown",
+			islandName
+		)
+	)
+
 	local m = template:Clone()
 	m.Name = (def.Name or template.Name) .. "_" .. index
+
+	print(("[MonsterSpawner] ★【デバッグ】クローン作成: %s"):format(m.Name))
 
 	-- === 両目の生成（SurfaceGui方式・縦横比維持・貼り付き調整付き） ===
 	-- === カラー設定＋両目生成 ===
 	if def.ColorProfile then
+		print(("[MonsterSpawner] ★【デバッグ】ColorProfile処理開始: %s"):format(m.Name))
+
 		-- まず Body/Core の色とマテリアルを設定
 		for _, part in ipairs(m:GetDescendants()) do
 			if part:IsA("MeshPart") then
@@ -449,13 +276,17 @@ local function spawnMonster(template: Model, index: number, def, islandName)
 
 		-- === 両目の生成 ===
 		if def.ColorProfile.EyeTexture then
+			print(("[MonsterSpawner] ★【デバッグ】目の生成処理開始: %s"):format(m.Name))
+
 			-- 目を貼る対象（Bodyに貼るのが自然）
 			local targetPart = m:FindFirstChild("Body") or m.PrimaryPart
 			if targetPart then
+				print(("[MonsterSpawner] ★【デバッグ】目の配置対象パーツ: %s"):format(targetPart.Name))
+
 				-- ▼ 調整用パラメータ（ColorProfileで上書き可能）
 				local useDecal = def.ColorProfile.UseDecal == true
 				local eyeSize = def.ColorProfile.EyeSize or 0.18
-				local eyeY = def.ColorProfile.EyeY or 0.48 -- 少し高めに配置
+				local eyeY = def.ColorProfile.EyeY or 0.48
 				local eyeSeparation = def.ColorProfile.EyeSeparation or 0.18
 				local zOffset = def.ColorProfile.EyeZOffset or -0.05
 				local alwaysOnTop = def.ColorProfile.EyeAlwaysOnTop == true
@@ -464,6 +295,7 @@ local function spawnMonster(template: Model, index: number, def, islandName)
 				local eyePixelSize = def.ColorProfile.EyePixelSize or 120
 
 				if useDecal then
+					print(("[MonsterSpawner] ★【デバッグ】Decal方式で目を生成: %s"):format(m.Name))
 					-- ★ Decal方式（両目を1枚にした画像向け）
 					local decal = Instance.new("Decal")
 					decal.Texture = def.ColorProfile.EyeTexture
@@ -471,6 +303,7 @@ local function spawnMonster(template: Model, index: number, def, islandName)
 					decal.Transparency = 0
 					decal.Parent = targetPart
 				else
+					print(("[MonsterSpawner] ★【デバッグ】SurfaceGui方式で目を生成: %s"):format(m.Name))
 					-- ★ SurfaceGui + ImageLabel方式（個別に左右配置）
 					for _, sign in ipairs({ -1, 1 }) do
 						local eyeGui = Instance.new("SurfaceGui")
@@ -516,29 +349,38 @@ local function spawnMonster(template: Model, index: number, def, islandName)
 						img.Parent = eyeGui
 					end
 				end
+			else
+				print(
+					("[MonsterSpawner] ★【デバッグ】目の配置対象パーツが見つかりません: %s"):format(
+						m.Name
+					)
+				)
 			end
+		else
+			print(("[MonsterSpawner] ★【デバッグ】EyeTextureが未設定: %s"):format(m.Name))
 		end
+	else
+		print(("[MonsterSpawner] ★【デバッグ】ColorProfileが未設定: %s"):format(m.Name))
 	end
 	-- === カラー設定＋両目生成 ここまで ===
-
-	-- === 両目の生成 ここまで ===
-
-	-- === カラー＆外見設定ここまで ===
 
 	local hum = m:FindFirstChildOfClass("Humanoid")
 	local hrp = ensureHRP(m)
 
 	if not hum or not hrp then
 		warn("[MonsterSpawner] Humanoid または HRP がありません: " .. m.Name)
+		print(("[MonsterSpawner] ★【デバッグ】Humanoid=%s, HRP=%s"):format(tostring(hum), tostring(hrp)))
 		m:Destroy()
 		return
 	end
+
+	print(("[MonsterSpawner] ★【デバッグ】Humanoid確認OK: %s"):format(m.Name))
 
 	m:SetAttribute("IsEnemy", true)
 	m:SetAttribute("MonsterKind", def.Name or "Monster")
 	m:SetAttribute("ChaseDistance", def.ChaseDistance or 60)
 
-	-- ★修正点★: SpawnZone に大陸名を設定
+	-- ★【修正】SpawnZone に大陸名を設定
 	local continentName = getContinentNameFromIsland(islandName)
 	m:SetAttribute("SpawnZone", continentName)
 	m:SetAttribute("SpawnIsland", islandName)
@@ -548,6 +390,10 @@ local function spawnMonster(template: Model, index: number, def, islandName)
 	local speedMult = speedMin + math.random() * (speedMax - speedMin)
 	hum.WalkSpeed = (def.WalkSpeed or 14) * speedMult
 	hum.HipHeight = 0
+
+	print(
+		("[MonsterSpawner] ★【デバッグ】WalkSpeed設定: %.1f (倍率: %.2f)"):format(hum.WalkSpeed, speedMult)
+	)
 
 	hrp.Anchored = true
 	hrp.CanCollide = false
@@ -571,72 +417,68 @@ local function spawnMonster(template: Model, index: number, def, islandName)
 		end
 	end
 
+	print(("[MonsterSpawner] ★【デバッグ】Workspace に親設定前"):format())
 	m.Parent = Workspace
+	print(("[MonsterSpawner] ★【デバッグ】Workspace に配置完了: %s"):format(m.Name))
 
 	local island = Islands[islandName]
 	if not island then
 		warn(("[MonsterSpawner] 島 '%s' が見つかりません"):format(islandName))
+		print(("[MonsterSpawner] ★【デバッグ】利用可能な島:"):format())
+		for name, _ in pairs(Islands) do
+			print(("[MonsterSpawner] ★【デバッグ】  - %s"):format(name))
+		end
 		m:Destroy()
 		return
 	end
 
+	print(("[MonsterSpawner] ★【デバッグ】島確認OK: %s"):format(islandName))
+
 	local spawnRadius
 	if def.radiusPercent then
 		spawnRadius = (island.sizeXZ / 2) * (def.radiusPercent / 100)
+		print(
+			("[MonsterSpawner] ★【デバッグ】スポーン範囲（パーセント指定）: %.1f (島サイズ: %.1f, パーセント: %d%%)"):format(
+				spawnRadius,
+				island.sizeXZ / 2,
+				def.radiusPercent
+			)
+		)
 	else
 		spawnRadius = def.spawnRadius or 50
+		print(("[MonsterSpawner] ★【デバッグ】スポーン範囲（固定値）: %.1f"):format(spawnRadius))
 	end
 
 	local rx = island.centerX + math.random(-spawnRadius, spawnRadius)
 	local rz = island.centerZ + math.random(-spawnRadius, spawnRadius)
 
+	print(("[MonsterSpawner] ★【デバッグ】スポーン座標: (%.1f, ?, %.1f)"):format(rx, rz))
+
 	placeOnGround(m, rx, rz)
-
-	-- === 発光処理（Body/Core用） ===
-	-- if def.ColorProfile and def.ColorProfile.GlowEnabled ~= false then
-	-- 	local body = m:FindFirstChild("Body")
-	-- 	local core = m:FindFirstChild("Core")
-
-	-- 	local glowColor = def.ColorProfile.GlowColor
-	-- 		or def.ColorProfile.Body
-	-- 		or def.ColorProfile.Core
-	-- 		or Color3.fromRGB(0, 255, 180)
-
-	-- 	local glowBrightness = def.ColorProfile.GlowBrightness or 1.5
-	-- 	local glowRange = def.ColorProfile.GlowRange or 10
-	-- 	local glowTransparency = def.ColorProfile.GlowTransparency or 0.45
-	-- 	local glowOutline = def.ColorProfile.GlowOutline or 1
-
-	-- 	-- Bodyの発光処理
-	-- 	if body and body:IsA("BasePart") then
-	-- 		local hl = Instance.new("Highlight")
-	-- 		hl.Name = "BodyGlow"
-	-- 		hl.FillColor = glowColor
-	-- 		hl.FillTransparency = glowTransparency
-	-- 		hl.OutlineTransparency = glowOutline
-	-- 		hl.Parent = body
-
-	-- 		local light = Instance.new("PointLight")
-	-- 		light.Color = glowColor
-	-- 		light.Brightness = glowBrightness
-	-- 		light.Range = glowRange
-	-- 		light.Shadows = false
-	-- 		light.Parent = body
-	-- 	end
-
-	-- 	-- Coreを半透明ガラスに
-	-- 	if core and core:IsA("BasePart") then
-	-- 		core.Material = Enum.Material.Glass
-	-- 		core.Transparency = 0.2
-	-- 	end
-	-- end
-	-- === 発光処理ここまで ===
 
 	task.wait(0.05)
 	hrp.Anchored = false
 
+	print(("[MonsterSpawner] ★【デバッグ】AIState初期化前"):format())
+
+	-- ★【新】AIState を新しいシステムで初期化
 	local aiState = AIState.new(m, def)
-	table.insert(ActiveMonsters, aiState)
+	if aiState then
+		table.insert(ActiveMonsters, aiState)
+		attachAILabel(m, aiState)
+		print(
+			("[MonsterSpawner] %s AI初期化完了 (Brave=%.1f, Mode=%s)"):format(
+				m.Name,
+				aiState.brave,
+				aiState.modeType
+			)
+		)
+	else
+		warn(("[MonsterSpawner] %s のAI初期化に失敗"):format(m.Name))
+		print(("[MonsterSpawner] ★【デバッグ】AIState.new() が nil を返しました: %s"):format(m.Name))
+		m:Destroy()
+		return
+	end
 
 	local monsterName = def.Name or "Monster"
 	if not MonsterCounts[islandName] then
@@ -733,6 +575,8 @@ end
 
 -- カスタムカウントでモンスターをスポーン（ロード時用）
 local function spawnMonstersWithCounts(zoneName, customCounts)
+	print(("[MonsterSpawner] ★【デバッグ】spawnMonstersWithCounts呼び出し: zone=%s"):format(zoneName))
+
 	if isSafeZone(zoneName) then
 		print(
 			("[MonsterSpawner] %s は安全地帯です。モンスターをスポーンしません"):format(zoneName)
@@ -830,9 +674,17 @@ local function spawnMonstersWithCounts(zoneName, customCounts)
 		else
 			if not template then
 				warn(("[MonsterSpawner] テンプレート未発見: %s"):format(monsterName))
+				print(("[MonsterSpawner] ★【デバッグ】キャッシュ内のテンプレート:"):format())
+				for cacheName, _ in pairs(TemplateCache) do
+					print(("[MonsterSpawner] ★【デバッグ】  - %s"):format(cacheName))
+				end
 			end
 			if not def then
 				warn(("[MonsterSpawner] 定義未発見: %s"):format(monsterName))
+				print(("[MonsterSpawner] ★【デバッグ】Registry内の定義:"):format())
+				for _, regDef in ipairs(Registry) do
+					print(("[MonsterSpawner] ★【デバッグ】  - %s"):format(regDef.Name or "Unknown"))
+				end
 			end
 		end
 	end
@@ -840,6 +692,8 @@ end
 
 -- ゾーンにモンスターをスポーンする（大陸対応版）
 function spawnMonstersForZone(zoneName)
+	print(("[MonsterSpawner] ★【デバッグ】spawnMonstersForZone呼び出し: zone=%s"):format(zoneName))
+
 	if isSafeZone(zoneName) then
 		print(
 			("[MonsterSpawner] %s は安全地帯です。モンスターをスポーンしません"):format(zoneName)
@@ -857,6 +711,16 @@ function spawnMonstersForZone(zoneName)
 		Continents[continent.name] = continent
 	end
 
+	print(("[MonsterSpawner] ★【デバッグ】Continents数: %d"):format(#ContinentsRegistry))
+	for _, continent in ipairs(ContinentsRegistry) do
+		print(
+			("[MonsterSpawner] ★【デバッグ】  大陸: %s, 島数: %d"):format(
+				continent.name,
+				#(continent.islands or {})
+			)
+		)
+	end
+
 	if Continents[zoneName] then
 		local continent = Continents[zoneName]
 		for _, islandName in ipairs(continent.islands) do
@@ -865,16 +729,37 @@ function spawnMonstersForZone(zoneName)
 		print(("[MonsterSpawner] 大陸 %s の島: %s"):format(zoneName, table.concat(continent.islands, ", ")))
 	else
 		islandsInZone[zoneName] = true
+		print(("[MonsterSpawner] ★【デバッグ】%s は島として処理されます"):format(zoneName))
 	end
+
+	print(("[MonsterSpawner] ★【デバッグ】Registry数: %d"):format(#Registry))
 
 	for _, def in ipairs(Registry) do
 		local monsterName = def.Name or "Monster"
 		local template = TemplateCache[monsterName]
 
+		print(
+			("[MonsterSpawner] ★【デバッグ】モンスター: %s, テンプレート=%s, SpawnLocations=%s"):format(
+				monsterName,
+				template and "OK" or "NG",
+				def.SpawnLocations and "あり" or "なし"
+			)
+		)
+
 		if template then
 			if def.SpawnLocations then
-				for _, location in ipairs(def.SpawnLocations) do
+				print(("[MonsterSpawner] ★【デバッグ】SpawnLocations数: %d"):format(#def.SpawnLocations))
+				for locIdx, location in ipairs(def.SpawnLocations) do
 					local islandName = location.islandName
+
+					print(
+						("[MonsterSpawner] ★【デバッグ】  [%d] island=%s, count=%d, inZone=%s"):format(
+							locIdx,
+							islandName,
+							location.count or 0,
+							islandsInZone[islandName] and "YES" or "NO"
+						)
+					)
 
 					if islandsInZone[islandName] then
 						local radiusText = location.radiusPercent or 100
@@ -900,6 +785,12 @@ function spawnMonstersForZone(zoneName)
 							spawnDef.radiusPercent = location.radiusPercent
 							spawnDef.spawnRadius = location.spawnRadius
 
+							print(
+								("[MonsterSpawner] ★【デバッグ】スポーン実行 [%d/%d]"):format(
+									i,
+									location.count or 0
+								)
+							)
 							spawnMonster(template, i, spawnDef, islandName)
 							if i % 5 == 0 then
 								task.wait()
@@ -913,6 +804,12 @@ function spawnMonstersForZone(zoneName)
 						monsterName
 					)
 				)
+				print(("[MonsterSpawner] ★【デバッグ】旧形式: %s"):format(monsterName))
+			end
+		else
+			print(("[MonsterSpawner] ★【デバッグ】テンプレートキャッシュ:"):format())
+			for cacheName, _ in pairs(TemplateCache) do
+				print(("[MonsterSpawner] ★【デバッグ】  - %s"):format(cacheName))
 			end
 		end
 	end
@@ -932,6 +829,14 @@ local function scheduleRespawn(monsterName, def, islandName)
 		respawnAt = os.clock() + respawnTime,
 	}
 	table.insert(RespawnQueue, respawnData)
+
+	print(
+		("[MonsterSpawner] ★【デバッグ】リスポーン予約: %s を %s に %d秒後"):format(
+			monsterName,
+			islandName,
+			respawnTime
+		)
+	)
 end
 
 local function processRespawnQueue()
@@ -953,7 +858,6 @@ local function processRespawnQueue()
 						if template and MonsterCounts[data.islandName] then
 							local nextIndex = (MonsterCounts[data.islandName][data.monsterName] or 0) + 1
 							spawnMonster(template, nextIndex, data.def, data.islandName)
-							-- print(("[MonsterSpawner] %s が %s にリスポーン"):format(data.monsterName, data.islandName))
 						end
 					end
 					table.remove(RespawnQueue, i)
@@ -965,9 +869,9 @@ local function processRespawnQueue()
 	end)
 end
 
--- AI更新ループ（高速化）
+-- ★【新】AI更新ループ（新AI行動システム対応版）
 local function startGlobalAILoop()
-	print("[MonsterSpawner] AI更新ループ開始（高速化版）")
+	print("[MonsterSpawner] AI更新ループ開始（新AI行動システム）")
 
 	task.spawn(function()
 		while true do
@@ -977,9 +881,22 @@ local function startGlobalAILoop()
 				for i = #ActiveMonsters, 1, -1 do
 					local state = ActiveMonsters[i]
 
-					if state:shouldUpdate(currentTime) then
+					-- 最も近いプレイヤーを取得
+					local nearest, dist = nearestPlayer(state.root.Position)
+
+					-- 更新判定
+					if state:shouldUpdate(currentTime, dist) then
 						local success, result = pcall(function()
-							return state:update()
+							-- ★【新】新しい update() 関数を呼び出し
+							local playerPos = nil
+							if nearest and nearest.Character then
+								local hrp = nearest.Character:FindFirstChild("HumanoidRootPart")
+								if hrp then
+									playerPos = hrp.Position
+								end
+							end
+
+							return state:update(playerPos, dist or math.huge, BattleSystem)
 						end)
 
 						if not success then
@@ -990,6 +907,7 @@ local function startGlobalAILoop()
 								)
 							)
 						elseif not result then
+							-- モンスターが倒された
 							local monsterDef = state.def
 							local monsterName = monsterDef.Name or "Unknown"
 							local zoneName = state.monster:GetAttribute("SpawnZone") or "Unknown"
@@ -1016,7 +934,7 @@ function despawnMonstersForZone(zoneName)
 
 	local removedCount = 0
 
-	-- ★修正点★: SpawnZone は大陸名で比較
+	-- ★【修正】SpawnZone は大陸名で比較
 	for i = #ActiveMonsters, 1, -1 do
 		local state = ActiveMonsters[i]
 		local monsterZone = state.monster:GetAttribute("SpawnZone")
@@ -1058,8 +976,37 @@ local function getZoneMonsterDetails(zoneName)
 	return details
 end
 
+-- ★【新】AI設定の検証関数
+local function validateAIConfig()
+	print("[MonsterSpawner] AI設定検証開始...")
+
+	for _, def in ipairs(Registry) do
+		local name = def.Name or "Unknown"
+
+		-- AIBehavior の確認
+		if not def.AIBehavior then
+			warn(("[MonsterSpawner] %s に AIBehavior が見つかりません"):format(name))
+			print(("[MonsterSpawner] ★【デバッグ】AIBehavior未設定: %s"):format(name))
+		else
+			print(("[MonsterSpawner] ✓ %s AIBehavior OK"):format(name))
+		end
+
+		-- BraveBehavior の確認
+		if not def.BraveBehavior then
+			warn(("[MonsterSpawner] %s に BraveBehavior が見つかりません"):format(name))
+			print(("[MonsterSpawner] ★【デバッグ】BraveBehavior未設定: %s"):format(name))
+		else
+			local avg = def.BraveBehavior.AverageBrave
+			local var = def.BraveBehavior.Variance
+			print(("[MonsterSpawner] ✓ %s BraveBehavior (avg=%.1f, var=%.1f)"):format(name, avg, var))
+		end
+	end
+
+	print("[MonsterSpawner] AI設定検証完了")
+end
+
 -- 初期化
-print("[MonsterSpawner] === スクリプト開始（バトル高速化版）===")
+print("[MonsterSpawner] === スクリプト開始（新AI行動システム対応版 + デバッグログ版）===")
 
 if BattleSystem then
 	BattleSystem.init()
@@ -1091,8 +1038,9 @@ print("[MonsterSpawner] World フォルダ検出")
 
 task.wait(1)
 
-print("[MonsterSpawner] モンスターテンプレートをキャッシュ中...")
+print("[MonsterSpawner] ★【デバッグ】モンスターテンプレートをキャッシュ中...")
 for _, def in ipairs(Registry) do
+	print(("[MonsterSpawner] ★【デバッグ】テンプレート解決中: %s"):format(def.Name or "Unknown"))
 	local template = resolveTemplate(def.TemplatePath)
 	if template then
 		local monsterName = def.Name or "Monster"
@@ -1100,13 +1048,26 @@ for _, def in ipairs(Registry) do
 		print(("[MonsterSpawner] テンプレートキャッシュ: %s"):format(monsterName))
 	else
 		warn(("[MonsterSpawner] テンプレート未発見: %s"):format(def.Name or "?"))
+		print(
+			("[MonsterSpawner] ★【デバッグ】TemplatePath: %s"):format(
+				game:GetService("HttpService"):JSONEncode(def.TemplatePath)
+			)
+		)
 	end
 end
+
+print("[MonsterSpawner] ★【デバッグ】テンプレートキャッシュ完了。キャッシュ内容:")
+for name, _ in pairs(TemplateCache) do
+	print(("[MonsterSpawner] ★【デバッグ】  - %s"):format(name))
+end
+
+-- ★【新】AI設定検証を実行
+validateAIConfig()
 
 startGlobalAILoop()
 processRespawnQueue()
 
-print("[MonsterSpawner] === 初期化完了（バトル即座開始対応）===")
+print("[MonsterSpawner] === 初期化完了（新AI行動システム対応）===")
 
 _G.SpawnMonstersForZone = spawnMonstersForZone
 _G.DespawnMonstersForZone = despawnMonstersForZone
@@ -1114,34 +1075,5 @@ _G.SpawnMonstersWithCounts = spawnMonstersWithCounts
 _G.GetZoneMonsterCounts = getZoneMonsterCounts
 _G.UpdateAllMonsterCounts = updateAllMonsterCounts
 
-print("[MonsterSpawner] グローバル関数登録完了（カウント機能付き）")
-
--- -- === 環境設定：夕方モード ===
--- local Lighting = game:GetService("Lighting")
-
--- Lighting.ClockTime = 18.3 -- 18時18分ごろ（夕暮れ）
--- Lighting.Brightness = 2
--- Lighting.ExposureCompensation = 0.1
--- Lighting.Ambient = Color3.fromRGB(100, 80, 60) -- 温かみのある影色
--- Lighting.OutdoorAmbient = Color3.fromRGB(180, 150, 120)
--- Lighting.EnvironmentDiffuseScale = 0.5
--- Lighting.EnvironmentSpecularScale = 0.7
--- Lighting.FogColor = Color3.fromRGB(255, 180, 120)
--- Lighting.FogEnd = 500
-
--- -- 空（Skybox）を夕焼けっぽく
--- local sky = Instance.new("Sky")
--- sky.SkyboxBk = "rbxassetid://570557620" -- 星混じりの空（少し暗め）
--- sky.SkyboxDn = "rbxassetid://570557620"
--- sky.SkyboxFt = "rbxassetid://570557620"
--- sky.SkyboxLf = "rbxassetid://570557620"
--- sky.SkyboxRt = "rbxassetid://570557620"
--- sky.SkyboxUp = "rbxassetid://570557620"
--- sky.SunAngularSize = 12
--- sky.MoonAngularSize = 11
--- sky.SunTextureId = "rbxassetid://1377140228" -- 柔らかい夕日
--- sky.MoonTextureId = "rbxassetid://6444320592"
--- sky.Parent = Lighting
-
--- print("[MonsterSpawner] 夕方の環境を適用しました 🌇")
--- -- === 夕方モードここまで ===
+print("[MonsterSpawner] グローバル関数登録完了")
+print("[MonsterSpawner] ★【デバッグ】=== MonsterSpawner 完全に起動完了 ===")

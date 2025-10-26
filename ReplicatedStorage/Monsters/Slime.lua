@@ -29,11 +29,11 @@ return {
 
 	-- スポーン設定
 	SpawnLocations = {
-		{
-			islandName = "Hokkaido_02",
-			count = 7,
-			radiusPercent = 95, -- 島のサイズの75%範囲内
-		},
+		-- {
+		-- 	islandName = "Hokkaido_02",
+		-- 	count = 7,
+		-- 	radiusPercent = 95, -- 島のサイズの75%範囲内
+		-- },
 
 		{
 			islandName = "Hokkaido_N1",

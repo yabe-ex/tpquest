@@ -1,6 +1,5 @@
--- ReplicatedStorage/Monsters/Slime.lua
--- ReplicatedStorage/Monsters/Slime
--- スライムの定義（ステータス拡張版）
+-- ReplicatedStorage/Monsters/RubySlime.lua
+-- 新AI行動システム対応版
 
 return {
 	Name = "RubySlime",
@@ -8,64 +7,112 @@ return {
 	WalkSpeed = 10,
 	RespawnTime = 10,
 
-	-- 【新】バトルステータス
-	HP = 80, -- ライフ
-	Speed = 5, -- 素早さ
-	Attack = 20, -- 攻撃力
-	Defense = 5, -- 守備力
+	-- ============================================
+	-- バトルステータス
+	-- ============================================
+	HP = 80,
+	Speed = 5,
+	Attack = 20,
+	Defense = 5,
+	Experience = 10,
+	Gold = 10,
 
-	-- 【新】報酬
-	Experience = 10, -- 倒した時に得られる経験値
-	Gold = 10, -- 倒した時に得られるゴールド
+	-- ============================================
+	-- 【NEW】AI行動パラメータ（最適化版）
+	-- ============================================
+	AIBehavior = {
+		-- 【共通】トリガー距離とクールタイム
+		TriggerDistance = 60, -- プレイヤー検出距離
+		ActionCooldown = 15, -- 行動後のクールタイム（秒）
 
-	-- タイピングレベル（重み付き）
-	TypingLevels = {
-		{ level = "level_1", weight = 70 }, -- 70%の確率でレベル1
-		{ level = "level_2", weight = 30 }, -- 30%の確率でレベル2
+		-- 【逃げモード】Brave < 5 時のパラメータ
+		Flee = {
+			BaseEscapeDistance = 80, -- 逃げ終了距離の基準値
+			BaseMaxDuration = 15, -- 逃げ時間の上限（秒）
+		},
+
+		-- 【追跡モード】Brave > 5 時のパラメータ
+		Chase = {
+			BaseChaseDistance = 10, -- 追跡終了距離の基準値
+			BaseMaxDuration = 20, -- 追跡時間の上限（秒）
+		},
+
+		-- 【ランダムウォーク】Brave == 5 時のパラメータ
+		Wander = {
+			MinSteps = 3, -- 最小歩数
+			MaxSteps = 8, -- 最大歩数
+			StepDistance = 5, -- 1ステップの距離（スタッド）
+
+			MinWaitTime = 0.5, -- 最小停止時間（秒）
+			MaxWaitTime = 3, -- 最大停止時間（秒）
+
+			PauseChance = 0.4, -- 一定確率で停止（0-1）
+
+			TurnAngleMin = 30, -- 最小ターン角度（度）
+			TurnAngleMax = 120, -- 最大ターン角度（度）
+
+			Range = 50, -- ウォーク範囲（中心からの距離）
+		},
 	},
 
-	-- 旧設定（互換性のため残す）
+	-- ============================================
+	-- 【NEW】勇敢さパラメータ
+	-- ============================================
+	BraveBehavior = {
+		-- 平均勇敢さ（0-10）
+		-- 0: 全力で逃げる
+		-- 5: その場で待機（ランダムウォーク）
+		-- 10: 全力で追いかける
+		AverageBrave = 2,
+
+		-- 分散（標準偏差）
+		-- ほぼ 平均 ± 分散 の範囲でランダム決定
+		Variance = 1.5,
+
+		-- 結果例: AverageBrave=2, Variance=1.5
+		-- → ほぼ 0.5 ～ 3.5 の値になる
+		-- → 実際には 0 ～ 10 でクランプ
+	},
+
+	-- ============================================
+	-- タイピングレベル（既存のまま）
+	-- ============================================
+	TypingLevels = {
+		{ level = "level_1", weight = 70 },
+		{ level = "level_2", weight = 30 },
+	},
+
 	Damage = 1, -- 後で削除予定
 
-	-- スポーン設定
+	-- ============================================
+	-- スポーン設定（既存のまま）
+	-- ============================================
 	SpawnLocations = {
 		{
 			islandName = "Hokkaido_02",
 			count = 7,
-			radiusPercent = 95, -- 島のサイズの75%範囲内
+			radiusPercent = 95,
 		},
 		{
 			islandName = "Hokkaido_N1",
 			count = 7,
-			radiusPercent = 95, -- 島のサイズの75%範囲内
+			radiusPercent = 95,
 		},
 	},
 
+	-- ============================================
+	-- カラー設定（既存のまま）
+	-- ============================================
 	ColorProfile = {
-		Body = Color3.fromRGB(255, 255, 255), -- 体の色
-		Body = Color3.fromRGB(255, 0, 0), -- 体の色
+		Body = Color3.fromRGB(255, 0, 0), -- 赤色
 
 		EyeTexture = "rbxassetid://126158076889568",
-		EyeSize = 0.18, -- 比率での大きさ
-		EyeY = 0.35, -- 縦位置
-		EyeSeparation = 0.18, -- 左右の離れ具合
-		EyeAlwaysOnTop = true, -- trueだと前面描画（浮きやすい）
-		EyeSizingMode = "Scale", -- "Scale" or "Pixels"
-		PixelsPerStud = 60, -- SizingMode="Pixels"時の密度
-		EyePixelSize = 120, -- SizingMode="Pixels"時の正方形サイズ(px)
-
-		-- GlowColor = nil, -- nilならBody/Coreから自動取得
-		-- GlowBrightness = 1.5, -- 明るさ（1〜3）PointLight.Brightness
-		-- GlowRange = 10, -- 光の届く範囲（8〜12が自然）
-		-- GlowTransparency = 0.15, -- Highlight.FillTransparency（小さいほど強く光る）
-		-- GlowOutline = 1, -- Highlight.OutlineTransparency（1で輪郭非表示）
-		-- GlowEnabled = true, -- 発光を無効化したい場合はfalse
+		EyeSize = 0.18,
+		EyeY = 0.35,
+		EyeSeparation = 0.18,
+		EyeAlwaysOnTop = true,
+		EyeSizingMode = "Scale",
+		PixelsPerStud = 60,
+		EyePixelSize = 120,
 	},
-
-	-- AI設定
-	ChaseDistance = 60,
-	EscapeDistance = 80,
-	WanderRadius = 30,
-	UpdateNearby = 0.2,
-	UpdateFar = 1.0,
 }
