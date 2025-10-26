@@ -7,5 +7,6 @@ return {
 	require(Monsters.golem),
 	-- 将来追加するモンスター:
 	require(Monsters.CuteSlime),
+	require(Monsters.RubySlime),
 	-- require(Monsters.Goblin),
 }

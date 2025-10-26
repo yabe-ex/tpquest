@@ -3,8 +3,8 @@
 -- スライムの定義（ステータス拡張版）
 
 return {
-	Name = "Slime",
-	TemplatePath = { "ServerStorage", "EnemyTemplates", "Slime" },
+	Name = "RubySlime",
+	TemplatePath = { "ServerStorage", "EnemyTemplates", "SlimeTemplate" },
 	WalkSpeed = 10,
 	RespawnTime = 10,
 
@@ -34,27 +34,32 @@ return {
 			count = 7,
 			radiusPercent = 95, -- 島のサイズの75%範囲内
 		},
-
 		{
 			islandName = "Hokkaido_N1",
 			count = 7,
 			radiusPercent = 95, -- 島のサイズの75%範囲内
 		},
-		{
-			islandName = "Hokkaido_N4",
-			count = 8,
-			radiusPercent = 55, -- 島のサイズの75%範囲内
-		},
-		{
-			islandName = "Kyushu_NE1",
-			count = 5,
-			radiusPercent = 55, -- 島のサイズの75%範囲内
-		},
-		{
-			islandName = "Town3_01",
-			count = 15,
-			radiusPercent = 75, -- 島のサイズの75%範囲内
-		},
+	},
+
+	ColorProfile = {
+		Body = Color3.fromRGB(255, 255, 255), -- 体の色
+		Body = Color3.fromRGB(255, 0, 0), -- 体の色
+
+		EyeTexture = "rbxassetid://126158076889568",
+		EyeSize = 0.18, -- 比率での大きさ
+		EyeY = 0.35, -- 縦位置
+		EyeSeparation = 0.18, -- 左右の離れ具合
+		EyeAlwaysOnTop = true, -- trueだと前面描画（浮きやすい）
+		EyeSizingMode = "Scale", -- "Scale" or "Pixels"
+		PixelsPerStud = 60, -- SizingMode="Pixels"時の密度
+		EyePixelSize = 120, -- SizingMode="Pixels"時の正方形サイズ(px)
+
+		-- GlowColor = nil, -- nilならBody/Coreから自動取得
+		-- GlowBrightness = 1.5, -- 明るさ（1〜3）PointLight.Brightness
+		-- GlowRange = 10, -- 光の届く範囲（8〜12が自然）
+		-- GlowTransparency = 0.15, -- Highlight.FillTransparency（小さいほど強く光る）
+		-- GlowOutline = 1, -- Highlight.OutlineTransparency（1で輪郭非表示）
+		-- GlowEnabled = true, -- 発光を無効化したい場合はfalse
 	},
 
 	-- AI設定

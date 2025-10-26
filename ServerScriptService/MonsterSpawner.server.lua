@@ -415,6 +415,116 @@ local function spawnMonster(template: Model, index: number, def, islandName)
 	local m = template:Clone()
 	m.Name = (def.Name or template.Name) .. "_" .. index
 
+	-- === 両目の生成（SurfaceGui方式・縦横比維持・貼り付き調整付き） ===
+	-- === カラー設定＋両目生成 ===
+	if def.ColorProfile then
+		-- まず Body/Core の色とマテリアルを設定
+		for _, part in ipairs(m:GetDescendants()) do
+			if part:IsA("MeshPart") then
+				-- SurfaceAppearance があると色が反映されないため削除
+				for _, child in ipairs(part:GetChildren()) do
+					if child:IsA("SurfaceAppearance") then
+						child:Destroy()
+					end
+				end
+
+				-- Body（外側）
+				if part.Name == "Body" then
+					if def.ColorProfile.Body then
+						part.Color = def.ColorProfile.Body
+					end
+					part.Material = Enum.Material.Glass
+					part.Transparency = 0.45
+
+				-- Core（内側）
+				elseif part.Name == "Core" then
+					if def.ColorProfile.Core then
+						part.Color = def.ColorProfile.Core
+					end
+					part.Material = Enum.Material.Neon
+					part.Transparency = 0.1
+				end
+			end
+		end
+
+		-- === 両目の生成 ===
+		if def.ColorProfile.EyeTexture then
+			-- 目を貼る対象（Bodyに貼るのが自然）
+			local targetPart = m:FindFirstChild("Body") or m.PrimaryPart
+			if targetPart then
+				-- ▼ 調整用パラメータ（ColorProfileで上書き可能）
+				local useDecal = def.ColorProfile.UseDecal == true
+				local eyeSize = def.ColorProfile.EyeSize or 0.18
+				local eyeY = def.ColorProfile.EyeY or 0.48 -- 少し高めに配置
+				local eyeSeparation = def.ColorProfile.EyeSeparation or 0.18
+				local zOffset = def.ColorProfile.EyeZOffset or -0.05
+				local alwaysOnTop = def.ColorProfile.EyeAlwaysOnTop == true
+				local sizingMode = def.ColorProfile.EyeSizingMode or "Scale"
+				local pps = def.ColorProfile.PixelsPerStud or 60
+				local eyePixelSize = def.ColorProfile.EyePixelSize or 120
+
+				if useDecal then
+					-- ★ Decal方式（両目を1枚にした画像向け）
+					local decal = Instance.new("Decal")
+					decal.Texture = def.ColorProfile.EyeTexture
+					decal.Face = Enum.NormalId.Front
+					decal.Transparency = 0
+					decal.Parent = targetPart
+				else
+					-- ★ SurfaceGui + ImageLabel方式（個別に左右配置）
+					for _, sign in ipairs({ -1, 1 }) do
+						local eyeGui = Instance.new("SurfaceGui")
+						eyeGui.Name = (sign == -1) and "EyeGuiL" or "EyeGuiR"
+						eyeGui.Adornee = targetPart
+						eyeGui.Face = Enum.NormalId.Front
+						eyeGui.AlwaysOnTop = alwaysOnTop
+						eyeGui.LightInfluence = 1
+						eyeGui.ZOffset = zOffset
+						eyeGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+						if sizingMode == "Pixels" then
+							eyeGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+							eyeGui.PixelsPerStud = pps
+						end
+
+						eyeGui.Parent = targetPart
+
+						local img = Instance.new("ImageLabel")
+						img.Name = "Eye"
+						img.BackgroundTransparency = 1
+						img.Image = def.ColorProfile.EyeTexture
+						img.AnchorPoint = Vector2.new(0.5, 0.5)
+
+						if sizingMode == "Pixels" then
+							img.Size = UDim2.new(0, eyePixelSize, 0, eyePixelSize)
+							img.Position = UDim2.new(0.5 + (sign * eyeSeparation), 0, eyeY, 0)
+						else
+							img.Size = UDim2.new(eyeSize, 0, eyeSize, 0)
+							img.Position = UDim2.new(0.5 + (sign * eyeSeparation), 0, eyeY, 0)
+						end
+
+						local aspect = Instance.new("UIAspectRatioConstraint")
+						aspect.AspectRatio = 1
+						aspect.DominantAxis = Enum.DominantAxis.Height
+						aspect.Parent = img
+
+						pcall(function()
+							img.ScaleType = Enum.ScaleType.Fit
+						end)
+
+						img.ImageTransparency = 0
+						img.Parent = eyeGui
+					end
+				end
+			end
+		end
+	end
+	-- === カラー設定＋両目生成 ここまで ===
+
+	-- === 両目の生成 ここまで ===
+
+	-- === カラー＆外見設定ここまで ===
+
 	local hum = m:FindFirstChildOfClass("Humanoid")
 	local hrp = ensureHRP(m)
 
@@ -481,6 +591,46 @@ local function spawnMonster(template: Model, index: number, def, islandName)
 	local rz = island.centerZ + math.random(-spawnRadius, spawnRadius)
 
 	placeOnGround(m, rx, rz)
+
+	-- === 発光処理（Body/Core用） ===
+	-- if def.ColorProfile and def.ColorProfile.GlowEnabled ~= false then
+	-- 	local body = m:FindFirstChild("Body")
+	-- 	local core = m:FindFirstChild("Core")
+
+	-- 	local glowColor = def.ColorProfile.GlowColor
+	-- 		or def.ColorProfile.Body
+	-- 		or def.ColorProfile.Core
+	-- 		or Color3.fromRGB(0, 255, 180)
+
+	-- 	local glowBrightness = def.ColorProfile.GlowBrightness or 1.5
+	-- 	local glowRange = def.ColorProfile.GlowRange or 10
+	-- 	local glowTransparency = def.ColorProfile.GlowTransparency or 0.45
+	-- 	local glowOutline = def.ColorProfile.GlowOutline or 1
+
+	-- 	-- Bodyの発光処理
+	-- 	if body and body:IsA("BasePart") then
+	-- 		local hl = Instance.new("Highlight")
+	-- 		hl.Name = "BodyGlow"
+	-- 		hl.FillColor = glowColor
+	-- 		hl.FillTransparency = glowTransparency
+	-- 		hl.OutlineTransparency = glowOutline
+	-- 		hl.Parent = body
+
+	-- 		local light = Instance.new("PointLight")
+	-- 		light.Color = glowColor
+	-- 		light.Brightness = glowBrightness
+	-- 		light.Range = glowRange
+	-- 		light.Shadows = false
+	-- 		light.Parent = body
+	-- 	end
+
+	-- 	-- Coreを半透明ガラスに
+	-- 	if core and core:IsA("BasePart") then
+	-- 		core.Material = Enum.Material.Glass
+	-- 		core.Transparency = 0.2
+	-- 	end
+	-- end
+	-- === 発光処理ここまで ===
 
 	task.wait(0.05)
 	hrp.Anchored = false
@@ -965,3 +1115,33 @@ _G.GetZoneMonsterCounts = getZoneMonsterCounts
 _G.UpdateAllMonsterCounts = updateAllMonsterCounts
 
 print("[MonsterSpawner] グローバル関数登録完了（カウント機能付き）")
+
+-- -- === 環境設定：夕方モード ===
+-- local Lighting = game:GetService("Lighting")
+
+-- Lighting.ClockTime = 18.3 -- 18時18分ごろ（夕暮れ）
+-- Lighting.Brightness = 2
+-- Lighting.ExposureCompensation = 0.1
+-- Lighting.Ambient = Color3.fromRGB(100, 80, 60) -- 温かみのある影色
+-- Lighting.OutdoorAmbient = Color3.fromRGB(180, 150, 120)
+-- Lighting.EnvironmentDiffuseScale = 0.5
+-- Lighting.EnvironmentSpecularScale = 0.7
+-- Lighting.FogColor = Color3.fromRGB(255, 180, 120)
+-- Lighting.FogEnd = 500
+
+-- -- 空（Skybox）を夕焼けっぽく
+-- local sky = Instance.new("Sky")
+-- sky.SkyboxBk = "rbxassetid://570557620" -- 星混じりの空（少し暗め）
+-- sky.SkyboxDn = "rbxassetid://570557620"
+-- sky.SkyboxFt = "rbxassetid://570557620"
+-- sky.SkyboxLf = "rbxassetid://570557620"
+-- sky.SkyboxRt = "rbxassetid://570557620"
+-- sky.SkyboxUp = "rbxassetid://570557620"
+-- sky.SunAngularSize = 12
+-- sky.MoonAngularSize = 11
+-- sky.SunTextureId = "rbxassetid://1377140228" -- 柔らかい夕日
+-- sky.MoonTextureId = "rbxassetid://6444320592"
+-- sky.Parent = Lighting
+
+-- print("[MonsterSpawner] 夕方の環境を適用しました 🌇")
+-- -- === 夕方モードここまで ===
