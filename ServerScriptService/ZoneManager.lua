@@ -209,6 +209,14 @@ local function loadContinent(continentName)
 		end
 	end
 
+	-- 川を生成
+	if continent.rivers then
+		print(("[ZoneManager] 川を生成: %d 本"):format(#continent.rivers))
+		for _, riverConfig in ipairs(continent.rivers) do
+			FieldGen.generateRiver(riverConfig)
+		end
+	end
+
 	-- 橋を生成
 	if continent.bridges then
 		for _, bridgeConfig in ipairs(continent.bridges) do

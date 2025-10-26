@@ -508,14 +508,27 @@ local function pivotModel(model: Model, cf: CFrame)
 	end
 end
 
+-- FieldGen.lua の placeFieldObjects 関数を以下のコードで置き換えてください
+-- 既存の placeFieldObjects 関数全体を、下記のコードで置き換えます
+
+-- FieldGen.lua の placeFieldObjects 関数を以下のコードで置き換えてください
+-- 既存の placeFieldObjects 関数全体を、下記のコードで置き換えます
+
+-- FieldGen.lua の placeFieldObjects 関数を以下のコードで置き換えてください
+-- 既存の placeFieldObjects 関数全体を、下記のコードで置き換えます
+
 function FieldGen.placeFieldObjects(continentName: string?, objects: { any }, player: Player?)
 	if not objects or #objects == 0 then
+		warn("[FieldGen.placeFieldObjects] オブジェクト配列が空です")
 		return
 	end
 
+	print("[FieldGen.placeFieldObjects] ===== オブジェクト配置開始 =====")
+	print(("[FieldGen.placeFieldObjects] continentName: %s"):format(tostring(continentName)))
+	print(("[FieldGen.placeFieldObjects] objects 数: %d"):format(#objects))
+
 	task.wait(1)
 
-	-- 【修正】全プレイヤーの取得済みアイテムを収集
 	local allCollectedItems = {}
 	local Players = game:GetService("Players")
 	local ServerScriptService = game:GetService("ServerScriptService")
@@ -525,30 +538,21 @@ function FieldGen.placeFieldObjects(continentName: string?, objects: { any }, pl
 	end)
 
 	if success then
-		-- 全プレイヤーをループ
 		for _, plr in ipairs(Players:GetPlayers()) do
 			local stats = PlayerStatsModule.getStats(plr)
 			if stats and stats.CollectedItems then
-				-- 全プレイヤーの取得済みアイテムをマージ
 				for chestId, _ in pairs(stats.CollectedItems) do
 					allCollectedItems[chestId] = true
 				end
-
 				print(("[FieldGen] %s の取得済みアイテムを読み込み"):format(plr.Name))
 			end
 		end
 
-		-- 【デバッグ】取得済みアイテム総数を表示
 		local count = 0
 		for _ in pairs(allCollectedItems) do
 			count = count + 1
 		end
 		print(("[FieldGen] 全プレイヤーの取得済みアイテム総数: %d"):format(count))
-
-		-- 具体的なIDを表示
-		for chestId, _ in pairs(allCollectedItems) do
-			print(("[FieldGen] 取得済み: %s"):format(chestId))
-		end
 	else
 		warn("[FieldGen] PlayerStatsModuleの読み込みに失敗")
 	end
@@ -557,8 +561,11 @@ function FieldGen.placeFieldObjects(continentName: string?, objects: { any }, pl
 	local templatesRoot = ServerStorage:FindFirstChild("FieldObjects")
 	if not templatesRoot then
 		warn("[FieldGen] ServerStorage/FieldObjects が見つかりません。配置スキップ")
+		print("[FieldGen] ※ ServerStorageの中に『FieldObjects』フォルダを作成してください")
 		return
 	end
+
+	print("[FieldGen] ✓ ServerStorage/FieldObjects が見つかりました")
 
 	local function ensureFolder(parent: Instance, name: string): Instance
 		local f = parent:FindFirstChild(name)
@@ -604,197 +611,394 @@ function FieldGen.placeFieldObjects(continentName: string?, objects: { any }, pl
 	local root = ensureFolder(workspace, "FieldObjects")
 	local parentFolder = continentName and ensureFolder(root, continentName) or root
 
-	-- 地面レイキャスト（法線も取得）
-	local function rayToTerrain(x: number, z: number, startY: number)
-		local params = RaycastParams.new()
-		params.FilterType = Enum.RaycastFilterType.Include
-		params.FilterDescendantsInstances = { workspace.Terrain }
-		params.IgnoreWater = false
-		local origin = Vector3.new(x, startY, z)
-		local result = workspace:Raycast(origin, Vector3.new(0, -startY - 1000, 0), params)
-		return result -- result.Position, result.Normal を持つ
-	end
+	print(("[FieldGen] 配置先フォルダ: workspace/FieldObjects/%s"):format(continentName or "root"))
 
-	for _, obj in ipairs(objects) do
-		-- 取得済みアイテムはスキップ
-		if obj.interaction and obj.interaction.chestId then
-			local chestId = obj.interaction.chestId
+	local objectsProcessed = 0
+	local objectsPlaced = 0
 
-			if allCollectedItems[chestId] then
-				print(("[FieldGen] ⏭️ 取得済みのため配置スキップ: %s"):format(chestId))
-				continue
-			else
-				print(("[FieldGen] ✅ 配置します: %s"):format(chestId))
-			end
-		end
+	for objIdx, obj in ipairs(objects) do
+		print(("[FieldGen] [%d/%d] ◆◆◆ オブジェクト処理開始 ◆◆◆"):format(objIdx, #objects))
 
-		local template = templatesRoot:FindFirstChild(tostring(obj.model or ""))
-		if not template then
-			warn(("[FieldGen] テンプレートが見つかりません: %s"):format(tostring(obj.model)))
+		if not obj then
+			warn(("[FieldGen] [%d] オブジェクトがnilです"):format(objIdx))
 			continue
 		end
 
-		local p = obj.position or { 0, 0, 0 }
-		local x, y, z = p[1] or 0, p[2] or 0, p[3] or 0
+		print(("[FieldGen] [%d] assetId: %s"):format(objIdx, tostring(obj.assetId or "なし")))
+		print(("[FieldGen] [%d] model: %s"):format(objIdx, tostring(obj.model or "なし")))
+		print(("[FieldGen] [%d] position: %s"):format(objIdx, tostring(obj.position or "なし")))
+		print(("[FieldGen] [%d] randomSpread: %s"):format(objIdx, obj.randomSpread and "あり" or "なし"))
 
-		local clone = template:Clone()
-		setAnchoredAll(clone, true) -- デフォでアンカー固定
+		objectsProcessed = objectsProcessed + 1
 
-		-- スケール
-		local scale = tonumber(obj.size) or 1
-		if clone:IsA("Model") then
-			if scale ~= 1 then
-				pcall(function()
-					clone:ScaleTo(scale)
-				end)
+		local objectsToPlace = {}
+
+		if obj.randomSpread then
+			local spread = obj.randomSpread
+			local centerX = obj.position[1] or 0
+			local centerZ = obj.position[3] or 0
+			local radius = spread.radius or 50
+			local density = spread.density or 0.5
+			local maxCount = spread.count or 20
+			local rotRandom = spread.rotationRandomness or false
+			local scaleVar = spread.scaleVariance or 0
+			local offsetVar = spread.groundOffsetVariance or 0
+
+			print(
+				("[FieldGen] [%d] ★ランダム配置 中心(%.1f,%.1f) 半径%.1f 密度%.2f 最大%d"):format(
+					objIdx,
+					centerX,
+					centerZ,
+					radius,
+					density,
+					maxCount
+				)
+			)
+
+			local placed = 0
+			local attempts = 0
+			local maxAttempts = math.floor(maxCount / math.max(0.01, density)) + 100
+
+			while placed < maxCount and attempts < maxAttempts do
+				attempts = attempts + 1
+
+				local angle = math.random() * math.pi * 2
+				local dist = math.sqrt(math.random()) * radius
+				local px = centerX + math.cos(angle) * dist
+				local pz = centerZ + math.sin(angle) * dist
+
+				if math.random() < density then
+					table.insert(objectsToPlace, {
+						baseObj = obj,
+						position = { px, obj.position[2] or 0, pz },
+						rotation = rotRandom and { 0, math.random() * 360, 0 } or (obj.rotation or { 0, 0, 0 }),
+						size = obj.size * (1 + (math.random() - 0.5) * scaleVar * 2),
+						groundOffset = (obj.groundOffset or 0) + (math.random() - 0.5) * offsetVar * 2,
+					})
+					placed = placed + 1
+				end
 			end
-		elseif clone:IsA("BasePart") then
-			if scale ~= 1 then
-				clone.Size = clone.Size * scale
-			end
-		end
 
-		-- Up軸補正
-		local upAxis = tostring(obj.upAxis or "Y")
-		local baseRot = CFrame.new()
-		if upAxis == "Z" then
-			baseRot = CFrame.Angles(math.rad(-90), 0, 0)
-		elseif upAxis == "X" then
-			baseRot = CFrame.Angles(0, 0, math.rad(90))
-		end
-
-		-- 追加回転（rotation = {x,y,z} or 個別指定）
-		local rot = obj.rotation or {}
-		local rx = math.rad(rot[1] or obj.rotationX or 0)
-		local ry = math.rad(rot[2] or obj.rotationY or 0)
-		local rz = math.rad(rot[3] or obj.rotationZ or 0)
-		local userRot = CFrame.Angles(rx, ry, rz)
-
-		-- === 配置モード処理 ===
-		local mode = obj.mode or "ground" -- 既定: ground
-		local offset = tonumber(obj.groundOffset) or 0
-		local align = (obj.alignToSlope == true)
-
-		if mode == "fixed" then
-			-- ===== 座標固定モード =====
-			-- 指定座標にそのまま配置（空中も可能）
-			local finalCF = CFrame.new(x, y, z) * baseRot * userRot
-
-			if clone:IsA("Model") then
-				pivotModel(clone, finalCF)
-			elseif clone:IsA("BasePart") then
-				clone.CFrame = finalCF
-			end
-
-			print(("[FieldGen] '%s' 固定配置 at (%.1f, %.1f, %.1f)"):format(tostring(obj.model), x, y, z))
+			print(
+				("[FieldGen] [%d] ランダム配置結果: %d個配置（試行: %d回）"):format(
+					objIdx,
+					placed,
+					attempts
+				)
+			)
 		else
-			-- ===== 地面接地モード（既定） =====
-			local startY = 3000
-			local hit = nil
-			do
-				local params = RaycastParams.new()
-				params.FilterType = Enum.RaycastFilterType.Include
-				params.FilterDescendantsInstances = { workspace.Terrain }
-				params.IgnoreWater = false
-				hit = workspace:Raycast(Vector3.new(x, startY, z), Vector3.new(0, -6000, 0), params)
-			end
+			print(("[FieldGen] [%d] ★単一配置"):format(objIdx))
+			table.insert(objectsToPlace, {
+				baseObj = obj,
+				position = obj.position,
+				rotation = obj.rotation or { 0, 0, 0 },
+				size = obj.size or 1,
+				groundOffset = obj.groundOffset or 0,
+			})
+		end
 
-			if hit then
-				local groundY = hit.Position.Y
-				local up = align and hit.Normal or Vector3.yAxis
+		print(("[FieldGen] [%d] 配置対象: %d個"):format(objIdx, #objectsToPlace))
+
+		for placeIdx, placeInfo in ipairs(objectsToPlace) do
+			print(("[FieldGen] [%d-%d] ━━━ 配置処理開始 ━━━"):format(objIdx, placeIdx))
+
+			local obj_config = placeInfo.baseObj
+			local p = placeInfo.position
+			local x, y, z = p[1] or 0, p[2] or 0, p[3] or 0
+
+			print(("[FieldGen] [%d-%d] 座標: (%.1f, %.1f, %.1f)"):format(objIdx, placeIdx, x, y, z))
+
+			local clone
+
+			-- Asset方式 or テンプレート方式の判定
+			if obj_config.assetId then
+				print(("[FieldGen] [%d-%d] ■ Asset方式を試みます"):format(objIdx, placeIdx))
+				print(("[FieldGen] [%d-%d] AssetID: %s"):format(objIdx, placeIdx, obj_config.assetId))
+
+				local ok, result = pcall(function()
+					print(("[FieldGen] [%d-%d]   └→ game:GetObjects() 実行中..."):format(objIdx, placeIdx))
+					local objs = game:GetObjects(obj_config.assetId)
+					print(
+						("[FieldGen] [%d-%d]   └→ game:GetObjects() 完了。戻り値数: %d"):format(
+							objIdx,
+							placeIdx,
+							#objs
+						)
+					)
+					return objs
+				end)
+
+				if ok then
+					print(("[FieldGen] [%d-%d] ✓ pcall成功"):format(objIdx, placeIdx))
+					if result and #result > 0 then
+						clone = result[1]
+						print(("[FieldGen] [%d-%d] ✓✓ Asset読み込み成功！"):format(objIdx, placeIdx))
+					else
+						warn(
+							("[FieldGen] [%d-%d] ✗ Assetのロード失敗: 戻り値が空"):format(objIdx, placeIdx)
+						)
+						print(
+							("[FieldGen] [%d-%d] → AssetIDが正しいか確認してください"):format(
+								objIdx,
+								placeIdx
+							)
+						)
+						print(
+							("[FieldGen] [%d-%d] → Studio内で右クリック > Copy Asset IDしましたか？"):format(
+								objIdx,
+								placeIdx
+							)
+						)
+						continue
+					end
+				else
+					warn(("[FieldGen] [%d-%d] ✗ pcall失敗: %s"):format(objIdx, placeIdx, tostring(result)))
+					continue
+				end
+			elseif obj_config.model then
+				print(("[FieldGen] [%d-%d] ■ テンプレート方式を試みます"):format(objIdx, placeIdx))
+				print(("[FieldGen] [%d-%d] モデル名: %s"):format(objIdx, placeIdx, obj_config.model))
 
 				print(
-					("[FieldGen] '%s' 接地 at (%.1f, _, %.1f), groundY=%.1f, offset=%.2f"):format(
-						tostring(obj.model),
-						x,
-						z,
-						groundY,
-						offset
+					("[FieldGen] [%d-%d]   └→ ServerStorage/FieldObjects を検索中..."):format(objIdx, placeIdx)
+				)
+				local template = templatesRoot:FindFirstChild(tostring(obj_config.model))
+				if not template then
+					warn(("[FieldGen] [%d-%d] ✗ テンプレートが見つかりません"):format(objIdx, placeIdx))
+					print(
+						("[FieldGen] [%d-%d] → ServerStorage/FieldObjects フォルダを確認してください"):format(
+							objIdx,
+							placeIdx
+						)
+					)
+					print(
+						("[FieldGen] [%d-%d] → 指定した名前: '%s'"):format(objIdx, placeIdx, obj_config.model)
+					)
+
+					-- FieldObjects内のモデル一覧を表示
+					print(("[FieldGen] [%d-%d] → FieldObjects 内のモデル一覧:"):format(objIdx, placeIdx))
+					for _, child in ipairs(templatesRoot:GetChildren()) do
+						print(("[FieldGen] [%d-%d]    - %s"):format(objIdx, placeIdx, child.Name))
+					end
+
+					continue
+				end
+
+				print(("[FieldGen] [%d-%d] ✓ テンプレート見つかった"):format(objIdx, placeIdx))
+				print(("[FieldGen] [%d-%d]   └→ クローン中..."):format(objIdx, placeIdx))
+				clone = template:Clone()
+				print(("[FieldGen] [%d-%d] ✓✓ クローン完了"):format(objIdx, placeIdx))
+			else
+				warn(
+					("[FieldGen] [%d-%d] ✗ modelまたはassetIdが指定されていません"):format(
+						objIdx,
+						placeIdx
 					)
 				)
+				continue
+			end
+
+			if not clone then
+				warn(("[FieldGen] [%d-%d] ✗ cloneがnilです（原因不明）"):format(objIdx, placeIdx))
+				continue
+			end
+
+			print(("[FieldGen] [%d-%d] ✓ cloneオブジェクト取得成功"):format(objIdx, placeIdx))
+
+			setAnchoredAll(clone, true)
+
+			local scale = tonumber(placeInfo.size) or 1
+			if clone:IsA("Model") then
+				if scale ~= 1 then
+					pcall(function()
+						clone:ScaleTo(scale)
+					end)
+				end
+			elseif clone:IsA("BasePart") then
+				if scale ~= 1 then
+					clone.Size = clone.Size * scale
+				end
+			end
+
+			local upAxis = tostring(obj_config.upAxis or "Y")
+			local baseRot = CFrame.new()
+			if upAxis == "Z" then
+				baseRot = CFrame.Angles(math.rad(-90), 0, 0)
+			elseif upAxis == "X" then
+				baseRot = CFrame.Angles(0, 0, math.rad(90))
+			end
+
+			local rot = placeInfo.rotation or {}
+			local rx = math.rad(rot[1] or obj_config.rotationX or 0)
+			local ry = math.rad(rot[2] or obj_config.rotationY or 0)
+			local rz = math.rad(rot[3] or obj_config.rotationZ or 0)
+			local userRot = CFrame.Angles(rx, ry, rz)
+
+			local mode = obj_config.mode or "ground"
+			local offset = tonumber(placeInfo.groundOffset) or 0
+			local align = (obj_config.alignToSlope == true)
+
+			print(("[FieldGen] [%d-%d] 配置モード: %s, offset: %.2f"):format(objIdx, placeIdx, mode, offset))
+
+			if mode == "fixed" then
+				print(("[FieldGen] [%d-%d] → 固定配置を実行"):format(objIdx, placeIdx))
+
+				local finalCF = CFrame.new(x, y, z) * baseRot * userRot
 
 				if clone:IsA("Model") then
-					-- Step 1: 回転のみ適用して仮配置
-					local tempCF = CFrame.new(x, groundY + 100, z) * baseRot * userRot
-					pivotModel(clone, tempCF)
-
-					-- Step 2: バウンディングボックスの底面を取得
-					local bbCFrame, bbSize = clone:GetBoundingBox()
-					local bottomY = bbCFrame.Position.Y - (bbSize.Y * 0.5)
-
-					-- Step 3: 底面が地面に接するように調整
-					local deltaY = (groundY + offset) - bottomY
-
-					if align then
-						-- 斜面対応
-						local look = clone:GetPivot().LookVector
-						local tangent = (look - look:Dot(up) * up).Unit
-						local right = tangent:Cross(up).Unit
-						local pos = bbCFrame.Position + Vector3.new(0, deltaY, 0)
-						local newCF = CFrame.fromMatrix(pos, right, up)
-						pivotModel(clone, newCF)
-					else
-						-- 垂直配置
-						pivotModel(clone, clone:GetPivot() + Vector3.new(0, deltaY, 0))
-					end
+					pivotModel(clone, finalCF)
 				elseif clone:IsA("BasePart") then
-					-- MeshPartの場合
-					local height = clone.Size.Y * 0.5
-
-					if align then
-						local right = clone.CFrame.RightVector
-						local forward = right:Cross(up).Unit
-						right = up:Cross(forward).Unit
-						clone.CFrame = CFrame.fromMatrix(Vector3.new(x, groundY + height + offset, z), right, up)
-					else
-						clone.CFrame = CFrame.new(x, groundY + height + offset, z) * (baseRot * userRot)
-					end
+					clone.CFrame = finalCF
 				end
-			else
-				warn(("[FieldGen] 地面検出失敗 at (%.1f, %.1f) for '%s'"):format(x, z, tostring(obj.model)))
-			end
-		end
-
-		-- インタラクション情報をAttributeに設定
-		if obj.interaction then
-			local interaction = obj.interaction
-
-			-- 基本情報
-			clone:SetAttribute("HasInteraction", true)
-			clone:SetAttribute("InteractionType", interaction.type or "unknown")
-			clone:SetAttribute("InteractionAction", interaction.action or "調べる")
-			clone:SetAttribute("InteractionKey", interaction.key or "E")
-			clone:SetAttribute("InteractionRange", interaction.range or 8)
-
-			-- タイプ別の情報
-			if interaction.type == "chest" then
-				clone:SetAttribute("ChestId", interaction.chestId)
-				clone:SetAttribute("OpenedModel", interaction.openedModel)
-				clone:SetAttribute("DisplayDuration", interaction.displayDuration or 5)
-
-				-- 報酬情報をJSON化して保存
-				local HttpService = game:GetService("HttpService")
-				local rewardsJson = HttpService:JSONEncode(interaction.rewards or {})
-				clone:SetAttribute("RewardsData", rewardsJson)
 
 				print(
-					("[FieldGen] インタラクション設定: %s (ChestId: %s, Range: %d)"):format(
-						interaction.action,
-						interaction.chestId,
-						interaction.range
+					("[FieldGen] [%d-%d] ✓ 固定配置完了 (%.1f, %.1f, %.1f)"):format(objIdx, placeIdx, x, y, z)
+				)
+			else
+				print(("[FieldGen] [%d-%d] → 地面接地モードを実行"):format(objIdx, placeIdx))
+
+				local startY = 3000
+				local hit = nil
+
+				print(
+					("[FieldGen] [%d-%d]   └→ レイキャスト実行中: (%.1f, ?, %.1f)"):format(
+						objIdx,
+						placeIdx,
+						x,
+						z
 					)
 				)
 
-				-- 設定後に確認
-				task.wait(0.1)
-				if not clone:GetAttribute("HasInteraction") then
-					warn(("[FieldGen] ⚠️ 属性が消えた: %s"):format(interaction.chestId))
+				do
+					local params = RaycastParams.new()
+					params.FilterType = Enum.RaycastFilterType.Include
+					params.FilterDescendantsInstances = { workspace.Terrain }
+					params.IgnoreWater = false
+					hit = workspace:Raycast(Vector3.new(x, startY, z), Vector3.new(0, -6000, 0), params)
+				end
+
+				if hit then
+					local groundY = hit.Position.Y
+					local up = align and hit.Normal or Vector3.yAxis
+
+					print(
+						("[FieldGen] [%d-%d] ✓ レイキャスト成功: 地面Y=%.1f"):format(
+							objIdx,
+							placeIdx,
+							groundY
+						)
+					)
+
+					if clone:IsA("Model") then
+						local tempCF = CFrame.new(x, groundY + 100, z) * baseRot * userRot
+						pivotModel(clone, tempCF)
+
+						local bbCFrame, bbSize = clone:GetBoundingBox()
+						local bottomY = bbCFrame.Position.Y - (bbSize.Y * 0.5)
+
+						local deltaY = (groundY + offset) - bottomY
+
+						if align then
+							local look = clone:GetPivot().LookVector
+							local tangent = (look - look:Dot(up) * up).Unit
+							local right = tangent:Cross(up).Unit
+							local pos = bbCFrame.Position + Vector3.new(0, deltaY, 0)
+							local newCF = CFrame.fromMatrix(pos, right, up)
+							pivotModel(clone, newCF)
+						else
+							pivotModel(clone, clone:GetPivot() + Vector3.new(0, deltaY, 0))
+						end
+					elseif clone:IsA("BasePart") then
+						local height = clone.Size.Y * 0.5
+
+						if align then
+							local right = clone.CFrame.RightVector
+							local forward = right:Cross(up).Unit
+							right = up:Cross(forward).Unit
+							clone.CFrame = CFrame.fromMatrix(Vector3.new(x, groundY + height + offset, z), right, up)
+						else
+							clone.CFrame = CFrame.new(x, groundY + height + offset, z) * (baseRot * userRot)
+						end
+					end
+
+					print(
+						("[FieldGen] [%d-%d] ✓ 配置完了 (%.1f, %.1f, %.1f)"):format(
+							objIdx,
+							placeIdx,
+							x,
+							groundY + offset,
+							z
+						)
+					)
+				else
+					warn(
+						("[FieldGen] [%d-%d] ✗ レイキャスト失敗: 地面が見つかりません"):format(
+							objIdx,
+							placeIdx
+						)
+					)
+					print(
+						("[FieldGen] [%d-%d] → テラインが生成されているか確認してください"):format(
+							objIdx,
+							placeIdx
+						)
+					)
+					print(
+						("[FieldGen] [%d-%d] → 座標 (%.1f, %.1f) に地形がありますか？"):format(
+							objIdx,
+							placeIdx,
+							x,
+							z
+						)
+					)
 				end
 			end
+
+			if obj_config.interaction then
+				print(("[FieldGen] [%d-%d] インタラクション設定中..."):format(objIdx, placeIdx))
+
+				local interaction = obj_config.interaction
+
+				clone:SetAttribute("HasInteraction", true)
+				clone:SetAttribute("InteractionType", interaction.type or "unknown")
+				clone:SetAttribute("InteractionAction", interaction.action or "調べる")
+				clone:SetAttribute("InteractionKey", interaction.key or "E")
+				clone:SetAttribute("InteractionRange", interaction.range or 8)
+
+				if interaction.type == "chest" then
+					clone:SetAttribute("ChestId", interaction.chestId)
+					clone:SetAttribute("OpenedModel", interaction.openedModel)
+					clone:SetAttribute("DisplayDuration", interaction.displayDuration or 5)
+
+					local HttpService = game:GetService("HttpService")
+					local rewardsJson = HttpService:JSONEncode(interaction.rewards or {})
+					clone:SetAttribute("RewardsData", rewardsJson)
+
+					print(
+						("[FieldGen] [%d-%d] ✓ インタラクション設定完了: ChestId=%s"):format(
+							objIdx,
+							placeIdx,
+							interaction.chestId
+						)
+					)
+				end
+			end
+
+			clone.Parent = parentFolder
+			objectsPlaced = objectsPlaced + 1
+			print(("[FieldGen] [%d-%d] ✓✓✓ オブジェクト配置完了 ✓✓✓"):format(objIdx, placeIdx))
 		end
 
-		clone.Parent = parentFolder
+		print(("[FieldGen] [%d] ◆◆◆ オブジェクト処理完了 ◆◆◆"):format(objIdx))
 	end
+
+	print(("[FieldGen.placeFieldObjects] ===== 全処理完了 ====="):format())
+	print(
+		("[FieldGen.placeFieldObjects] 処理対象: %d個, 配置済み: %d個"):format(
+			objectsProcessed,
+			objectsPlaced
+		)
+	)
 end
 
 --=====================================================
@@ -947,6 +1151,227 @@ function FieldGen.generateLake(config)
 
 	print(
 		("[FieldGen] 湖生成完了: %s (%d ブロック、深さ: %.1f)"):format(
+			config.name or "UnnamedLake",
+			blockCount,
+			depth
+		)
+	)
+end
+
+-- ★ 川生成関数（ウェイポイント + Catmull-Rom補間版）
+function FieldGen.generateRiver(config)
+	if not config then
+		warn("[FieldGen.generateRiver] config が指定されていません")
+		return
+	end
+
+	local terrain = workspace.Terrain
+	local width = config.width or 15
+	local depth = config.depth or 8
+	local step = config.step or 4
+	local material = config.material or Enum.Material.Water
+
+	-- ウェイポイント取得
+	local points = config.points or {}
+	if #points < 2 then
+		warn("[FieldGen.generateRiver] ウェイポイントが不足しています（最低2点必要）")
+		return
+	end
+
+	-- baseY を自動判定（指定がなければレイキャストで検出）
+	local baseY = config.baseY
+	if not baseY then
+		local startY = 3000
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Include
+		params.FilterDescendantsInstances = { workspace.Terrain }
+		params.IgnoreWater = false
+
+		-- 最初のポイントで地面検出
+		local firstPoint = points[1]
+		local hit = workspace:Raycast(
+			Vector3.new(firstPoint[1], startY, firstPoint[2]),
+			Vector3.new(0, -startY - 1000, 0),
+			params
+		)
+
+		if hit then
+			baseY = hit.Position.Y
+			print(
+				("[FieldGen] 川 '%s': 地面高さを自動検出 Y=%.1f"):format(config.name or "UnnamedRiver", baseY)
+			)
+		else
+			baseY = 30 -- フォールバック
+			warn(
+				("[FieldGen] 川 '%s': 地面検出失敗、デフォルト Y=%.1f を使用"):format(
+					config.name or "UnnamedRiver",
+					baseY
+				)
+			)
+		end
+	end
+
+	print(
+		("[FieldGen] 川生成開始: %s (ウェイポイント: %d個, 幅: %.1f, 深さ: %.1f)"):format(
+			config.name or "UnnamedRiver",
+			#points,
+			width,
+			depth
+		)
+	)
+
+	-- ウェイポイントをVector3に変換
+	local P = {}
+	for i = 1, #points do
+		local pt = points[i]
+		P[i] = Vector3.new(pt[1] or 0, pt[2] or baseY, pt[3] or 0)
+	end
+
+	local totalDeleteBlocks = 0
+	local totalWaterBlocks = 0
+
+	-- Catmull-Rom補間で川を生成
+	for seg = 1, #P - 1 do
+		local p0 = getPoint(P, seg - 1)
+		local p1 = getPoint(P, seg)
+		local p2 = getPoint(P, seg + 1)
+		local p3 = getPoint(P, seg + 2)
+
+		local n = sampleSegment(p1, p2, step)
+		for j = 0, n - 1 do
+			local t0 = j / n
+			local t1 = (j + 1) / n
+
+			local a = catmullRom(p0, p1, p2, p3, t0)
+			local b = catmullRom(p0, p1, p2, p3, t1)
+			local mid = (a + b) * 0.5
+			local dir = (b - a)
+
+			if dir.Magnitude < 1e-6 then
+				dir = Vector3.zAxis
+			end
+
+			-- ★ ステップ1: 川の轍を削除（Airで上書き）
+			-- 川の幅方向に削除
+			local rightVec = Vector3.yAxis:Cross(dir.Unit)
+			if rightVec.Magnitude < 0.01 then
+				rightVec = Vector3.xAxis
+			end
+			rightVec = rightVec.Unit
+
+			-- 川の中心から左右に削除
+			for w = -width / 2, width / 2, step do
+				local deleteX = mid.X + rightVec.X * w
+				local deleteZ = mid.Z + rightVec.Z * w
+
+				terrain:FillBlock(
+					CFrame.new(deleteX, baseY - depth / 2, deleteZ),
+					Vector3.new(step, depth + 5, step),
+					Enum.Material.Air
+				)
+				totalDeleteBlocks = totalDeleteBlocks + 1
+			end
+
+			-- ★ ステップ2: 川の底に水を配置
+			local waterY = baseY - depth + 2
+			for w = -width / 2, width / 2, step do
+				local waterX = mid.X + rightVec.X * w
+				local waterZ = mid.Z + rightVec.Z * w
+
+				terrain:FillBlock(CFrame.new(waterX, waterY, waterZ), Vector3.new(step, 3, step), material)
+				totalWaterBlocks = totalWaterBlocks + 1
+			end
+		end
+	end
+
+	print(
+		("[FieldGen] 川生成完了: %s (削除ブロック: %d, 水ブロック: %d)"):format(
+			config.name or "UnnamedRiver",
+			totalDeleteBlocks,
+			totalWaterBlocks
+		)
+	)
+end
+
+-- ★ 実験用：くり抜かない湖生成（直接Waterで塗りつぶし）
+function FieldGen.generateLake_Simple(config)
+	if not config then
+		warn("[FieldGen.generateLake_Simple] config が指定されていません")
+		return
+	end
+
+	local terrain = workspace.Terrain
+	local centerX = config.centerX or 0
+	local centerZ = config.centerZ or 0
+	local radius = config.radius or 50
+	local depth = config.depth or 10
+	local step = config.step or 8
+	local material = config.material or Enum.Material.Water
+
+	-- baseY を自動判定（指定がなければレイキャストで検出）
+	local baseY = config.baseY
+	if not baseY then
+		local startY = 3000
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Include
+		params.FilterDescendantsInstances = { workspace.Terrain }
+		params.IgnoreWater = false
+
+		local hit = workspace:Raycast(Vector3.new(centerX, startY, centerZ), Vector3.new(0, -startY - 1000, 0), params)
+
+		if hit then
+			baseY = hit.Position.Y
+			print(
+				("[FieldGen] 湖_シンプル '%s': 地面高さを自動検出 Y=%.1f"):format(
+					config.name or "UnnamedLake",
+					baseY
+				)
+			)
+		else
+			baseY = 30 -- フォールバック
+			warn(
+				("[FieldGen] 湖_シンプル '%s': 地面検出失敗、デフォルト Y=%.1f を使用"):format(
+					config.name or "UnnamedLake",
+					baseY
+				)
+			)
+		end
+	end
+
+	print(
+		("[FieldGen] 湖_シンプル 生成開始: %s (中心: %.1f, %.1f, 半径: %.1f, 深さ: %.1f, step: %d)"):format(
+			config.name or "UnnamedLake",
+			centerX,
+			centerZ,
+			radius,
+			depth,
+			step
+		)
+	)
+
+	local blockCount = 0
+
+	-- ★【シンプル】地面の高さから深さ分下に、直接Waterを配置（削除なし）
+	local waterTopY = baseY -- 地面と同じ高さから開始
+	local waterBottomY = baseY - depth -- depth分下まで
+
+	for x = centerX - radius, centerX + radius, step do
+		for z = centerZ - radius, centerZ + radius, step do
+			local dist = math.sqrt((x - centerX) ^ 2 + (z - centerZ) ^ 2)
+			if dist <= radius then
+				-- 地面レベルから深さ分をWaterで塗りつぶし
+				-- Y中心を (waterTopY + waterBottomY) / 2 に設定
+				local centerY = (waterTopY + waterBottomY) / 2
+				local fillHeight = waterTopY - waterBottomY
+
+				terrain:FillBlock(CFrame.new(x, centerY, z), Vector3.new(step, fillHeight, step), material)
+				blockCount = blockCount + 1
+			end
+		end
+	end
+
+	print(
+		("[FieldGen] 湖_シンプル 生成完了: %s (%d ブロック、深さ: %.1f)"):format(
 			config.name or "UnnamedLake",
 			blockCount,
 			depth
